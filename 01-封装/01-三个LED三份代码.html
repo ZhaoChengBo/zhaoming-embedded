@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "../searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -384,7 +384,7 @@ led_on(&amp;red_led);
 <p><img src="../assets/ch01/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
 <p>90% 的中国嵌入式工程师用 C 写了 10 年代码，从来不知道自己写的就是 OOP。他们以为 OOP 等于 C++、Java、Python。他们以为封装是高级特性。</p>
 <p>事实是：你只要写过 <code>int sum(int *arr, int len)</code>，你就在做封装：你把“一组整数“打包成 <code>int *arr</code> + <code>int len</code>，函数通过指针操作哪一组。</p>
-<p>后面 18 章要做的，就是把这件你已经在做的事情，做到工业级。</p>
+<p>后面 18 章 OOP 主体 + 工业实战 2 章要做的，就是把这件你已经在做的事情，做到工业级。</p>
 <h2 id="17-视频里没讲透的几个细节"><a class="header" href="#17-视频里没讲透的几个细节">1.7 视频里没讲透的几个细节</a></h2>
 <p>视频 3 分 40 秒讲不完，书里补 6 个工程上你应该知道的点。这一节是“不实操也能完全理解“的核心。</p>
 <h3 id="171-为什么-me-是指针不是值传递"><a class="header" href="#171-为什么-me-是指针不是值传递">1.7.1 为什么 me 是指针不是值传递</a></h3>
@@ -545,6 +545,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
 <p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
+<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念——ops 表、虚函数表指针、不透明指针、前向声明、基类层 dispatch——每一个都是后面 ch09 / ch10 / ch11 / ch13 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 § 1.1 继续从最朴素的状态走起，等读完 ch13 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分三个文件：</p>
 <pre><code class="language-c">/* drivers/led/led.h · 公开头文件，应用层 #include 这个 */
 

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "../searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -288,8 +288,10 @@ led_toggle(&amp;red_led.base);
 <p><code>led_on</code> 函数体长这样：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	me-&gt;is_on = true;
 	return me-&gt;ops-&gt;on(me);
 }
@@ -301,6 +303,7 @@ led_toggle(&amp;red_led.base);
 <li>通过 <code>me-&gt;ops-&gt;on</code> 找到具体的 on 函数，调它</li>
 </ol>
 <p><code>me-&gt;ops-&gt;on(me)</code> 这一行就是面向对象多态的核心机制。第 11 章会展开讲它两次跳转的内存图景。</p>
+<p><code>on / off / toggle</code> 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到忘实现的子类，立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
 <h2 id="106-子类指针怎么变成基类指针"><a class="header" href="#106-子类指针怎么变成基类指针">10.6 子类指针怎么变成基类指针</a></h2>
 <p><code>led_on(&amp;red_led.base)</code> 这一行有个微妙的细节。<code>red_led</code> 类型是 <code>struct led_gpio</code>，<code>red_led.base</code> 是它内嵌的 <code>struct led_base</code> 字段，<code>&amp;red_led.base</code> 取这个字段的地址，类型 <code>struct led_base *</code>。完全合法。</p>
 <p>那能不能直接 <code>led_on(&amp;red_led)</code>？类型是 <code>struct led_gpio *</code>，<code>led_on</code> 期望的是 <code>struct led_base *</code>。编译器报类型不匹配。</p>
@@ -448,8 +451,10 @@ led_off(red_led);
 <pre><code class="language-c">/* drivers/led/led_base.c */
 int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);    /* 基类层内部·走 ops dispatch */
 }
 </code></pre>

@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -198,7 +198,7 @@
 <ol>
 <li><strong>不实操也能完全理解</strong>：每个 <code>static</code>、每个指针、每个 <code>container_of</code> 都讲到不开 IDE 也能 follow。<strong>有经验的工程师扫读一遍就懂，不用动手</strong></li>
 <li><strong>三套代码并行</strong>：核心代码在 PC、STM32、Linux 用户态都能跑，每章末贴 STM32 HAL 等效片段和 Linux 用户态等效片段</li>
-<li><strong>真实工业代码做案例</strong>：第五部分两章基于 11 年工业控制板真实项目</li>
+<li><strong>真实工业代码做案例</strong>：第五部分两章基于工业控制板真实项目</li>
 <li><strong>代码 100% 跑通</strong>：每章配套代码包过 <code>gcc -Wall -Wextra</code> 0 警告</li>
 <li><strong>Linux 内核风格</strong>：tab 缩进、<code>struct led</code> 而非 <code>Led_t</code>，读完看 Linux 内核源码不陌生</li>
 </ol>
@@ -247,7 +247,7 @@
 <li><a href="附录/C-Linux完整工程.html">C · Linux 用户态完整工程：跑通全书所有抽象</a></li>
 <li><a href="附录/D-配套代码索引.html">D · 配套代码索引 + 视频清单 + 编译运行指南</a></li>
 </ul>
-<p>尾声·致读者（暂未发布）</p>
+<p><a href="尾声-致读者.html">尾声·致读者</a></p>
 <h2 id="配套资源"><a class="header" href="#配套资源">配套资源</a></h2>
 <p>完整代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/">oop-in-c/code/</a> 目录下，每章一个独立目录。跑代码三步：</p>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
@@ -256,7 +256,6 @@ make
 </code></pre>
 <p>无开发板也能学，所有代码都通过 <code>platform.h</code> 抽象 GPIO，PC 上用 printf 模拟。</p>
 <h2 id="关注作者"><a class="header" href="#关注作者">关注作者</a></h2>
-<p>我是兆鸣（赵程博），3 家世界 500 强、11 年一线嵌入式工程师，研究院主任工程师。</p>
 <div class="table-wrapper">
 <table>
 <thead>

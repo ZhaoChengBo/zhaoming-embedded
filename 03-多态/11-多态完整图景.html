@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "../searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -205,11 +205,14 @@ for (int i = 0; i &lt; 3; ++i)
 <p><code>led_on(struct led_base *me)</code> 函数体只有一行：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 </code></pre>
+<p><code>on / off / toggle</code> 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到忘实现的子类，立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
 <p><code>me-&gt;ops-&gt;on(me)</code> 这一行 ARM Cortex-M4 编译出来：</p>
 <pre><code>LDR  r3, [r0, #0]    ; r3 = me-&gt;ops              (3 cycle)
 LDR  r3, [r3, #0]    ; r3 = me-&gt;ops-&gt;on          (3 cycle)
@@ -384,31 +387,11 @@ platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
 <li><strong>API 稳定</strong>：哪天 dispatch 机制改了（比如加日志、加 hook、上 trace），改一个 <code>led_on</code> 函数，所有调用方不用动</li>
 </ol>
 <p>工业代码的硬规则：<strong>不直接走 ops 表，所有 dispatch 走基类层包装的统一函数</strong>。<code>led_on / led_off / led_set_brightness</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
-<h3 id="1162-nullable-ops-字段的两种处理"><a class="header" href="#1162-nullable-ops-字段的两种处理">11.6.2 nullable ops 字段的两种处理</a></h3>
-<p>ops 表里某个字段可能没填（设计时这种 LED 不支持某种操作）。本书前面的代码里 <code>led_toggle</code> 做了 NULL check 直接 <code>return -1</code>：</p>
-<pre><code class="language-c">int led_toggle(struct led_base *me)
-{
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;toggle)
-		return -1;
-	return me-&gt;ops-&gt;toggle(me);
-}
-</code></pre>
-<p>这是策略 1：<strong>契约式编程</strong>，调用方拿到 <code>-1</code> 自己判断“哦这个 LED 不支持 toggle“。</p>
-<p>策略 2 是 <strong>Linux 内核风格的空 stub</strong>：基类层提供一个默认空实现 <code>default_toggle()</code>，子类不填时 ops 字段指向默认实现：</p>
-<pre><code class="language-c">static int default_toggle(struct led_base *me)
-{
-	(void)me;
-	return -ENOSYS;    /* "Function not implemented" */
-}
-
-const struct led_ops led_ops_gpio = {
-	.on     = gpio_on,
-	.off    = gpio_off,
-	.toggle = default_toggle,    /* 不支持 */
-};
-</code></pre>
-<p>调用方不用 NULL check，直接 <code>me-&gt;ops-&gt;toggle(me)</code>，拿到 <code>-ENOSYS</code> 表示不支持。Linux 内核 <code>struct file_operations</code> 几十个字段里大部分允许 NULL，VFS 层在调用前 check；但 <code>read / write</code> 这种核心字段提供 stub。</p>
-<p>第 14 章会专门讲这件事的三种策略：NULL check、stub、纯虚（约定子类必须填，不填就 link 失败）。</p>
+<h3 id="1162-ops-字段的必填和选填"><a class="header" href="#1162-ops-字段的必填和选填">11.6.2 ops 字段的必填和选填</a></h3>
+<p>ops 表里有些字段是必填（每个子类都得实现），有些字段是选填（这种 LED 不支持就不填）。</p>
+<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力——一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
+<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填——GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
+<p>第 14 章会专门展开必填 vs 选填的判断标准、三种处理策略（assert 报错、空 stub、默认行为）的取舍、对应到 C++ 里的纯虚函数和虚函数。本章先把“核心能力子类必须实现，调试期 assert 抓忘填“这条记下来。</p>
 <h3 id="1163-多态的开闭原则"><a class="header" href="#1163-多态的开闭原则">11.6.3 多态的开闭原则</a></h3>
 <p>加第 100 种 LED 怎么改代码？</p>
 <ol>

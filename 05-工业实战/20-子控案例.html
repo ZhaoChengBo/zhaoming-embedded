@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "../searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -285,6 +285,7 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 }
 </code></pre>
 <p>每个虚方法只做一件事：把命令打包推进工作队列，立刻返回。真正的串口字节流由 <code>acm_work_thread</code> 内部按厂家协议组帧后从 UART 发出。这就是“代码长什么样的“在工业项目里的最终形态：应用层调一个 <code>h_motor_velocity_set(h_motor_dev, 200)</code>，进到基类层封装函数内部走 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> ops dispatch，跳转到 <code>acm_velocity_set</code>，把命令推进工作队列就返回。工作线程异步把命令组帧、走 UART 总线、收响应、必要时回调通知应用层。应用层永远只见普通函数 <code>h_motor_velocity_set(...)</code>，看不到 ops 字段、看不到工作队列、看不到 UART。这一连串操作书前面 18 章每一章都铺垫过。</p>
+<p>24 个 ops 在基类层并不是同一种约束。看一眼仓库里的 <code>h_motor_base.c</code>：核心动作（<code>motor_stop / motor_start / move_velocity_mode / move_relative_mode / move_absolute_mode / velocity_set / acce_dece_set / status_get / cur_pos_get / enable / home / home_set / positive_limit / fault_clear / manual_mode</code>）是<strong>纯虚</strong>——基类封装函数派发前先 <code>platform_assert(me-&gt;ops-&gt;xxx != NULL)</code>，子类构造函数忘了挂钩上电立刻 assert fail 把低级 bug 砸到台面上。剩下一组（<code>negative_limit / following_err_enable / following_err_limit_set / encoder_ratio_set / i2t_*</code>）是<strong>可空</strong>——基类用 <code>if (me-&gt;ops-&gt;xxx) me-&gt;ops-&gt;xxx(me, ...);</code> 兜底，老固件子类如果没这能力直接留 NULL，应用层调一下就 no-op 不会崩。<code>status_get_sync</code> 还有第三种处理：状态机关键路径上必须不会崩，所以走完整 NULL 校验后返回 <code>false</code>，让上层有机会按“读不到“分支降级。一张 ops 表里同时存在三种约束级别——纯虚 / 可空 / 软失败——每一种都对应一类真实工程权衡。</p>
 <h3 id="2011-24-个虚方法是怎么长出来的"><a class="header" href="#2011-24-个虚方法是怎么长出来的">20.1.1 24 个虚方法是怎么长出来的</a></h3>
 <p>第一次读到 24 个虚方法你可能本能地觉得“太多了“。这一节讲清楚：每个虚方法都是工程演化逼出来的，没有一个是装饰。</p>
 <p>最早的版本只有 4 个方法：<code>start / stop / move / enable</code>。这能驱动玩具电机，跑工业场景一周就崩。下面这张表对照着写出哪个方法是因为踩了什么坑加上来的：</p>
@@ -316,7 +317,7 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 <p>工业代码的解法是：每个电机实例自带一个工作线程加消息队列。所有 ops 调用先把命令推进队列，立刻返回；工作线程把队列里的命令一条条取出来，按厂家协议组帧、从 UART 发出去、等响应，必要时通过回调通知应用层。</p>
 <p>节选自 <code>app/drivers/h_motor/h_motor_acm.h</code>：</p>
 <pre><code class="language-c">typedef struct {
-	h_motor_base_t super;     /* 基类放在第一字段 */
+	h_motor_base_t base;      /* 基类放在第一字段 */
 
 	platform_device_t  uart_dev;
 	int32_t            clutch_pin;
@@ -346,7 +347,7 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 } h_motor_acm_t;
 </code></pre>
 <p>注意几个工程实践的细节。</p>
-<p><strong><code>super</code> 字段命名。</strong> 教学版常用 <code>base</code>，这个项目用 <code>super</code>，含义一样：指向父类那部分内存。<code>super</code> 这个名字借鉴 Java/Python 的语义，强调“这是父类（superclass）的部分“。叫什么名字不重要，整个项目命名一致就行。</p>
+<p><strong><code>base</code> 字段放第一位。</strong> 子类 struct 的第一个字段是基类对象 <code>h_motor_base_t base</code>，向上转型零代价（ch12 已讲透）。命名上整个项目（教学版的 <code>led_basic</code> / <code>v_motor</code>、工业版的 <code>h_motor</code>）统一叫 <code>base</code>，避免读者读到这一段时还要在脑里切换“哦这块叫 super 那块叫 base“——Linux 内核里也常见 <code>dev</code> / <code>parent</code> / <code>super</code> 等变体写法，叫什么不重要，<strong>一个项目内部一致</strong>才是工程纪律。</p>
 <p><strong>两个工作线程加两个消息队列。</strong> <code>work_queue + work_thread</code> 处理“应用层下来的命令“，<code>rx_queue + rx_thread</code> 处理“电机串口响应数据“。两套独立避免死锁（命令线程在等响应时不会卡死接收线程）。</p>
 <p><strong>fault_detect_btn。</strong> 故障检测引脚被当成“按键“对待。<code>Button</code> 来自 MultiButton 库，专门做去抖动加长按 / 短按 / 双击事件。把硬件故障引脚的电平变化也当作“按键事件“统一处理。这是教学版从来想不到的细节。</p>
 <p><strong>最大值字段（max_following_error / max_motor_current / max_i2t_sum）。</strong> 运行期间持续记录峰值。出问题时这些字段是黄金调试信息，能告诉你“电机最大跟随误差到多少“、“瞬时电流多大”。教学版不会写这种东西，工业版离了就是黑盒。</p>
@@ -390,9 +391,9 @@ typedef struct v_motor_base {
 } v_motor_base_t;
 </code></pre>
 <p>只有 3 个 ops 方法（停 / 走 / 清故障），加 2 个回调（状态变化 / 错误）。比水平电机简单一个量级。原因是直流电机没有“绝对定位“的概念，能力域窄得多。</p>
-<p>IFX007T 子类（节选自 <code>v_motor_ifx007t.h</code>）：</p>
+<p>IFX007T 子类的教学最小内核（节选自 <code>v_motor_ifx007t.h</code>）：</p>
 <pre><code class="language-c">typedef struct {
-	v_motor_base_t supper;     /* 基类放在第一字段 */
+	v_motor_base_t base;       /* 基类放在第一字段 */
 	int32_t ctrl_1_pin;
 	int32_t ctrl_2_pin;
 	int32_t sleep1_pin;
@@ -400,6 +401,9 @@ typedef struct v_motor_base {
 } v_motor_ifx007t_t;
 </code></pre>
 <p>IFX007T 是英飞凌一颗 H 桥驱动芯片。两个控制引脚 + 两个使能引脚。<code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。简单到几行 GPIO 操作就完成。</p>
+<blockquote>
+<p>仓库里 <code>v_motor_ifx007t.h</code> 是产品级版本，子类 struct 字段更多（两路 PWM 设备 + 两个减速区限位开关 + 一路 IS 电流采样 ADC + 工作线程 + 周期定时器 + 软启动 / 加减速 / 故障检测的运行时状态），上面这块代码是把它压成“OOP 抽象骨架“的教学最小核。产品代码里 <code>ctrl_1</code> / <code>ctrl_2</code> 走的是 PWM 调速而不是 GPIO 推挽，但抽象层面就是控制 H 桥两路高边臂——子类内部具体怎么斩波怎么爬坡，基类层一字看不见。完整产品级实现在 § 20.10.2 里展开。</p>
+</blockquote>
 <p>应用层接口风格完全统一：</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h */
 extern h_motor_base_t *h_motor_dev;
@@ -412,7 +416,8 @@ v_motor_move(v_motor_dev, V_MOTOR_BASE_MOVE_UP);
 <p><code>h_motor_move_absolute</code> / <code>v_motor_move</code> 是 <code>h_motor.c</code> / <code>v_motor.c</code> 里的封装函数（同 ch01 1.10 节 <code>led_on</code> 套路），内部走 <code>me-&gt;ops-&gt;move_absolute_mode(me, ...)</code> / <code>me-&gt;ops-&gt;motor_move(me, ...)</code> dispatch 到具体电机实现（ACM 伺服 / IFX007T H 桥）。</p>
 <p>垂直电机是另一组 base + ops 表（接口比水平电机简单，因为直流电机的能力域窄）。两个基类不互相继承，是平行的。</p>
 <p>这反映一个 OOP 设计原则：<strong>继承沿“能力 / 接口的相似度“建，不沿“硬件的相似度“建</strong>。水平电机和垂直电机在硬件层面相似度最低，但因为它们都得“被应用层用同一种方式驱动“,所以各自有一个独立的 base 接口。教学版常犯的错是看到“这两个东西都是电机“就硬塞到一个基类里，最后发现各种“水平电机的方法垂直电机不需要“、“垂直电机的方法水平电机不支持”，被迫加 <code>if (motor_type == HORIZONTAL) ... else ...</code>，多态退化成手动派发。</p>
-<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，只在 <code>v_motor_base_ops_t</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
+<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，理论上只在 <code>v_motor_base_ops_t</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
+<p>实际仓库里产品级 <code>v_motor_ifx007t.c</code> 走的是另一条路：根本不在 ops 表新加 <code>speed_set</code>，而是直接把 PWM 软启动 + 加减速曲线塞进 <code>motor_move</code> 内部由工作线程异步跑出来。原因是直流电机的速度策略（起步占空多少、ramp 多长、什么时候踩限位降速）本身是机械相关硬编码的——上层应用层永远只说“往上走“或“停“，不需要也不应该参数化“以多少占空走“。两条路都合法：能力域真的扩出来一档独立 setter，就加 ops；能力还在“开 / 关 / 方向“原本三个虚方法的语义内，就吸收进子类内部。设计判断的依据始终是<strong>应用层视角能力是否真的多一档</strong>。</p>
 <h2 id="204-三种回调状态位置错误"><a class="header" href="#204-三种回调状态位置错误">20.4 三种回调：状态、位置、错误</a></h2>
 <p>电机异步地往应用层喷三种事件：状态变化、位置变化、错误。每种独立一个回调。</p>
 <pre><code class="language-c">typedef void (*status_cb_t)(h_motor_base_status_t *status,
@@ -674,7 +679,7 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 <p>第二，工作线程 + 消息队列的具体实现绑定在 RTOS 上（CMSIS-RTOS2 API），脱离 RTOS 移植到 PC 模拟需要重写一遍同步原语，对 OOP 教学价值有限。</p>
 <p>20.2 节正文已经把 OOP 角度的全部要点讲清楚：</p>
 <ul>
-<li>子类把 <code>h_motor_base_t super</code> 放第一字段（向上转型零代价）</li>
+<li>子类把 <code>h_motor_base_t base</code> 放第一字段（向上转型零代价）</li>
 <li>工作线程 + 消息队列把异步操作翻译成“看起来同步“的接口</li>
 <li>故障检测引脚通过 <code>Button</code> 库当成“按键事件“统一处理</li>
 <li>性能监控字段（<code>max_following_error / max_motor_current / max_i2t_sum</code>）持续记录峰值</li>
@@ -683,12 +688,20 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 </ul>
 <p>20.1 节贴的 <code>acm_velocity_set / acm_following_err_limit_set / acm_i2t_peak_current_set</code> 三个函数节选示意了“虚方法 → 工作队列 → 厂家协议组帧 → UART 发送“的标准模式，照这个模式可以补出剩下 21 个虚方法。</p>
 <h3 id="20102-垂直电机驱动-v_motor203-节"><a class="header" href="#20102-垂直电机驱动-v_motor203-节">20.10.2 垂直电机驱动 v_motor（20.3 节）</a></h3>
-<p>20.3 节贴的是 <code>v_motor_base.h</code> 基类（3 虚方法 ops 表 + 2 回调）+ <code>v_motor_ifx007t.h</code> 子类 struct。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
-<p>垂直电机的实现细节很简单（H 桥 PWM 直驱，每个 ops 函数就是几行 GPIO 操作），20.3 节正文已经把行为描述完整：</p>
+<p>20.3 节贴的是 <code>v_motor_base.h</code> 基类（3 虚方法 ops 表 + 2 回调）+ <code>v_motor_ifx007t.h</code> 子类 struct。<strong>完整 <code>.c</code> 实现已经放进仓库</strong><a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/motor_24vfuncs/v_motor_ifx007t.c"><code>industrial/motor_24vfuncs/v_motor_ifx007t.c</code></a>，是产品级版本。</p>
+<p>20.3 节正文用最小内核描述了行为：</p>
 <blockquote>
 <p><code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。</p>
 </blockquote>
-<p>按这个描述自己写一份 <code>v_motor_ifx007t.c</code> 就是几十行 GPIO 调用。教学版到这里 OOP 抽象已经讲完，剩下是芯片驱动细节。</p>
+<p>这是教学版讲清楚 OOP 抽象骨架的最简形态。仓库里的产品级 <code>v_motor_ifx007t.c</code> 在这个骨架上多了五件工程细节：</p>
+<ol>
+<li>PWM 调速代替直接 GPIO 推挽（H 桥两路 PWM）</li>
+<li>软启动（5% → 起步占空，避免上电瞬间冲击电流）</li>
+<li>满速线性加速（起步占空 → 100%）</li>
+<li>减速区限位 + 三层超时保护</li>
+<li>IS 引脚电流采样 + EMA 滤波 + 连续超阈过流故障判断</li>
+</ol>
+<p>OOP 骨架完全不变：<code>v_motor_base_t</code> 的 3 个 ops + 1 个错误回调，子类内部把所有这些异步行为塞进工作线程 + 周期定时器。应用层永远只见 <code>v_motor_base_move(motor, UP)</code> 这一句普通函数调用。这就是 ch20 想讲透的核心：工程现实里“几行 GPIO“ 之上扛住的细节再多，OOP 抽象层一字不动。</p>
 <h3 id="20103-编码器--位置开关205-节"><a class="header" href="#20103-编码器--位置开关205-节">20.10.3 编码器 / 位置开关（20.5 节）</a></h3>
 <p>20.5 节贴的是 <code>encoder.h</code> + <code>position_switch.h</code> 两个 struct 定义和回调签名。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
 <p>20.5 节正文要传达的核心是反面教材：单实现驱动不要硬上 ops 表（<code>struct + me</code> 就够），多个相似硬件信号（5 个限位开关）要打包成一个 struct + enum 区分而不是 5 份独立 driver。这两条 OOP 原则跟具体 <code>.c</code> 实现无关，所以仓库里没有放完整实现。</p>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "../searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -418,11 +418,14 @@ led_on(g_led_error);
 <p><code>g_led_error</code> 是 <code>struct led_base *</code>，指向 <code>s_led_err</code>（<code>struct led_gpio</code>）的 <code>base</code> 字段。<code>led_on</code> 这个函数定义在 <code>led.c</code>：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
-	if (!me) return -1;
+	if (!me)
+		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 </code></pre>
-<p>它从父类指针 <code>me</code> 取 <code>ops</code>，再取 <code>ops-&gt;on</code>。<code>ops</code> 这一字段在 init 期被填成 <code>&amp;led_ops_gpio</code>，<code>led_ops_gpio.on</code> 指向 <code>gpio_on</code> 这个子类函数。</p>
+<p>它从父类指针 <code>me</code> 取 <code>ops</code>，再取 <code>ops-&gt;on</code>。<code>ops</code> 这一字段在 init 期被填成 <code>&amp;led_ops_gpio</code>，<code>led_ops_gpio.on</code> 指向 <code>gpio_on</code> 这个子类函数。<code>on / off</code> 是 LED 的核心能力，子类必须实现，调试构建里 assert 抓到忘实现的子类立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
 <pre><code class="language-c">/* 子类 led.c */
 static int gpio_on(struct led_base *me)
 {
@@ -754,6 +757,7 @@ void led_i2c_init(struct led_i2c *me, const char *name,
 
 #include "led.h"
 #include "platform.h"
+#include &lt;assert.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;stddef.h&gt;
 
@@ -761,15 +765,22 @@ void led_i2c_init(struct led_i2c *me, const char *name,
 
 int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	/* on 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到
+	 * 忘填的子类立刻 abort，Release 构建定义 NDEBUG 后 assert 整行
+	 * 消失，0 运行时开销。 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
 int led_off(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;off)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp;
+	       "led_off: subclass must implement off()");
 	return me-&gt;ops-&gt;off(me);
 }
 
@@ -778,7 +789,8 @@ int led_set_brightness(struct led_base *me, uint8_t brightness)
 	if (!me || !me-&gt;ops)
 		return -1;
 	if (!me-&gt;ops-&gt;set_brightness) {
-		/* 这种 LED 不支持调光，安静返回。第 14 章会展开。 */
+		/* set_brightness 是选填字段，子类没实现就走父类默认行为
+		 * （这里默认 = 安静返回 0）。第 14 章会展开必填 vs 选填。 */
 		return 0;
 	}
 	return me-&gt;ops-&gt;set_brightness(me, brightness);

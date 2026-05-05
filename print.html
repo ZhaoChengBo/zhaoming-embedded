@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -196,7 +196,7 @@
 <ol>
 <li><strong>不实操也能完全理解</strong>：每个 <code>static</code>、每个指针、每个 <code>container_of</code> 都讲到不开 IDE 也能 follow。<strong>有经验的工程师扫读一遍就懂，不用动手</strong></li>
 <li><strong>三套代码并行</strong>：核心代码在 PC、STM32、Linux 用户态都能跑，每章末贴 STM32 HAL 等效片段和 Linux 用户态等效片段</li>
-<li><strong>真实工业代码做案例</strong>：第五部分两章基于 11 年工业控制板真实项目</li>
+<li><strong>真实工业代码做案例</strong>：第五部分两章基于工业控制板真实项目</li>
 <li><strong>代码 100% 跑通</strong>：每章配套代码包过 <code>gcc -Wall -Wextra</code> 0 警告</li>
 <li><strong>Linux 内核风格</strong>：tab 缩进、<code>struct led</code> 而非 <code>Led_t</code>，读完看 Linux 内核源码不陌生</li>
 </ol>
@@ -245,7 +245,7 @@
 <li><a href="#附录-c--linux-用户态完整工程跑通全书所有抽象">C · Linux 用户态完整工程：跑通全书所有抽象</a></li>
 <li><a href="#附录-d--配套代码索引--视频清单--编译运行指南">D · 配套代码索引 + 视频清单 + 编译运行指南</a></li>
 </ul>
-<p>尾声·致读者（暂未发布）</p>
+<p><a href="#尾声--致读者">尾声·致读者</a></p>
 <h2 id="配套资源"><a class="header" href="#配套资源">配套资源</a></h2>
 <p>完整代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/">oop-in-c/code/</a> 目录下，每章一个独立目录。跑代码三步：</p>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
@@ -254,7 +254,6 @@ make
 </code></pre>
 <p>无开发板也能学，所有代码都通过 <code>platform.h</code> 抽象 GPIO，PC 上用 printf 模拟。</p>
 <h2 id="关注作者"><a class="header" href="#关注作者">关注作者</a></h2>
-<p>我是兆鸣（赵程博），3 家世界 500 强、11 年一线嵌入式工程师，研究院主任工程师。</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -280,7 +279,7 @@ make
 <p>开始阅读：<a href="#前言">前言</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="前言"><a class="header" href="#前言">前言</a></h1>
-<p>我做嵌入式 11 年。在我待过的项目里，常常看到这样的代码：</p>
+<p>在我待过的项目里，常常看到这样的代码：</p>
 <p>三颗 LED 写三份几乎一模一样的函数。加一个新传感器，复制 5 个文件、改 30 个 <code>#define</code>。换一颗芯片像搬家，应用层全部重写，因为驱动层根本不是“驱动层“，是一堆“硬件操作的散装代码“。</p>
 <p>不是这些工程师不努力。是没人系统教过 C 代码该怎么组织。</p>
 <p>中国市面上的 C 语言书多数在讲语法：指针、数组、结构体怎么用。嵌入式书多数在讲外设：GPIO、UART、I2C 怎么配寄存器。但“几千个外设驱动是怎么用同一个套路写出来的“、“为什么 Linux 内核 4000 万行 C 代码不会塌”，这些问题没人讲。</p>
@@ -302,7 +301,7 @@ make
 </ul>
 <p>完整的 STM32 工程和 Linux 用户态工程见附录 B、附录 C。</p>
 <p><strong>真实工业代码做案例。</strong></p>
-<p>第五部分两章基于我 11 年里参与的工业控制板真实项目代码。前面章节铺垫的所有抽象，到了这两章你能看到它们在真实项目里实际长什么样。中国其它嵌入式书几乎都用“LED 闪烁、按键消抖“这种 toy 案例。</p>
+<p>第五部分两章基于我参与的工业控制板真实项目代码。前面章节铺垫的所有抽象，到了这两章你能看到它们在真实项目里实际长什么样。中国其它嵌入式书几乎都用“LED 闪烁、按键消抖“这种 toy 案例。</p>
 <p><strong>代码 100% 跑通。</strong></p>
 <p>每一章配套的代码包都过 <code>gcc -Wall -Wextra</code> 0 警告编译，运行 exit 0，输出和章节正文描述一致。</p>
 <p><strong>Linux 内核风格代码。</strong></p>
@@ -414,8 +413,8 @@ led_on(&amp;blue_led);
 </div>
 <p>还是不行，到 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/issues">GitHub Issues</a> 或 <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/issues">Gitee Issues</a> 提一个，附系统、GCC 版本、完整报错。</p>
 <h2 id="为什么先看见再谈理论"><a class="header" href="#为什么先看见再谈理论">为什么先看见再谈理论</a></h2>
-<p>接下来 18 章你会一步步推出整个面向对象。但如果你在没看见结果之前先去读一堆抽象概念，会有一种“知道“但不“懂“的错觉。这是大多数中文技术书的通病。</p>
-<p>费曼方法的核心是：不被作者说服，要被自己说服。今天这 5 分钟你已经被自己说服一件事：这三个 LED 真的可以一份代码搞定，不是我吹的。后面 18 章只要让你心服口服地说“哦原来是这样推出来的“。</p>
+<p>接下来 ch01-ch20 共 20 章（OOP 主体 18 章 + 工业实战 2 章）+ 4 附录，你会一步步推出整个面向对象。但如果你在没看见结果之前先去读一堆抽象概念，会有一种“知道“但不“懂“的错觉。这是大多数中文技术书的通病。</p>
+<p>费曼方法的核心是：不被作者说服，要被自己说服。今天这 5 分钟你已经被自己说服一件事：这三个 LED 真的可以一份代码搞定，不是我吹的。后面 18 章 OOP 主体 + 工业实战 2 章只要让你心服口服地说“哦原来是这样推出来的“。</p>
 <p>下一篇：<a href="#第-1-章--三个-led-三份代码">第 1 章 · 三个 LED 三份代码</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="第-1-章--三个-led-三份代码"><a class="header" href="#第-1-章--三个-led-三份代码">第 1 章 · 三个 LED 三份代码</a></h1>
@@ -622,7 +621,7 @@ led_on(&amp;red_led);
 <p><img src="assets/ch01/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
 <p>90% 的中国嵌入式工程师用 C 写了 10 年代码，从来不知道自己写的就是 OOP。他们以为 OOP 等于 C++、Java、Python。他们以为封装是高级特性。</p>
 <p>事实是：你只要写过 <code>int sum(int *arr, int len)</code>，你就在做封装：你把“一组整数“打包成 <code>int *arr</code> + <code>int len</code>，函数通过指针操作哪一组。</p>
-<p>后面 18 章要做的，就是把这件你已经在做的事情，做到工业级。</p>
+<p>后面 18 章 OOP 主体 + 工业实战 2 章要做的，就是把这件你已经在做的事情，做到工业级。</p>
 <h2 id="17-视频里没讲透的几个细节"><a class="header" href="#17-视频里没讲透的几个细节">1.7 视频里没讲透的几个细节</a></h2>
 <p>视频 3 分 40 秒讲不完，书里补 6 个工程上你应该知道的点。这一节是“不实操也能完全理解“的核心。</p>
 <h3 id="171-为什么-me-是指针不是值传递"><a class="header" href="#171-为什么-me-是指针不是值传递">1.7.1 为什么 me 是指针不是值传递</a></h3>
@@ -783,6 +782,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
 <p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
+<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念——ops 表、虚函数表指针、不透明指针、前向声明、基类层 dispatch——每一个都是后面 ch09 / ch10 / ch11 / ch13 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 § 1.1 继续从最朴素的状态走起，等读完 ch13 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分三个文件：</p>
 <pre><code class="language-c">/* drivers/led/led.h · 公开头文件，应用层 #include 这个 */
 
@@ -4025,8 +4025,10 @@ led_toggle(&amp;red_led.base);
 <p><code>led_on</code> 函数体长这样：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	me-&gt;is_on = true;
 	return me-&gt;ops-&gt;on(me);
 }
@@ -4038,6 +4040,7 @@ led_toggle(&amp;red_led.base);
 <li>通过 <code>me-&gt;ops-&gt;on</code> 找到具体的 on 函数，调它</li>
 </ol>
 <p><code>me-&gt;ops-&gt;on(me)</code> 这一行就是面向对象多态的核心机制。第 11 章会展开讲它两次跳转的内存图景。</p>
+<p><code>on / off / toggle</code> 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到忘实现的子类，立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
 <h2 id="106-子类指针怎么变成基类指针"><a class="header" href="#106-子类指针怎么变成基类指针">10.6 子类指针怎么变成基类指针</a></h2>
 <p><code>led_on(&amp;red_led.base)</code> 这一行有个微妙的细节。<code>red_led</code> 类型是 <code>struct led_gpio</code>，<code>red_led.base</code> 是它内嵌的 <code>struct led_base</code> 字段，<code>&amp;red_led.base</code> 取这个字段的地址，类型 <code>struct led_base *</code>。完全合法。</p>
 <p>那能不能直接 <code>led_on(&amp;red_led)</code>？类型是 <code>struct led_gpio *</code>，<code>led_on</code> 期望的是 <code>struct led_base *</code>。编译器报类型不匹配。</p>
@@ -4185,8 +4188,10 @@ led_off(red_led);
 <pre><code class="language-c">/* drivers/led/led_base.c */
 int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);    /* 基类层内部·走 ops dispatch */
 }
 </code></pre>
@@ -4264,11 +4269,14 @@ for (int i = 0; i &lt; 3; ++i)
 <p><code>led_on(struct led_base *me)</code> 函数体只有一行：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 </code></pre>
+<p><code>on / off / toggle</code> 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到忘实现的子类，立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
 <p><code>me-&gt;ops-&gt;on(me)</code> 这一行 ARM Cortex-M4 编译出来：</p>
 <pre><code>LDR  r3, [r0, #0]    ; r3 = me-&gt;ops              (3 cycle)
 LDR  r3, [r3, #0]    ; r3 = me-&gt;ops-&gt;on          (3 cycle)
@@ -4443,31 +4451,11 @@ platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
 <li><strong>API 稳定</strong>：哪天 dispatch 机制改了（比如加日志、加 hook、上 trace），改一个 <code>led_on</code> 函数，所有调用方不用动</li>
 </ol>
 <p>工业代码的硬规则：<strong>不直接走 ops 表，所有 dispatch 走基类层包装的统一函数</strong>。<code>led_on / led_off / led_set_brightness</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
-<h3 id="1162-nullable-ops-字段的两种处理"><a class="header" href="#1162-nullable-ops-字段的两种处理">11.6.2 nullable ops 字段的两种处理</a></h3>
-<p>ops 表里某个字段可能没填（设计时这种 LED 不支持某种操作）。本书前面的代码里 <code>led_toggle</code> 做了 NULL check 直接 <code>return -1</code>：</p>
-<pre><code class="language-c">int led_toggle(struct led_base *me)
-{
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;toggle)
-		return -1;
-	return me-&gt;ops-&gt;toggle(me);
-}
-</code></pre>
-<p>这是策略 1：<strong>契约式编程</strong>，调用方拿到 <code>-1</code> 自己判断“哦这个 LED 不支持 toggle“。</p>
-<p>策略 2 是 <strong>Linux 内核风格的空 stub</strong>：基类层提供一个默认空实现 <code>default_toggle()</code>，子类不填时 ops 字段指向默认实现：</p>
-<pre><code class="language-c">static int default_toggle(struct led_base *me)
-{
-	(void)me;
-	return -ENOSYS;    /* "Function not implemented" */
-}
-
-const struct led_ops led_ops_gpio = {
-	.on     = gpio_on,
-	.off    = gpio_off,
-	.toggle = default_toggle,    /* 不支持 */
-};
-</code></pre>
-<p>调用方不用 NULL check，直接 <code>me-&gt;ops-&gt;toggle(me)</code>，拿到 <code>-ENOSYS</code> 表示不支持。Linux 内核 <code>struct file_operations</code> 几十个字段里大部分允许 NULL，VFS 层在调用前 check；但 <code>read / write</code> 这种核心字段提供 stub。</p>
-<p>第 14 章会专门讲这件事的三种策略：NULL check、stub、纯虚（约定子类必须填，不填就 link 失败）。</p>
+<h3 id="1162-ops-字段的必填和选填"><a class="header" href="#1162-ops-字段的必填和选填">11.6.2 ops 字段的必填和选填</a></h3>
+<p>ops 表里有些字段是必填（每个子类都得实现），有些字段是选填（这种 LED 不支持就不填）。</p>
+<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力——一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
+<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填——GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
+<p>第 14 章会专门展开必填 vs 选填的判断标准、三种处理策略（assert 报错、空 stub、默认行为）的取舍、对应到 C++ 里的纯虚函数和虚函数。本章先把“核心能力子类必须实现，调试期 assert 抓忘填“这条记下来。</p>
 <h3 id="1163-多态的开闭原则"><a class="header" href="#1163-多态的开闭原则">11.6.3 多态的开闭原则</a></h3>
 <p>加第 100 种 LED 怎么改代码？</p>
 <ol>
@@ -4892,11 +4880,14 @@ led_on(g_led_error);
 <p><code>g_led_error</code> 是 <code>struct led_base *</code>，指向 <code>s_led_err</code>（<code>struct led_gpio</code>）的 <code>base</code> 字段。<code>led_on</code> 这个函数定义在 <code>led.c</code>：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
-	if (!me) return -1;
+	if (!me)
+		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 </code></pre>
-<p>它从父类指针 <code>me</code> 取 <code>ops</code>，再取 <code>ops-&gt;on</code>。<code>ops</code> 这一字段在 init 期被填成 <code>&amp;led_ops_gpio</code>，<code>led_ops_gpio.on</code> 指向 <code>gpio_on</code> 这个子类函数。</p>
+<p>它从父类指针 <code>me</code> 取 <code>ops</code>，再取 <code>ops-&gt;on</code>。<code>ops</code> 这一字段在 init 期被填成 <code>&amp;led_ops_gpio</code>，<code>led_ops_gpio.on</code> 指向 <code>gpio_on</code> 这个子类函数。<code>on / off</code> 是 LED 的核心能力，子类必须实现，调试构建里 assert 抓到忘实现的子类立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
 <pre><code class="language-c">/* 子类 led.c */
 static int gpio_on(struct led_base *me)
 {
@@ -5228,6 +5219,7 @@ void led_i2c_init(struct led_i2c *me, const char *name,
 
 #include "led.h"
 #include "platform.h"
+#include &lt;assert.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;stddef.h&gt;
 
@@ -5235,15 +5227,22 @@ void led_i2c_init(struct led_i2c *me, const char *name,
 
 int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	/* on 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到
+	 * 忘填的子类立刻 abort，Release 构建定义 NDEBUG 后 assert 整行
+	 * 消失，0 运行时开销。 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
 int led_off(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;off)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp;
+	       "led_off: subclass must implement off()");
 	return me-&gt;ops-&gt;off(me);
 }
 
@@ -5252,7 +5251,8 @@ int led_set_brightness(struct led_base *me, uint8_t brightness)
 	if (!me || !me-&gt;ops)
 		return -1;
 	if (!me-&gt;ops-&gt;set_brightness) {
-		/* 这种 LED 不支持调光，安静返回。第 14 章会展开。 */
+		/* set_brightness 是选填字段，子类没实现就走父类默认行为
+		 * （这里默认 = 安静返回 0）。第 14 章会展开必填 vs 选填。 */
 		return 0;
 	}
 	return me-&gt;ops-&gt;set_brightness(me, brightness);
@@ -5906,21 +5906,29 @@ void led_i2c_init(struct led_i2c *me, const char *name,
 #include "led.h"
 #include "container_of.h"
 #include "platform.h"
+#include &lt;assert.h&gt;
 #include &lt;stdio.h&gt;
 
 /* ============== 父类统一接口 ============== */
 
 int led_on(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+	if (!me)
 		return -1;
+	/* on 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到
+	 * 忘填的子类立刻 abort，Release 构建定义 NDEBUG 后 assert 整行
+	 * 消失，0 运行时开销。 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
 int led_off(struct led_base *me)
 {
-	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;off)
+	if (!me)
 		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp;
+	       "led_off: subclass must implement off()");
 	return me-&gt;ops-&gt;off(me);
 }
 
@@ -5928,6 +5936,8 @@ int led_set_brightness(struct led_base *me, uint8_t brightness)
 {
 	if (!me || !me-&gt;ops)
 		return -1;
+	/* set_brightness 是选填字段，子类没实现就走父类默认行为
+	 * （这里默认 = 安静返回 0）。 */
 	if (!me-&gt;ops-&gt;set_brightness)
 		return 0;
 	return me-&gt;ops-&gt;set_brightness(me, brightness);
@@ -6914,7 +6924,9 @@ struct led_base {
 {
 	if (!me)
 		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on);    /* 必填 */
+	/* 必填：on 是 LED 的核心能力，子类必须实现 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
@@ -7803,7 +7815,11 @@ int led_on(struct led_base *me)
 {
 	if (!me)
 		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on);
+	/* on 是必填：子类必须实现。调试构建里 assert 抓到忘填的子类
+	 * 立刻 abort 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，
+	 * 零运行时开销。 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
@@ -7811,7 +7827,8 @@ int led_off(struct led_base *me)
 {
 	if (!me)
 		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off);
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp;
+	       "led_off: subclass must implement off()");
 	return me-&gt;ops-&gt;off(me);
 }
 
@@ -9703,7 +9720,7 @@ Linux 内核里的真实使用
 </code></pre>
 <p>从一颗 LED 一路推到内核。</p>
 <p><img src="assets/ch18/slide0_三层对应.png" alt="三层对应"></p>
-<h2 id="182-为什么是一颗-led-讲-17-章"><a class="header" href="#182-为什么是一颗-led-讲-17-章">18.2 为什么是一颗 LED 讲 17 章</a></h2>
+<h2 id="182-为什么是一颗-led-讲-18-章"><a class="header" href="#182-为什么是一颗-led-讲-18-章">18.2 为什么是一颗 LED 讲 18 章</a></h2>
 <p>LED 简单，门槛低。但它足够完整，从一个寄存器，能一路走到 Linux 内核。</p>
 <p>每一章你拿到的不是我自己想出来的东西，都是我在 Linux 内核、一线工业项目里长期看到的共通做法，用一颗 LED 串起来。</p>
 <p>学完这本书你同时拿到 3 样东西：</p>
@@ -10245,8 +10262,8 @@ make
 =========================================
 </code></pre>
 <p>一颗 LED，5 个阶段，5 行代码风格的演化。看自己一路走过的路。</p>
-<h2 id="1815-不止于这-17-章"><a class="header" href="#1815-不止于这-17-章">18.15 不止于这 17 章</a></h2>
-<p>封装、继承、多态，这本书 17 章是面向对象的基本功。</p>
+<h2 id="1815-不止于这-18-章-oop-主体外加工业实战-2-章"><a class="header" href="#1815-不止于这-18-章-oop-主体外加工业实战-2-章">18.15 不止于这 18 章 OOP 主体（外加工业实战 2 章）</a></h2>
+<p>封装、继承、多态，这本书 18 章 OOP 主体是面向对象的基本功。</p>
 <p>工业级嵌入式架构还有几座山：分层架构、层次化状态机、事件驱动 + 发布订阅、非阻塞驱动框架。</p>
 <p>这些不是 PPT 上的名词。是真正能让 11 万行业务代码保持清醒的工具。</p>
 <p>这本书是这套思想的入门。后面的山一座一座去做，做好了在 GitHub Issues 或 Gitee Issues 第一时间告诉你。</p>
@@ -11150,6 +11167,7 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 }
 </code></pre>
 <p>每个虚方法只做一件事：把命令打包推进工作队列，立刻返回。真正的串口字节流由 <code>acm_work_thread</code> 内部按厂家协议组帧后从 UART 发出。这就是“代码长什么样的“在工业项目里的最终形态：应用层调一个 <code>h_motor_velocity_set(h_motor_dev, 200)</code>，进到基类层封装函数内部走 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> ops dispatch，跳转到 <code>acm_velocity_set</code>，把命令推进工作队列就返回。工作线程异步把命令组帧、走 UART 总线、收响应、必要时回调通知应用层。应用层永远只见普通函数 <code>h_motor_velocity_set(...)</code>，看不到 ops 字段、看不到工作队列、看不到 UART。这一连串操作书前面 18 章每一章都铺垫过。</p>
+<p>24 个 ops 在基类层并不是同一种约束。看一眼仓库里的 <code>h_motor_base.c</code>：核心动作（<code>motor_stop / motor_start / move_velocity_mode / move_relative_mode / move_absolute_mode / velocity_set / acce_dece_set / status_get / cur_pos_get / enable / home / home_set / positive_limit / fault_clear / manual_mode</code>）是<strong>纯虚</strong>——基类封装函数派发前先 <code>platform_assert(me-&gt;ops-&gt;xxx != NULL)</code>，子类构造函数忘了挂钩上电立刻 assert fail 把低级 bug 砸到台面上。剩下一组（<code>negative_limit / following_err_enable / following_err_limit_set / encoder_ratio_set / i2t_*</code>）是<strong>可空</strong>——基类用 <code>if (me-&gt;ops-&gt;xxx) me-&gt;ops-&gt;xxx(me, ...);</code> 兜底，老固件子类如果没这能力直接留 NULL，应用层调一下就 no-op 不会崩。<code>status_get_sync</code> 还有第三种处理：状态机关键路径上必须不会崩，所以走完整 NULL 校验后返回 <code>false</code>，让上层有机会按“读不到“分支降级。一张 ops 表里同时存在三种约束级别——纯虚 / 可空 / 软失败——每一种都对应一类真实工程权衡。</p>
 <h3 id="2011-24-个虚方法是怎么长出来的"><a class="header" href="#2011-24-个虚方法是怎么长出来的">20.1.1 24 个虚方法是怎么长出来的</a></h3>
 <p>第一次读到 24 个虚方法你可能本能地觉得“太多了“。这一节讲清楚：每个虚方法都是工程演化逼出来的，没有一个是装饰。</p>
 <p>最早的版本只有 4 个方法：<code>start / stop / move / enable</code>。这能驱动玩具电机，跑工业场景一周就崩。下面这张表对照着写出哪个方法是因为踩了什么坑加上来的：</p>
@@ -11181,7 +11199,7 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 <p>工业代码的解法是：每个电机实例自带一个工作线程加消息队列。所有 ops 调用先把命令推进队列，立刻返回；工作线程把队列里的命令一条条取出来，按厂家协议组帧、从 UART 发出去、等响应，必要时通过回调通知应用层。</p>
 <p>节选自 <code>app/drivers/h_motor/h_motor_acm.h</code>：</p>
 <pre><code class="language-c">typedef struct {
-	h_motor_base_t super;     /* 基类放在第一字段 */
+	h_motor_base_t base;      /* 基类放在第一字段 */
 
 	platform_device_t  uart_dev;
 	int32_t            clutch_pin;
@@ -11211,7 +11229,7 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 } h_motor_acm_t;
 </code></pre>
 <p>注意几个工程实践的细节。</p>
-<p><strong><code>super</code> 字段命名。</strong> 教学版常用 <code>base</code>，这个项目用 <code>super</code>，含义一样：指向父类那部分内存。<code>super</code> 这个名字借鉴 Java/Python 的语义，强调“这是父类（superclass）的部分“。叫什么名字不重要，整个项目命名一致就行。</p>
+<p><strong><code>base</code> 字段放第一位。</strong> 子类 struct 的第一个字段是基类对象 <code>h_motor_base_t base</code>，向上转型零代价（ch12 已讲透）。命名上整个项目（教学版的 <code>led_basic</code> / <code>v_motor</code>、工业版的 <code>h_motor</code>）统一叫 <code>base</code>，避免读者读到这一段时还要在脑里切换“哦这块叫 super 那块叫 base“——Linux 内核里也常见 <code>dev</code> / <code>parent</code> / <code>super</code> 等变体写法，叫什么不重要，<strong>一个项目内部一致</strong>才是工程纪律。</p>
 <p><strong>两个工作线程加两个消息队列。</strong> <code>work_queue + work_thread</code> 处理“应用层下来的命令“，<code>rx_queue + rx_thread</code> 处理“电机串口响应数据“。两套独立避免死锁（命令线程在等响应时不会卡死接收线程）。</p>
 <p><strong>fault_detect_btn。</strong> 故障检测引脚被当成“按键“对待。<code>Button</code> 来自 MultiButton 库，专门做去抖动加长按 / 短按 / 双击事件。把硬件故障引脚的电平变化也当作“按键事件“统一处理。这是教学版从来想不到的细节。</p>
 <p><strong>最大值字段（max_following_error / max_motor_current / max_i2t_sum）。</strong> 运行期间持续记录峰值。出问题时这些字段是黄金调试信息，能告诉你“电机最大跟随误差到多少“、“瞬时电流多大”。教学版不会写这种东西，工业版离了就是黑盒。</p>
@@ -11255,9 +11273,9 @@ typedef struct v_motor_base {
 } v_motor_base_t;
 </code></pre>
 <p>只有 3 个 ops 方法（停 / 走 / 清故障），加 2 个回调（状态变化 / 错误）。比水平电机简单一个量级。原因是直流电机没有“绝对定位“的概念，能力域窄得多。</p>
-<p>IFX007T 子类（节选自 <code>v_motor_ifx007t.h</code>）：</p>
+<p>IFX007T 子类的教学最小内核（节选自 <code>v_motor_ifx007t.h</code>）：</p>
 <pre><code class="language-c">typedef struct {
-	v_motor_base_t supper;     /* 基类放在第一字段 */
+	v_motor_base_t base;       /* 基类放在第一字段 */
 	int32_t ctrl_1_pin;
 	int32_t ctrl_2_pin;
 	int32_t sleep1_pin;
@@ -11265,6 +11283,9 @@ typedef struct v_motor_base {
 } v_motor_ifx007t_t;
 </code></pre>
 <p>IFX007T 是英飞凌一颗 H 桥驱动芯片。两个控制引脚 + 两个使能引脚。<code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。简单到几行 GPIO 操作就完成。</p>
+<blockquote>
+<p>仓库里 <code>v_motor_ifx007t.h</code> 是产品级版本，子类 struct 字段更多（两路 PWM 设备 + 两个减速区限位开关 + 一路 IS 电流采样 ADC + 工作线程 + 周期定时器 + 软启动 / 加减速 / 故障检测的运行时状态），上面这块代码是把它压成“OOP 抽象骨架“的教学最小核。产品代码里 <code>ctrl_1</code> / <code>ctrl_2</code> 走的是 PWM 调速而不是 GPIO 推挽，但抽象层面就是控制 H 桥两路高边臂——子类内部具体怎么斩波怎么爬坡，基类层一字看不见。完整产品级实现在 § 20.10.2 里展开。</p>
+</blockquote>
 <p>应用层接口风格完全统一：</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h */
 extern h_motor_base_t *h_motor_dev;
@@ -11277,7 +11298,8 @@ v_motor_move(v_motor_dev, V_MOTOR_BASE_MOVE_UP);
 <p><code>h_motor_move_absolute</code> / <code>v_motor_move</code> 是 <code>h_motor.c</code> / <code>v_motor.c</code> 里的封装函数（同 ch01 1.10 节 <code>led_on</code> 套路），内部走 <code>me-&gt;ops-&gt;move_absolute_mode(me, ...)</code> / <code>me-&gt;ops-&gt;motor_move(me, ...)</code> dispatch 到具体电机实现（ACM 伺服 / IFX007T H 桥）。</p>
 <p>垂直电机是另一组 base + ops 表（接口比水平电机简单，因为直流电机的能力域窄）。两个基类不互相继承，是平行的。</p>
 <p>这反映一个 OOP 设计原则：<strong>继承沿“能力 / 接口的相似度“建，不沿“硬件的相似度“建</strong>。水平电机和垂直电机在硬件层面相似度最低，但因为它们都得“被应用层用同一种方式驱动“,所以各自有一个独立的 base 接口。教学版常犯的错是看到“这两个东西都是电机“就硬塞到一个基类里，最后发现各种“水平电机的方法垂直电机不需要“、“垂直电机的方法水平电机不支持”，被迫加 <code>if (motor_type == HORIZONTAL) ... else ...</code>，多态退化成手动派发。</p>
-<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，只在 <code>v_motor_base_ops_t</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
+<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，理论上只在 <code>v_motor_base_ops_t</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
+<p>实际仓库里产品级 <code>v_motor_ifx007t.c</code> 走的是另一条路：根本不在 ops 表新加 <code>speed_set</code>，而是直接把 PWM 软启动 + 加减速曲线塞进 <code>motor_move</code> 内部由工作线程异步跑出来。原因是直流电机的速度策略（起步占空多少、ramp 多长、什么时候踩限位降速）本身是机械相关硬编码的——上层应用层永远只说“往上走“或“停“，不需要也不应该参数化“以多少占空走“。两条路都合法：能力域真的扩出来一档独立 setter，就加 ops；能力还在“开 / 关 / 方向“原本三个虚方法的语义内，就吸收进子类内部。设计判断的依据始终是<strong>应用层视角能力是否真的多一档</strong>。</p>
 <h2 id="204-三种回调状态位置错误"><a class="header" href="#204-三种回调状态位置错误">20.4 三种回调：状态、位置、错误</a></h2>
 <p>电机异步地往应用层喷三种事件：状态变化、位置变化、错误。每种独立一个回调。</p>
 <pre><code class="language-c">typedef void (*status_cb_t)(h_motor_base_status_t *status,
@@ -11539,7 +11561,7 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 <p>第二，工作线程 + 消息队列的具体实现绑定在 RTOS 上（CMSIS-RTOS2 API），脱离 RTOS 移植到 PC 模拟需要重写一遍同步原语，对 OOP 教学价值有限。</p>
 <p>20.2 节正文已经把 OOP 角度的全部要点讲清楚：</p>
 <ul>
-<li>子类把 <code>h_motor_base_t super</code> 放第一字段（向上转型零代价）</li>
+<li>子类把 <code>h_motor_base_t base</code> 放第一字段（向上转型零代价）</li>
 <li>工作线程 + 消息队列把异步操作翻译成“看起来同步“的接口</li>
 <li>故障检测引脚通过 <code>Button</code> 库当成“按键事件“统一处理</li>
 <li>性能监控字段（<code>max_following_error / max_motor_current / max_i2t_sum</code>）持续记录峰值</li>
@@ -11548,12 +11570,20 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 </ul>
 <p>20.1 节贴的 <code>acm_velocity_set / acm_following_err_limit_set / acm_i2t_peak_current_set</code> 三个函数节选示意了“虚方法 → 工作队列 → 厂家协议组帧 → UART 发送“的标准模式，照这个模式可以补出剩下 21 个虚方法。</p>
 <h3 id="20102-垂直电机驱动-v_motor203-节"><a class="header" href="#20102-垂直电机驱动-v_motor203-节">20.10.2 垂直电机驱动 v_motor（20.3 节）</a></h3>
-<p>20.3 节贴的是 <code>v_motor_base.h</code> 基类（3 虚方法 ops 表 + 2 回调）+ <code>v_motor_ifx007t.h</code> 子类 struct。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
-<p>垂直电机的实现细节很简单（H 桥 PWM 直驱，每个 ops 函数就是几行 GPIO 操作），20.3 节正文已经把行为描述完整：</p>
+<p>20.3 节贴的是 <code>v_motor_base.h</code> 基类（3 虚方法 ops 表 + 2 回调）+ <code>v_motor_ifx007t.h</code> 子类 struct。<strong>完整 <code>.c</code> 实现已经放进仓库</strong><a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/motor_24vfuncs/v_motor_ifx007t.c"><code>industrial/motor_24vfuncs/v_motor_ifx007t.c</code></a>，是产品级版本。</p>
+<p>20.3 节正文用最小内核描述了行为：</p>
 <blockquote>
 <p><code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。</p>
 </blockquote>
-<p>按这个描述自己写一份 <code>v_motor_ifx007t.c</code> 就是几十行 GPIO 调用。教学版到这里 OOP 抽象已经讲完，剩下是芯片驱动细节。</p>
+<p>这是教学版讲清楚 OOP 抽象骨架的最简形态。仓库里的产品级 <code>v_motor_ifx007t.c</code> 在这个骨架上多了五件工程细节：</p>
+<ol>
+<li>PWM 调速代替直接 GPIO 推挽（H 桥两路 PWM）</li>
+<li>软启动（5% → 起步占空，避免上电瞬间冲击电流）</li>
+<li>满速线性加速（起步占空 → 100%）</li>
+<li>减速区限位 + 三层超时保护</li>
+<li>IS 引脚电流采样 + EMA 滤波 + 连续超阈过流故障判断</li>
+</ol>
+<p>OOP 骨架完全不变：<code>v_motor_base_t</code> 的 3 个 ops + 1 个错误回调，子类内部把所有这些异步行为塞进工作线程 + 周期定时器。应用层永远只见 <code>v_motor_base_move(motor, UP)</code> 这一句普通函数调用。这就是 ch20 想讲透的核心：工程现实里“几行 GPIO“ 之上扛住的细节再多，OOP 抽象层一字不动。</p>
 <h3 id="20103-编码器--位置开关205-节"><a class="header" href="#20103-编码器--位置开关205-节">20.10.3 编码器 / 位置开关（20.5 节）</a></h3>
 <p>20.5 节贴的是 <code>encoder.h</code> + <code>position_switch.h</code> 两个 struct 定义和回调签名。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
 <p>20.5 节正文要传达的核心是反面教材：单实现驱动不要硬上 ops 表（<code>struct + me</code> 就够），多个相似硬件信号（5 个限位开关）要打包成一个 struct + enum 区分而不是 5 份独立 driver。这两条 OOP 原则跟具体 <code>.c</code> 实现无关，所以仓库里没有放完整实现。</p>
@@ -12586,7 +12616,7 @@ make MOCK=1
 <h3 id="真机模式stm32f407-discovery"><a class="header" href="#真机模式stm32f407-discovery">真机模式（STM32F407 Discovery）</a></h3>
 <p>环境要求：</p>
 <ul>
-<li>arm-none-eabi-gcc 工具链（<a href="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads">ARM 官网下载</a>）</li>
+<li>arm-none-eabi-gcc 工具链（搜索引擎搜“ARM GNU Toolchain“到 ARM 官网下载）</li>
 <li>STM32F407 Discovery 板（或任意 STM32 板，改 <code>pin_board.c</code> 即可）</li>
 <li>ST-Link 调试器（板上自带）</li>
 </ul>
@@ -13072,7 +13102,7 @@ sudo ./build/firmware
 <tr><td>ch15</td><td>C 语言·换硬件不改应用</td><td>~3 分钟</td></tr>
 <tr><td>ch16</td><td>C 语言·Linux 不难</td><td>~3 分钟</td></tr>
 <tr><td>ch17</td><td>C 语言·链接自动初始化</td><td>~3 分钟</td></tr>
-<tr><td>ch18 (终章 + 全书地图)</td><td>C 语言·终章 + SP 合集 18 期回顾</td><td>~5+10 分钟</td></tr>
+<tr><td>ch18（全书地图回顾）</td><td>OOP 主体 18 章演化路径终篇 + SP 合集 18 期</td><td>~5+10 分钟</td></tr>
 </tbody>
 </table>
 </div>
@@ -13081,9 +13111,9 @@ sudo ./build/firmware
 <h3 id="d41-windows-用户"><a class="header" href="#d41-windows-用户">D.4.1 Windows 用户</a></h3>
 <p>装 GCC 工具链。两个常见方案选一个：</p>
 <p><strong>方案 A: MinGW-w64</strong></p>
-<p>到 <a href="https://www.mingw-w64.org/">MinGW-w64 官网</a> 下载安装包，一路 next，勾“添加到 PATH“。装完后命令行 <code>gcc --version</code> 看到版本号即装好。</p>
+<p>搜索引擎搜“MinGW-w64 官网“，下载安装包，一路 next，勾“添加到 PATH“。装完后命令行 <code>gcc --version</code> 看到版本号即装好。</p>
 <p><strong>方案 B: MSYS2</strong></p>
-<p>到 <a href="https://www.msys2.org/">MSYS2 官网</a> 下载安装包。装完后开 MSYS2 MinGW 64-bit shell：</p>
+<p>搜索引擎搜“MSYS2 官网“，下载安装包。装完后开 MSYS2 MinGW 64-bit shell：</p>
 <pre><code class="language-bash">pacman -S mingw-w64-x86_64-gcc make
 </code></pre>
 <p>之后无论 cmd / PowerShell / Git Bash 都能用 <code>gcc</code>、<code>make</code>。</p>
@@ -13124,7 +13154,7 @@ make
 <h3 id="d45-跑-stm32-工程附录-b"><a class="header" href="#d45-跑-stm32-工程附录-b">D.4.5 跑 STM32 工程（附录 B）</a></h3>
 <p>需要：</p>
 <ul>
-<li>arm-none-eabi-gcc 工具链（<a href="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads">ARM 官网</a> 下载）</li>
+<li>arm-none-eabi-gcc 工具链（搜索引擎搜“ARM GNU Toolchain“到 ARM 官网下载）</li>
 <li>STM32F407 Discovery 板（淘宝或正点原子等渠道）</li>
 <li>ST-Link 调试器（板上自带 V2-A）</li>
 </ul>
@@ -13235,15 +13265,15 @@ tar -xJf linux-6.6.tar.xz
 <h1 id="尾声--致读者"><a class="header" href="#尾声--致读者">尾声 · 致读者</a></h1>
 <p>写到这里要停笔了。最后想跟你说几句。</p>
 <h2 id="这本书干的事"><a class="header" href="#这本书干的事">这本书干的事</a></h2>
-<p>一颗 LED 演化 17 章，把 OOP 三大特性从概念推到工业代码。每个抽象都对照 Linux 内核、Zephyr、GObject 真实代码，给的内核引用都是精确行号，能 git checkout 跳过去看。</p>
-<p>每章末尾“工业代码经验“段，把我自己 11 年工业控制板项目的代码组织方式公开（脱敏骨架）。这部分内容很多学校不会教，因为它来自被 bug 打过、被代码评审改过、被产品 review 否过几十次以后才长出来的工程纪律。</p>
+<p>一颗 LED 演化 18 章 OOP 主体，把 OOP 三大特性从概念推到工业代码。每个抽象都对照 Linux 内核、Zephyr、GObject 真实代码，给的内核引用都是精确行号，能 git checkout 跳过去看。</p>
+<p>每章末尾“工业代码经验“段，把我自己工业控制板项目的代码组织方式公开（脱敏骨架）。这部分内容很多学校不会教，因为它来自被 bug 打过、被代码评审改过、被产品 review 否过几十次以后才长出来的工程纪律。</p>
 <p>正文加 B 站 19 期视频加 GitHub / Gitee 配套代码三位一体。视频讲的是直觉和现场感，正文补“视频里没讲透的几个细节“，是刻意留出来给文字载体的部分。</p>
 <h2 id="跟市面上不一样的几个点"><a class="header" href="#跟市面上不一样的几个点">跟市面上不一样的几个点</a></h2>
 <p>我自己读过几十本 C 和嵌入式书。我尽量列出我看到的、跟其他书的不一样：</p>
 <p><strong>不直接告诉你答案，渐进推理给你看</strong>。市面上 C 语言面向对象书绝大多数直接说“用函数指针实现多态“。这本书从 ch01 到 ch11 用 11 章演化展示“为什么演化成这样“。从三个 LED 重复代码的痛点，到结构体里的函数指针字段，到 ops 表，再到 vptr 落地，每一步都被前一步的痛点逼出来。一遍读完你会发现自己居然能跟着推下去，因为不是背答案，是在被推着思考。</p>
 <p><strong>每个概念都验证到 4000 万行 Linux 内核</strong>。你学的不是教学幻灯片上的简化模型，是 v6.6 内核里到处都是的 <code>struct file_operations</code>、<code>struct gpio_chip</code>、<code>struct cdev</code>。这种“工业级“不是吹的。</p>
 <p><strong>C 与 C++ 双向对照</strong>。每章末尾“C 对比 C++“子节让你看到 C++ 编译器自动做的那一步、C 里手写出来是什么样。学完你回头看 C++ 的 virtual、inheritance，全是熟脸。</p>
-<p><strong>作者 11 年嵌入式现身说法</strong>。覆盖过 Cortex-M0 / M3 / M4 / M7 几代内核（STM32F0 到 STM32H7 系列），从裸机到 RTOS 到嵌入式 Linux，参与过工业控制板的主控、子控、全栈固件项目。这本书贴的工业代码骨架来自这些真项目，脱敏后保留教学需要的最小集合。哪一招在产品线上跑了几年没出问题，哪一招出过事故被替换掉，我自己心里有数。</p>
+<p><strong>作者一线嵌入式现身说法</strong>。覆盖过 Cortex-M0 / M3 / M4 / M7 几代内核（STM32F0 到 STM32H7 系列），从裸机到 RTOS 到嵌入式 Linux，参与过工业控制板的主控、子控、全栈固件项目。这本书贴的工业代码骨架来自这些真项目，脱敏后保留教学需要的最小集合。哪一招在产品线上跑了几年没出问题，哪一招出过事故被替换掉，我自己心里有数。</p>
 <p><strong>教判断不教教条</strong>。“嵌入式不能用 malloc“是 1990 年代留下的 dogma，现代项目动态内存常态使用，关键是生命周期管理；“不透明指针是工业级答案“看场景，跨二进制库边界用，自家应用代码没必要；“机制总是优于约定“看团队水平，靠纪律就够的时候不要给自己加负担。这本书反复说“看场景”，因为工业代码不是数学定理。</p>
 <p><strong>目标读者是中等水平的在职嵌入式工程师</strong>。3 到 8 年经验、卡在“会写驱动但代码组织糟“的那一群人。他们有真实工程压力，也有学新东西的动力，是这本书想说话的对象。</p>
 <h2 id="这本书的局限"><a class="header" href="#这本书的局限">这本书的局限</a></h2>
@@ -13254,7 +13284,7 @@ tar -xJf linux-6.6.tar.xz
 <p>C 不会消失。系统底下永远是 C。学好它，你脚下永远踩着真东西。</p>
 <p>走完这本书，你再看任何 C 代码，眼里都是设计。你能看出一段代码哪里不好、改哪一步开始。</p>
 <p>希望这本书对你有用。</p>
-<p>兆鸣（赵程博）</p>
+<p>兆鸣</p>
 
                     </main>
 

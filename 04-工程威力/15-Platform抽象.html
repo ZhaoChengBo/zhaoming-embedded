@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+            window.path_to_searchindex_js = "../searchindex-a66d0300.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -224,7 +224,9 @@ struct led_base {
 {
 	if (!me)
 		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on);    /* 必填 */
+	/* 必填：on 是 LED 的核心能力，子类必须实现 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
@@ -1113,7 +1115,11 @@ int led_on(struct led_base *me)
 {
 	if (!me)
 		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on);
+	/* on 是必填：子类必须实现。调试构建里 assert 抓到忘填的子类
+	 * 立刻 abort 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，
+	 * 零运行时开销。 */
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
 }
 
@@ -1121,7 +1127,8 @@ int led_off(struct led_base *me)
 {
 	if (!me)
 		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off);
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp;
+	       "led_off: subclass must implement off()");
 	return me-&gt;ops-&gt;off(me);
 }
 
