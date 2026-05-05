@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>三个 LED 你写了三份代码 - C 语言面向对象编程·嵌入式实战</title>
+        <title>ch01 三个 LED 三份代码 · 第一次面对重复 - C 语言面向对象编程·嵌入式实战</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-305eaacf.js";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-d6f659d5.js"></script>
+        <script src="../toc-1bc8502d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,126 +180,153 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-1-章--三个-led-你写了三份代码"><a class="header" href="#第-1-章--三个-led-你写了三份代码">第 1 章 · 三个 LED 你写了三份代码</a></h1>
-<p>配套代码：<a href="../../oop-in-c/code/EP06_封装/"><code>oop-in-c/code/EP06_封装/</code></a></p>
+                        <h1 id="第-1-章--三个-led-三份代码"><a class="header" href="#第-1-章--三个-led-三份代码">第 1 章 · 三个 LED 三份代码</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/"><code>oop-in-c/code/01-three-leds/</code></a></p>
 <h2 id="11-一个真实场景"><a class="header" href="#11-一个真实场景">1.1 一个真实场景</a></h2>
-<p>接手新项目。硬件工程师跟你说：板子上有三个状态指示灯——红灯接 GPIO Pin 13，绿灯接 Pin 14，蓝灯接 Pin 15。红灯指示心跳，绿灯指示运行正常，蓝灯指示有错误。</p>
+<p>接手新项目。硬件工程师跟你说：板子上有三个状态指示灯，红灯接 GPIO Pin 13，绿灯接 Pin 14，蓝灯接 Pin 15。红灯指示心跳，绿灯指示运行正常，蓝灯指示有错误。</p>
 <p>简单。打开 IDE，5 分钟敲完：</p>
-<pre><code class="language-c">void red_led_on(void)  { GPIO_WriteHigh(GPIOA, GPIO_PIN_13); }
-void red_led_off(void) { GPIO_WriteLow (GPIOA, GPIO_PIN_13); }
+<pre><code class="language-c">void red_led_on(void)  { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);   }
+void red_led_off(void) { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET); }
 
-void green_led_on(void)  { GPIO_WriteHigh(GPIOA, GPIO_PIN_14); }
-void green_led_off(void) { GPIO_WriteLow (GPIOA, GPIO_PIN_14); }
+void green_led_on(void)  { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_14, GPIO_PIN_SET);   }
+void green_led_off(void) { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_14, GPIO_PIN_RESET); }
 
-void blue_led_on(void)  { GPIO_WriteHigh(GPIOA, GPIO_PIN_15); }
-void blue_led_off(void) { GPIO_WriteLow (GPIOA, GPIO_PIN_15); }
+void blue_led_on(void)  { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);   }
+void blue_led_off(void) { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET); }
 </code></pre>
 <p>提交、编译、烧录、跑通。下班。</p>
+<p>到这里看起来一切正常。这段代码也不会被 code review 打回。但工程上的麻烦才刚开始。</p>
 <h2 id="12-三个月后硬件改版"><a class="header" href="#12-三个月后硬件改版">1.2 三个月后硬件改版</a></h2>
 <p>PM 跟你说：为了 EMC 通过，红灯改接 Pin 7。</p>
 <p>简单，改一行：</p>
-<pre><code class="language-c">void red_led_on(void)  { GPIO_WriteHigh(GPIOA, GPIO_PIN_7); }
-void red_led_off(void) { GPIO_WriteLow (GPIOA, GPIO_PIN_7); }
+<pre><code class="language-c">void red_led_on(void)  { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET);   }
+void red_led_off(void) { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET); }
 </code></pre>
 <p>注意，你改了两个地方。</p>
-<p>如果还要支持调亮度，你写过 <code>red_led_set_brightness()</code>，里面也用了 Pin 13——那是第三个地方。如果再加反初始化函数 <code>red_led_deinit()</code>——第四个地方。</p>
+<p>如果还要支持调亮度，你写过 <code>red_led_set_brightness()</code>，里面也用了 Pin 13，那是第三个地方。如果再加反初始化函数 <code>red_led_deinit()</code>，第四个地方。</p>
 <p>你能保证每次都改全？改漏一个，红灯有时候是 Pin 13、有时候是 Pin 7，这个 bug 你能找一下午。</p>
-<p>PM 又来了：我们要再加 5 个 LED 做电量指示。</p>
+<p>PM 又来了：要再加 5 个 LED 做电量指示。</p>
 <p>你打算怎么办？把 <code>red_led_on / red_led_off / ...</code> 复制 5 遍，前缀改成 <code>bat_1_led_ / bat_2_led_ / ...</code>？</p>
-<p>那是 8 个 LED 乘以 4 个函数等于 32 个几乎一模一样的函数。</p>
+<p>那是 8 个 LED 乘以 4 个函数等于 32 个几乎一模一样的函数。每个函数体只有一行不一样：引脚号。</p>
 <p><img src="../assets/ch01/slide1_三份重复代码.png" alt="三份重复代码"></p>
+<p>这就是绑死的代码。它能跑，但只能在 PM 不改硬件、不加 LED 的世界里跑。</p>
 <h2 id="13-把区别和代码分开"><a class="header" href="#13-把区别和代码分开">1.3 把“区别“和“代码“分开</a></h2>
 <p>冷静下来问一个问题：这 32 个函数，到底有什么区别？</p>
-<p>仔细看，区别只有一个东西——引脚号。</p>
-<p>代码的逻辑——对一个 GPIO 写高电平、写低电平——完全一样。</p>
+<p>仔细看，区别只有一个东西：引脚号。</p>
+<p>代码的逻辑（对一个 GPIO 写高电平、写低电平）完全一样。</p>
 <p>那问题就清楚了：能不能代码只写一份，引脚号另外告诉它？</p>
-<p>去医院看过病。前台给你一张挂号单——上面填名字、年龄、挂什么科。每个病人一张单子，单子上的内容不同，单子的格式相同。</p>
+<p>去医院看过病。前台给你一张挂号单，上面填名字、年龄、挂什么科。每个病人一张单子，单子上的内容不同，单子的格式相同。</p>
 <p>医生只有一个，他怎么知道现在给谁看病？你把挂号单递给他，他看的是你单子上的信息。</p>
-<p>我们给 LED 也发挂号单。红灯一张，写着 Pin 13。绿灯一张，写着 Pin 14。蓝灯一张，写着 Pin 15。三张单子，内容不同，格式一样。</p>
+<p>给 LED 也发挂号单。红灯一张，写着 Pin 13。绿灯一张，写着 Pin 14。蓝灯一张，写着 Pin 15。三张单子，内容不同，格式一样。</p>
 <p>医生（<code>led_on</code> 函数）只有一份。你想点哪个 LED，就把哪张单子递给他。</p>
 <p><img src="../assets/ch01/slide2_struct挂号单.png" alt="struct = 挂号单"></p>
-<p>C 语言里这种“把一组相关数据装在一起“的东西叫 <code>struct</code>——结构体。</p>
-<p>我们定义一个 LED 的挂号单：</p>
-<pre><code class="language-c">typedef struct {
-    uint8_t  pin;           /* GPIO 引脚号 */
-    uint8_t  brightness;    /* 亮度 0~100 */
-    bool     is_on;         /* 开关状态 */
-} Led_t;
+<p>C 语言里这种“把一组相关数据装在一起“的东西叫 <code>struct</code>。给 LED 定义一份挂号单：</p>
+<pre><code class="language-c">struct led {
+	uint8_t pin;            /* GPIO 引脚号 */
+	uint8_t brightness;     /* 当前亮度 0~100 */
+	bool    is_on;          /* 当前开关状态 */
+};
 </code></pre>
-<p><code>typedef</code> 让我们以后直接写 <code>Led_t</code>，不用每次写 <code>struct Led { ... }</code>。</p>
 <p>然后给三颗 LED 各开一张单子：</p>
-<pre><code class="language-c">Led_t red_led;
-Led_t green_led;
-Led_t blue_led;
+<pre><code class="language-c">struct led red_led;
+struct led green_led;
+struct led blue_led;
 </code></pre>
-<p>每个 <code>Led_t</code> 变量，就是一颗 LED 的全部信息。</p>
+<p>每个 <code>struct led</code> 变量，就是一颗 LED 的全部信息。</p>
 <h2 id="14-函数怎么知道现在是哪张单子"><a class="header" href="#14-函数怎么知道现在是哪张单子">1.4 函数怎么知道现在是哪张单子</a></h2>
 <p>挂号单有了，但函数怎么知道自己在操作哪个 LED？</p>
 <p>你递给它。</p>
-<p>C 语言里“递“东西给函数，用的是指针。我们这样写 <code>led_on</code>：</p>
-<pre><code class="language-c">int led_on(Led_t *me)
+<p>C 语言里“递“东西给函数，用的是指针。<code>led_on</code> 这样写：</p>
+<pre><code class="language-c">int led_on(struct led *me)
 {
-    me-&gt;is_on = true;
-    platform_gpio_write(me-&gt;pin, true);
-    return 0;
+	if (!me)
+		return -1;
+
+	me-&gt;is_on = true;
+	platform_gpio_write(me-&gt;pin, true);
+	return 0;
 }
 </code></pre>
-<p>第一个参数 <code>Led_t *me</code>，字面意思就是“我“——我现在操作的是哪张挂号单。</p>
+<p>第一个参数 <code>struct led *me</code>，字面意思就是“我“：我现在操作的是哪张挂号单。</p>
 <p>调用的时候：</p>
 <pre><code class="language-c">led_on(&amp;red_led);
 led_on(&amp;green_led);
 led_on(&amp;blue_led);
 </code></pre>
 <p><code>&amp;</code> 在 C 里读作“取地址“，物理意义是“这张挂号单放在内存的哪个位置“。现在不需要纠结这个底层，就当它是“递这张单子“。</p>
+<blockquote>
+<p><strong>关于 <code>pin</code> 这个参数</strong></p>
+<p>看到 <code>platform_gpio_write(me-&gt;pin, true)</code> 你可能会奇怪：真实 STM32 上 GPIO 既有 port (A/B/C/D)、又有 pin no (0-15)，怎么这里只有一个 <code>pin</code>？</p>
+<p>工业代码里 <code>pin</code> 是一个<strong>编码值</strong>，把 port + 引脚号塞进一个整数：</p>
+<pre><code class="language-c">#define PIN(port, num)   (((port) &lt;&lt; 4) | ((num) &amp; 0xF))
+</code></pre>
+<p>调用方写 <code>PIN(D, 12)</code> 表示 PD12，port 信息藏在 pin 编码里。这样接口签名永远只有一个 <code>pin</code> 参数。Linux 内核 <code>gpio_set_value(unsigned int gpio, ...)</code> 是这套做法，工业控制板的 <code>platform_pin_write(int32_t pin, int32_t val)</code> 也是。第 15 章和附录 B 会把这条工业纪律展开。</p>
+</blockquote>
 <p><img src="../assets/ch01/slide3_me递单子.png" alt="me = 递单子"></p>
-<p>把这个思路推广到所有操作——初始化、开、关、翻转、调亮度——就有了一个完整的 LED 模块（节选自 <a href="../../oop-in-c/code/EP06_封装/led.c"><code>led.c</code></a>）：</p>
-<pre><code class="language-c">int led_init(Led_t *me, uint8_t pin)
+<p>把这个思路推广到所有操作（初始化、开、关、翻转、调亮度），就有了一个完整的 LED 模块。下面是节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/pc/led.c"><code>oop-in-c/code/01-three-leds/pc/led.c</code></a>：</p>
+<pre><code class="language-c">int led_init(struct led *me, uint8_t pin)
 {
-    if (me == NULL) return -1;
-    me-&gt;pin = pin;
-    me-&gt;brightness = 0;
-    me-&gt;is_on = false;
-    platform_gpio_init(pin, GPIO_MODE_OUTPUT);
-    platform_gpio_write(pin, false);
-    return 0;
+	if (!me)
+		return -1;
+
+	me-&gt;pin = pin;
+	me-&gt;brightness = 0;
+	me-&gt;is_on = false;
+
+	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
+	platform_gpio_write(pin, false);
+
+	return 0;
 }
 
-int led_on(Led_t *me)
+int led_on(struct led *me)
 {
-    if (me == NULL) return -1;
-    me-&gt;is_on = true;
-    platform_gpio_write(me-&gt;pin, true);
-    return 0;
+	if (!me)
+		return -1;
+
+	me-&gt;is_on = true;
+	platform_gpio_write(me-&gt;pin, true);
+	return 0;
 }
 
-int led_off(Led_t *me)
+int led_off(struct led *me)
 {
-    if (me == NULL) return -1;
-    me-&gt;is_on = false;
-    platform_gpio_write(me-&gt;pin, false);
-    return 0;
+	if (!me)
+		return -1;
+
+	me-&gt;is_on = false;
+	platform_gpio_write(me-&gt;pin, false);
+	return 0;
 }
 
-int led_toggle(Led_t *me)
+int led_toggle(struct led *me)
 {
-    if (me == NULL) return -1;
-    if (me-&gt;is_on) led_off(me); else led_on(me);
-    return 0;
+	if (!me)
+		return -1;
+
+	if (me-&gt;is_on)
+		led_off(me);
+	else
+		led_on(me);
+
+	return 0;
 }
 
-int led_set_brightness(Led_t *me, uint8_t brightness)
+int led_set_brightness(struct led *me, uint8_t brightness)
 {
-    if (me == NULL) return -1;
-    if (brightness &gt; 100) return -2;
-    me-&gt;brightness = brightness;
-    /* 真实硬件这里配 PWM；PC 模拟环境用 GPIO 高低近似 */
-    platform_gpio_write(me-&gt;pin, brightness &gt; 0);
-    me-&gt;is_on = (brightness &gt; 0);
-    return 0;
+	if (!me)
+		return -1;
+	if (brightness &gt; 100)
+		return -2;
+
+	me-&gt;brightness = brightness;
+	platform_gpio_write(me-&gt;pin, brightness &gt; 0);
+	me-&gt;is_on = (brightness &gt; 0);
+	return 0;
 }
 </code></pre>
 <p>应用层的调用是这样：</p>
-<pre><code class="language-c">Led_t red_led, green_led, blue_led;
+<pre><code class="language-c">struct led red_led, green_led, blue_led;
 
 led_init(&amp;red_led,   13);
 led_init(&amp;green_led, 14);
@@ -312,73 +339,347 @@ led_toggle(&amp;green_led);
 </code></pre>
 <p>32 个重复函数砍到 6 个。再加 100 颗 LED，再开 100 张单子就行，函数一行不用加。</p>
 <h2 id="15-这个东西叫什么"><a class="header" href="#15-这个东西叫什么">1.5 这个东西叫什么</a></h2>
-<p>你刚才跟我做的事——把属于同一个东西的数据打包在一起（<code>struct</code>），让函数通过 <code>me</code> 指针知道自己在操作谁——软件工程里有个名字。</p>
+<p>你刚才跟我做的事（把属于同一个东西的数据打包在一起，让函数通过 <code>me</code> 指针知道自己在操作谁），软件工程里有个名字。</p>
 <p>它叫封装（Encapsulation）。</p>
 <p>你可能听过这个词，觉得很高大上，觉得它和 Java、C++、设计模式之类的东西绑在一起。</p>
 <p>但你刚才看见了，它就这么简单。封装不是把代码藏起来，是让同一份逻辑服务不同的数据。</p>
+<p>费曼讲过：被自己说服才叫理解。你不是从我这里背了一个定义，是从一个具体痛点（32 个重复函数）出发，自己推出了 struct + me 这个解。这种被自己说服的理解，是背不出来的。</p>
 <h2 id="16-me-就是-this"><a class="header" href="#16-me-就是-this">1.6 me 就是 this</a></h2>
 <p>如果学过 C++，你会写：</p>
 <pre><code class="language-cpp">class Led {
 public:
-    void on()  { platform_gpio_write(pin_, true);  }
-    void off() { platform_gpio_write(pin_, false); }
+	void on()  { platform_gpio_write(pin_, true);  }
+	void off() { platform_gpio_write(pin_, false); }
 private:
-    uint8_t pin_;
-    bool    is_on_;
+	uint8_t pin_;
+	bool    is_on_;
 };
 
 Led red_led;
 red_led.on();
 </code></pre>
-<p>而我们刚才在 C 里写的是：</p>
-<pre><code class="language-c">typedef struct {
-    uint8_t pin;
-    bool    is_on;
-} Led_t;
+<p>而 C 里写的是：</p>
+<pre><code class="language-c">struct led {
+	uint8_t pin;
+	bool    is_on;
+};
 
-void led_on(Led_t *me) { platform_gpio_write(me-&gt;pin, true); }
+int led_on(struct led *me)
+{
+	platform_gpio_write(me-&gt;pin, true);
+	return 0;
+}
 
-Led_t red_led;
+struct led red_led;
 led_on(&amp;red_led);
 </code></pre>
 <p>这两段代码做的是一模一样的事。</p>
-<p>唯一的区别是：C 里你手动写 <code>struct { ... }</code>，C++ 里编译器帮你做（你写 <code>class { ... }</code>）；C 里你手动写 <code>(Led_t *me, ...)</code>，C++ 里编译器偷偷加，名字叫 <code>this</code>；C 里调用是 <code>led_on(&amp;red_led)</code>，C++ 里是 <code>red_led.on()</code>。</p>
-<p>C++ 只是让编译器帮你干了你刚才手动干的事。底层机器码几乎一模一样——你可以打开 <a href="https://godbolt.org/">Compiler Explorer</a> 把两段代码贴进去，看汇编输出，差别小到可以忽略。</p>
+<p>唯一的区别有三处：</p>
+<ul>
+<li>C 里你手动写 <code>struct { ... }</code>，C++ 里编译器帮你做（你写 <code>class { ... }</code>）</li>
+<li>C 里你手动写 <code>(struct led *me, ...)</code>，C++ 里编译器偷偷加，名字叫 <code>this</code></li>
+<li>C 里调用是 <code>led_on(&amp;red_led)</code>，C++ 里是 <code>red_led.on()</code></li>
+</ul>
+<p>C++ 只是让编译器帮你干了你刚才手动干的事。底层机器码几乎一模一样。如果你想亲眼验证，把两段代码贴进 Compiler Explorer 这种在线汇编查看工具，差别小到可以忽略。</p>
 <p><img src="../assets/ch01/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
 <p>90% 的中国嵌入式工程师用 C 写了 10 年代码，从来不知道自己写的就是 OOP。他们以为 OOP 等于 C++、Java、Python。他们以为封装是高级特性。</p>
-<p>事实是：你只要写过 <code>int sum(int *arr, int len)</code>，你就在做封装——你把“一组整数“打包成 <code>int *arr</code> + <code>int len</code>，函数通过指针操作哪一组。</p>
-<p>后面 18 章我们要做的，就是把这件你已经在做的事情，做到工业级。</p>
+<p>事实是：你只要写过 <code>int sum(int *arr, int len)</code>，你就在做封装：你把“一组整数“打包成 <code>int *arr</code> + <code>int len</code>，函数通过指针操作哪一组。</p>
+<p>后面 18 章要做的，就是把这件你已经在做的事情，做到工业级。</p>
 <h2 id="17-视频里没讲透的几个细节"><a class="header" href="#17-视频里没讲透的几个细节">1.7 视频里没讲透的几个细节</a></h2>
-<p>视频 3 分 40 秒讲不完，书里补三个工程上你应该知道的点。</p>
-<p><strong>为什么 me 是指针不是值传递。</strong> 技术上你可以写 <code>int led_on(Led_t me)</code> 用值传递。但有两个问题。第一，值传递会复制整个 struct——<code>Led_t</code> 现在小，将来加上回调函数、ops 表、状态机，100 字节起跳。每次调用都拷贝一份，性能炸了。第二，值传递改不了原对象——函数内修改 <code>me.is_on = true</code>，外面的 <code>red_led.is_on</code> 还是 <code>false</code>。Bug 找一周。所以 C 的 <code>me</code>、C++ 的 <code>this</code>、Rust 的 <code>&amp;self</code> 全都是指针/引用，不是值。这是工程上的硬约束。</p>
-<p><strong>为什么第一个参数检查 NULL。</strong> 每个函数开头都有 <code>if (me == NULL) return -1;</code>。因为 C 不像 Java 会自动抛 <code>NullPointerException</code>，对 NULL 指针解引用等于立即崩溃或未定义行为。工业代码里所有公开 API 的指针参数都必须做 NULL 检查。这是嵌入式 C 编码规范的硬规则，详见 <a href="../../coding-standards/"><code>coding-standards/</code></a>。视频里为节奏没强调，书里应该知道：这一行是工程纪律的最小单位。</p>
-<p><strong>为什么用 Led_t 而不是 LED 或 led_t。</strong> C 没有 namespace，命名规则是工程纪律的核心。这本书统一：类型名 Pascal 加 <code>_t</code> 后缀（<code>Led_t</code>、<code>LedOps_t</code>），函数和变量小写带下划线（<code>led_on</code>、<code>red_led</code>），宏和常量全大写（<code>GPIO_MODE_OUTPUT</code>）。<code>_t</code> 后缀是 Linux 内核和 POSIX 的传统，明确“这是一个类型“。第 3 章会系统讲命名前缀如何防止函数名打架。</p>
-<h2 id="18-跑一遍"><a class="header" href="#18-跑一遍">1.8 跑一遍</a></h2>
-<pre><code class="language-bash">cd oop-in-c/code/EP06_封装
+<p>视频 3 分 40 秒讲不完，书里补 6 个工程上你应该知道的点。这一节是“不实操也能完全理解“的核心。</p>
+<h3 id="171-为什么-me-是指针不是值传递"><a class="header" href="#171-为什么-me-是指针不是值传递">1.7.1 为什么 me 是指针不是值传递</a></h3>
+<p>技术上你可以写 <code>int led_on(struct led me)</code> 用值传递。但有两个问题。</p>
+<p>第一，值传递会复制整个 struct。<code>struct led</code> 现在小（3 字节左右），将来加上回调函数、ops 表、状态机，100 字节起跳。每次调用都拷贝一份，性能炸了。</p>
+<p>第二，值传递改不了原对象。函数内修改 <code>me.is_on = true</code>，外面的 <code>red_led.is_on</code> 还是 <code>false</code>。Bug 找一周。</p>
+<p>所以 C 的 <code>me</code>、C++ 的 <code>this</code>、Rust 的 <code>&amp;self</code> 全都是指针/引用，不是值。这是工程上的硬约束，不是风格选择。</p>
+<h3 id="172-为什么第一个参数检查-null"><a class="header" href="#172-为什么第一个参数检查-null">1.7.2 为什么第一个参数检查 NULL</a></h3>
+<p>每个函数开头都有 <code>if (!me) return -1;</code>。原因是 C 不像 Java 会自动抛 <code>NullPointerException</code>，对 NULL 指针解引用会做什么完全取决于平台。</p>
+<p>在 STM32 这种 ARM Cortex-M 上，地址 0 通常是 Flash 起点（向量表），读不会崩。但 Flash 不允许直接写一个字节，<code>me-&gt;pin = 13</code> 相当于在地址 <code>0 + offsetof(struct led, pin)</code> 写一个字节，会立即触发总线异常进 HardFault，进入异常处理函数死循环（除非专门配过 MPU 让地址 0 可写）。</p>
+<p>在 Linux 用户态上，地址 0 一般是无效页，进程立即收到 SIGSEGV，core dump。</p>
+<p>无论哪种情况，都不是你想要的。所以工业代码里所有公开 API 的指针参数都必须做 NULL 检查。这是嵌入式 C 编码规范的硬规则。仓库 <code>coding-standards/</code> 目录里有一份独立的 7 章 PDF（架构设计 / 设计模式 / Clean Code / 代码风格 / 内存安全 / 硬件交互 / 安全检查清单），第 5 章《内存安全》专门讲指针参数检查纪律。视频里为节奏没强调，书里应该知道：这一行是工程纪律的最小单位。</p>
+<h3 id="173-为什么用-struct-led-不用-typedef"><a class="header" href="#173-为什么用-struct-led-不用-typedef">1.7.3 为什么用 struct led 不用 typedef</a></h3>
+<p>你可能见过这种写法：</p>
+<pre><code class="language-c">typedef struct {
+	uint8_t pin;
+	bool is_on;
+} Led_t;
+
+int led_on(Led_t *me);
+</code></pre>
+<p>书里不这样写。Linus 在 Linux 内核编码风格文档里专门讲过 typedef struct 是反模式，原文大意：</p>
+<blockquote>
+<p>typedef 是用来藏类型的。如果你藏了“这是一个结构体“这件事，读代码的人就不知道能不能在它上面用 <code>&amp;</code>、<code>-&gt;</code>、<code>.</code>，也不知道它能不能直接传给 <code>sizeof</code>。</p>
+</blockquote>
+<p><code>Led_t</code> 这个名字告诉你“这是个 LED 类型“，但不告诉你“它是结构体“。<code>struct led</code> 这个名字两件事都告诉你了。Linux 内核 4000 万行 C 代码绝大多数 struct 都不 typedef，包括 <code>struct file</code>、<code>struct device</code>、<code>struct gpio_chip</code>。读这本书你以后看内核源码不会觉得陌生。</p>
+<p>唯一例外：函数指针类型适合 typedef（不然 <code>int (*)(struct led *)</code> 写起来太丑），第 9 章 ops 表会用到。</p>
+<h3 id="174-me-pin-这一句汇编层面发生了什么"><a class="header" href="#174-me-pin-这一句汇编层面发生了什么">1.7.4 me-&gt;pin 这一句汇编层面发生了什么</a></h3>
+<p>你写的 C 代码是这样：</p>
+<pre><code class="language-c">me-&gt;is_on = true;
+platform_gpio_write(me-&gt;pin, true);
+</code></pre>
+<p>编译器看到 <code>me-&gt;pin</code> 会做两件事：</p>
+<p>第一，它知道 <code>me</code> 是 <code>struct led *</code>。
+第二，它查 <code>struct led</code> 的定义，找到 <code>pin</code> 字段在结构体里的偏移：<code>pin</code> 是第一个字段，偏移 0；<code>brightness</code> 偏移 1；<code>is_on</code> 偏移 2。</p>
+<p>编译出 ARM Cortex-M 汇编大致是这样（简化版）：</p>
+<pre><code>LDRB  r0, [r4, #0]      ; r4 = me, 取偏移 0 的字节, r0 = pin
+LDRB  r1, [r4, #2]      ; 取偏移 2 的字节, r1 = is_on
+</code></pre>
+<p><code>LDRB</code> 是 “Load Register Byte”，一条指令完成一次内存读。整个 <code>me-&gt;pin</code> 在汇编层面就是一次寄存器加常数偏移、然后 load。代价 1 个周期左右。</p>
+<p>这就是为什么 OOP 在 C 里可以做到“零开销“。<code>me-&gt;pin</code> 不比 <code>red_pin</code> 这种全局变量贵。Bjarne Stroustrup（C++ 之父）有句名言：“不用的特性零成本，用了的特性手写也不会更快。” <code>struct + me</code> 的范式就是这句话最干净的体现。</p>
+<h3 id="175-struct-led-的内存布局"><a class="header" href="#175-struct-led-的内存布局">1.7.5 struct led 的内存布局</a></h3>
+<p>书里的 <code>struct led</code> 是这样：</p>
+<pre><code class="language-c">struct led {
+	uint8_t pin;            /* 1 byte */
+	uint8_t brightness;     /* 1 byte */
+	bool    is_on;          /* 1 byte */
+};
+</code></pre>
+<p>三个字节加起来 3 个字节。<code>sizeof(struct led)</code> 也是 3 字节，因为 <code>uint8_t</code> 和 <code>bool</code> 的对齐都是 1，编译器不需要加 padding。</p>
+<p>但如果你给 struct 加一个 <code>uint32_t</code> 字段，故事就变了：</p>
+<pre><code class="language-c">struct led_v2 {
+	uint8_t  pin;           /* offset 0, 1 byte */
+	/* 3 bytes padding here */
+	uint32_t blink_period;  /* offset 4, 4 bytes */
+	bool     is_on;         /* offset 8, 1 byte */
+	/* 3 bytes padding here */
+};                          /* sizeof = 12, not 6 */
+</code></pre>
+<p><code>uint32_t</code> 要求 4 字节对齐，所以编译器在 <code>pin</code> 后面塞 3 字节 padding 让 <code>blink_period</code> 落在偏移 4。同样，整个结构体大小要是最大对齐数（4）的倍数，所以末尾再塞 3 字节。</p>
+<p>在内存紧张的 MCU 上（比如 RAM 只有 64KB），struct 字段顺序会影响实际占用。把大字段放前面、小字段放后面，padding 最少。</p>
+<pre><code class="language-c">struct led_v2_compact {
+	uint32_t blink_period;  /* offset 0, 4 bytes */
+	uint8_t  pin;           /* offset 4, 1 byte */
+	bool     is_on;         /* offset 5, 1 byte */
+	/* 2 bytes padding */
+};                          /* sizeof = 8 */
+</code></pre>
+<p>这一点你现在不用记，知道 padding 这件事存在就行。第 4 章讲数据归位时会回到这个话题。</p>
+<h3 id="176-platform_gpio_write-调到底最终是写哪个寄存器"><a class="header" href="#176-platform_gpio_write-调到底最终是写哪个寄存器">1.7.6 platform_gpio_write 调到底，最终是写哪个寄存器</a></h3>
+<p><code>platform_gpio_write(13, true)</code> 在 PC 模拟版里就是 <code>printf</code> 打一行。在 STM32 上是另一回事。</p>
+<p>STM32 每个 GPIO 端口有一个 BSRR（Bit Set / Reset Register）。这是一个 32 位寄存器，地址是固定的（GPIOA 的 BSRR 地址在 STM32H7 上是 <code>0x58020018</code>）。寄存器格式：</p>
+<ul>
+<li>低 16 位：写 1 把对应引脚拉高</li>
+<li>高 16 位：写 1 把对应引脚拉低</li>
+<li>写 0 无影响</li>
+</ul>
+<p>所以 “把 PA13 拉高” 调到底就是：</p>
+<pre><code class="language-c">*(volatile uint32_t *)0x58020018 = (1U &lt;&lt; 13);
+</code></pre>
+<p>一次 32 位 store，把 GPIOA 的 PA13 拉高。BSRR 设计成“写 1 才生效，写 0 无影响“是为了让多任务、多中断同时操作不同引脚时不打架（atomic）。中断半路改一个引脚，主循环改另一个引脚，互不影响。</p>
+<p><code>volatile</code> 关键字是必须的。它告诉编译器：这个地址的内容随时会变（硬件改的），不要缓存到寄存器里。否则编译器优化后可能“我刚才不是写过 0x58020018 了吗，再读还是同一个值，不用真的 load“，结果你以为写了，实际没写。</p>
+<p>这个领域叫 MMIO（Memory-Mapped I/O）：把硬件寄存器映射到 CPU 的地址空间，用普通的内存读写指令操作硬件。第 5 章讲 HAL 映射时会展开。</p>
+<h2 id="18-你现在的-led-在-stm32-上长什么样"><a class="header" href="#18-你现在的-led-在-stm32-上长什么样">1.8 你现在的 LED 在 STM32 上长什么样</a></h2>
+<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/stm32-snippet/led_stm32.c"><code>oop-in-c/code/01-three-leds/stm32-snippet/led_stm32.c</code></a>）：</p>
+<pre><code class="language-c">#include "led.h"
+#include "stm32f4xx_hal.h"
+
+void platform_gpio_init(uint8_t pin, uint8_t mode)
+{
+	GPIO_InitTypeDef cfg = {0};
+
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+
+	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
+	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
+	cfg.Pull  = GPIO_NOPULL;
+	cfg.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &amp;cfg);
+}
+
+void platform_gpio_write(uint8_t pin, bool value)
+{
+	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+</code></pre>
+<p>注意一件事：<code>led.h</code>、<code>led.c</code>、<code>main.c</code> 一字不改。</p>
+<p>变化的只有 <code>platform_gpio_*</code> 这一层胶水。这就是平台抽象层最直接的威力。</p>
+<p><code>HAL_GPIO_WritePin</code> 调到底就是 1.7.6 里讲的写 BSRR 寄存器。如果你打开 ST 的 HAL 源码看 <code>stm32h7xx_hal_gpio.c</code>，会看到这一行：</p>
+<pre><code class="language-c">GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin;          /* SET   */
+GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
+</code></pre>
+<p>ST 自己的 HAL 也是封装：把“GPIO 端口“打包成 <code>GPIO_TypeDef</code>（一个 struct，里面是各个寄存器），通过 <code>GPIOx</code> 这个指针参数告诉函数操作哪个端口。<code>GPIOx</code> 就是 <code>me</code>，换了个名字。</p>
+<p><strong>关于这里的 platform 层写法</strong>：本节用的是“函数式包装“，直接 export 几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>。这是 ch01 阶段的教学简化形态，让你在还没接触虚函数表概念前先看到“换平台只改 platform 这一层“的好处。</p>
+<p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.10 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
+<p>第 11 章一步步推出 vptr 之后，会把 platform 层从函数式重构成 ops 表式，和工业代码对齐。</p>
+<h2 id="19-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#19-你现在的-led-在-linux-用户态长什么样">1.9 你现在的 LED 在 Linux 用户态长什么样</a></h2>
+<p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/linux-snippet/led_linux.c"><code>oop-in-c/code/01-three-leds/linux-snippet/led_linux.c</code></a>）：</p>
+<pre><code class="language-c">#include "led.h"
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+
+void platform_gpio_init(uint8_t pin, uint8_t mode)
+{
+	int fd = open("/sys/class/gpio/export", O_WRONLY);
+	if (fd &gt;= 0) {
+		dprintf(fd, "%u", (unsigned)pin);
+		close(fd);
+	}
+
+	char path[64];
+	snprintf(path, sizeof(path),
+	         "/sys/class/gpio/gpio%u/direction", (unsigned)pin);
+	fd = open(path, O_WRONLY);
+	if (fd &gt;= 0) {
+		const char *dir = (mode == GPIO_MODE_OUTPUT) ? "out" : "in";
+		write(fd, dir, strlen(dir));
+		close(fd);
+	}
+}
+
+void platform_gpio_write(uint8_t pin, bool value)
+{
+	char path[64];
+	snprintf(path, sizeof(path),
+	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
+	int fd = open(path, O_WRONLY);
+	if (fd &gt;= 0) {
+		write(fd, value ? "1" : "0", 1);
+		close(fd);
+	}
+}
+</code></pre>
+<p>Linux 把每个 GPIO 暴露成一个文件 <code>/sys/class/gpio/gpio13/value</code>。写 <code>'1'</code> 拉高，写 <code>'0'</code> 拉低。这种“把硬件当文件“的设计叫 sysfs，是 Linux 内核统一暴露驱动状态的标准接口（更现代的方案叫 libgpiod，附录 C 会展开）。</p>
+<p>注意：<code>led.h</code>、<code>led.c</code>、<code>main.c</code> 还是一字不改。这次变化的胶水是把 GPIO 操作转成 open / write / close。</p>
+<p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
+<p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
+<h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
+<p>我做的工业控制板项目里，LED 这一块分三个文件：</p>
+<pre><code class="language-c">/* drivers/led/led.h · 公开头文件，应用层 #include 这个 */
+
+struct led_base;        /* 前向声明，1.10.1 节解释 */
+
+/* 应用层用的 API */
+int led_on(struct led_base *led);
+int led_off(struct led_base *led);
+int led_toggle(struct led_base *led);
+</code></pre>
+<pre><code class="language-c">/* drivers/led/led_base.c · 基类实现，所有 LED 子类共用 */
+
+struct led_ops {
+	int (*on)(struct led_base *me);
+	int (*off)(struct led_base *me);
+	int (*toggle)(struct led_base *me);
+};
+
+struct led_base {
+	const struct led_ops *ops;   /* 虚函数表指针 */
+	const char *name;            /* 给日志打印用，例如 "red" / "green" */
+	bool is_on;                  /* 当前开关状态 */
+};
+
+/* 注：base 里没有 pin / pwm_chan / i2c_addr 这种硬件特定字段。
+ * pin 在 led_gpio 子类里、pwm_chan 在 led_pwm 子类里、i2c_addr 在 led_i2c 子类里。
+ * 不同硬件方式的 LED 共享 base 接口，硬件细节关在各自子类。
+ * 第 6 章讲为什么这样分，第 12 章讲子类怎么向上转型回 base。
+ */
+
+/* led_on 是封装层：应用层调它，内部 dispatch 到具体子类的 on */
+int led_on(struct led_base *led)
+{
+	if (!led || !led-&gt;ops || !led-&gt;ops-&gt;on)
+		return -1;
+	led-&gt;is_on = true;
+	return led-&gt;ops-&gt;on(led);
+}
+
+int led_off(struct led_base *led)
+{
+	if (!led || !led-&gt;ops || !led-&gt;ops-&gt;off)
+		return -1;
+	led-&gt;is_on = false;
+	return led-&gt;ops-&gt;off(led);
+}
+
+int led_toggle(struct led_base *led)
+{
+	if (!led || !led-&gt;ops || !led-&gt;ops-&gt;toggle)
+		return -1;
+	led-&gt;is_on = !led-&gt;is_on;
+	return led-&gt;ops-&gt;toggle(led);
+}
+</code></pre>
+<pre><code class="language-c">/* environment_cfg/environment_export.h · 公开句柄，应用层用它 */
+
+extern struct led_base *green_led;
+extern struct led_base *red_led;
+</code></pre>
+<p>应用层调用：</p>
+<pre><code class="language-c">led_on(green_led);
+led_off(red_led);
+led_toggle(green_led);
+</code></pre>
+<p>应用层看到的就是普通函数调用 <code>led_on(green_led)</code>。它根本不知道下面有 ops 表、有 dispatch、有具体子类（GPIO LED / PWM LED / I²C LED 等）。这种“应用层只见接口、看不见实现“的写法叫封装层，工业代码里所有驱动都做这件事。</p>
+<h3 id="1101-前向声明让头文件只暴露指针不暴露字段"><a class="header" href="#1101-前向声明让头文件只暴露指针不暴露字段">1.10.1 前向声明：让头文件只暴露指针，不暴露字段</a></h3>
+<p><code>led.h</code> 第二行 <code>struct led_base;</code> 这一句叫前向声明 (forward declaration)。它告诉编译器：“有这么个类型 <code>struct led_base</code>，但字段先不展开。”</p>
+<p>接下来 <code>led.h</code> 里所有用到 <code>struct led_base</code> 的地方都是指针：<code>int led_on(struct led_base *led);</code>。指针的 <code>sizeof</code> 在所有平台都是固定的（32 位机器 4 字节，64 位机器 8 字节），编译器不需要知道它指向的类型有什么字段就能算出指针变量占多少字节。所以前向声明 + 指针，是完全合法的 C 代码，gcc / clang / armcc 都接受。</p>
+<p>字段定义放在 <code>led_base.c</code> 里。应用层 <code>#include "led.h"</code> 后，编译器只看到“<code>struct led_base</code> 是某个不完整类型“，<strong>永远查不到 <code>ops</code> / <code>name</code> / <code>is_on</code> 字段的位置</strong>。这意味着应用层就算想写 <code>green_led-&gt;is_on = true</code> 也写不出来：编译器直接报错 <code>dereferencing pointer to incomplete type</code>。状态变更必须走 <code>led_on(green_led)</code> 这种封装函数，没法绕过去。</p>
+<p>这种“<code>.h</code> 只暴露指针 + <code>.c</code> 藏字段定义“的写法叫不完整类型 (incomplete type) + 不透明指针 (opaque pointer)。Linux 内核大量用这一招：你能看到 <code>struct file *</code>，但 <code>struct file</code> 的字段定义藏在 <code>fs/internal.h</code> 里，普通驱动看不到；<code>struct device</code> 同理。Zephyr 的设备模型一样。这是工业级 C 库的标准做法，把“接口稳定“和“实现自由“严格分开：<code>.c</code> 里加字段、改字段顺序、重排布局，<code>.h</code> 一行不动，应用层不用重新编译。</p>
+<p>代价是应用层不能定义 <code>struct led_base</code> 实例（编译器不知道 sizeof），所以工业代码里实例都在驱动 <code>.c</code> 里 static 分配，应用层只拿到 <code>extern struct led_base *green_led;</code> 这种句柄。</p>
+<h3 id="1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.10.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
+<p>你注意到三件事：</p>
+<ol>
+<li><code>struct led_base</code> 多了一个字段 <code>ops</code>，是一张函数指针表（虚函数表）</li>
+<li><code>led_on(led)</code> 不是直接操作 GPIO，它内部走 <code>led-&gt;ops-&gt;on(led)</code> 这一行 dispatch</li>
+<li>不同子类的 LED（GPIO 拉电平、PWM 调亮度、I²C 发命令）都填一份自己的 ops 表，应用层调 <code>led_on()</code> 一行就走到对的实现</li>
+</ol>
+<p>第 11 章会从函数指针一步步推导出这套机制，把 <code>led_on()</code> 内部那行 dispatch 讲透：编译器把它编译成什么 ARM 汇编、ops 表存在内存哪、为什么 <code>ops</code> 必须是 <code>struct led_base</code> 第一个字段。</p>
+<p>现在你不用看懂细节，只要看出：<strong>工业代码里的 led，骨架还是 struct + me，外面套了一层 ops 表（让应用层无视具体硬件）和一层封装函数（让应用层不直接碰函数指针）</strong>。这两层都是工程纪律，不是炫技。</p>
+<h3 id="1103-一眼看懂工业代码的眼光"><a class="header" href="#1103-一眼看懂工业代码的眼光">1.10.3 一眼看懂工业代码的眼光</a></h3>
+<p>这就是这本书要让你形成的眼光。拿到一份陌生的工业代码：</p>
+<ul>
+<li>看到 <code>struct xxx_base;</code> 前向声明，知道这是不完整类型 + 不透明指针</li>
+<li>看到 <code>xxx_base { const struct xxx_ops *ops; ... };</code>，知道这是 ops 表 / 虚函数表</li>
+<li>看到 <code>xxx_on(handle)</code> 内部走 <code>handle-&gt;ops-&gt;on(handle)</code>，知道这是 dispatch</li>
+<li>看到 <code>extern xxx_base *yyy;</code>，知道是别人创建好的句柄</li>
+</ul>
+<p>整套就是 struct + me 的工业放大版。你这一章学的核心，加上第 11 章的 ops 表演化，等于工业项目里所有驱动的骨架。</p>
+<p>反过来看，1.8 / 1.9 节给的 STM32 / Linux platform 层用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 11 章之后会把 platform 层从函数式升级成 ops 表式，完成这个对齐。</p>
+<h2 id="111-跑一遍"><a class="header" href="#111-跑一遍">1.11 跑一遍</a></h2>
+<pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make
 ./demo
 </code></pre>
 <p>输出节选：</p>
 <pre><code>========================================
-  EP06 Encapsulation: struct &amp; me pointer
+  Three LEDs, one set of code.
+  me pointer decides who to operate.
 ========================================
 
 --- Init ---
 [GPIO] Pin13 init as OUTPUT
-  [LED] Pin13 LED initialized
+[GPIO] Pin13 -&gt; LOW (OFF)
+  [LED] Pin13 initialized
 [GPIO] Pin14 init as OUTPUT
-  [LED] Pin14 LED initialized
-[GPIO] Pin15 init as OUTPUT
-  [LED] Pin15 LED initialized
+[GPIO] Pin14 -&gt; LOW (OFF)
+  [LED] Pin14 initialized
+...
 
 --- Turn on RED ---
 [GPIO] Pin13 -&gt; HIGH (ON)
   [LED] Pin13 ON
-...
+
+--- Turn on GREEN ---
+[GPIO] Pin14 -&gt; HIGH (ON)
+  [LED] Pin14 ON
+
+--- Turn on BLUE ---
+[GPIO] Pin15 -&gt; HIGH (ON)
+  [LED] Pin15 ON
 </code></pre>
-<p><code>led_on</code> 这个函数在 <code>led.c</code> 里只写了一次。但屏幕上 Pin13 / Pin14 / Pin15 都被点亮了——因为传入的 <code>me</code> 指针不同。</p>
-<p>挂号单是敞开的——任何人都能直接 <code>red_led.pin = 999</code> 把它弄坏。下一章解决这个问题。</p>
-<p>下一篇：第 2 章 · 同事改了一行你的 LED 全乱了</p>
+<p><code>led_on</code> 这个函数在 <code>led.c</code> 里只写了一次。但屏幕上 Pin13、Pin14、Pin15 都被点亮了。因为传入的 <code>me</code> 指针不同。</p>
+<p>完整输出和源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/"><code>oop-in-c/code/01-three-leds/</code></a>。</p>
+<h2 id="112-视频回放"><a class="header" href="#112-视频回放">1.12 视频回放</a></h2>
+<p>想听口播版的可以看 B 站这一期视频：</p>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1PyDHB8E3Q/">《C 语言：三个 LED 你写了三份代码？一个挂号单的思路让你秒懂封装》</a></p>
+</blockquote>
+<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）和 STM32 / Linux / 工业代码的对照（1.8 到 1.10 节）。</p>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>挂号单是敞开的。任何人都能直接 <code>red_led.pin = 999</code> 把它弄坏。你同事顺手改了一个值，所有 LED 全乱了。</p>
+<p>怎么把单子锁起来？下一章解决。</p>
+<p>下一篇：<a href="02-同事改了一行.html">第 2 章 · 同事改了一行你的 LED 全乱了</a></p>
 
                     </main>
 
@@ -388,6 +689,9 @@ make
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
+                            <a rel="next prefetch" href="../01-封装/02-同事改了一行.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -399,6 +703,9 @@ make
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
+                    <a rel="next prefetch" href="../01-封装/02-同事改了一行.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>

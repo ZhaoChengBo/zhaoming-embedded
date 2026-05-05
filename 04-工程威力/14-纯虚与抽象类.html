@@ -1,0 +1,967 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch14 虚函数不实现会怎样 · 纯虚与抽象类 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/04-工程威力/14-纯虚与抽象类.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-14-章--虚函数不实现会怎样--纯虚与抽象类"><a class="header" href="#第-14-章--虚函数不实现会怎样--纯虚与抽象类">第 14 章 · 虚函数不实现会怎样 · 纯虚与抽象类</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/"><code>oop-in-c/code/14-pure-virtual/</code></a></p>
+<p>类型机制完整了，上转下转都能干。但 ops 表里有一颗雷你可能没意识到：如果某种 LED 在 <code>init</code> 的时候，<code>ops-&gt;on</code> 没填呢？</p>
+<h2 id="141-null-函数指针的崩溃"><a class="header" href="#141-null-函数指针的崩溃">14.1 NULL 函数指针的崩溃</a></h2>
+<p>第 11 章演化出来的 <code>led_on</code> 长这样：</p>
+<pre><code class="language-c">int led_on(struct led_base *me)
+{
+	return me-&gt;ops-&gt;on(me);
+}
+</code></pre>
+<p>如果某个子类 ops 表少填了 <code>on</code>：</p>
+<pre><code class="language-c">static const struct led_ops broken_ops = {
+	.off = my_off,
+	/* on 忘了填 */
+};
+</code></pre>
+<p>C 标准说静态存储的对象未显式初始化的字段会被零初始化，所以 <code>broken_ops.on</code> 是 NULL。</p>
+<p>应用层调 <code>led_on(handle)</code>，进到 <code>me-&gt;ops-&gt;on(me)</code>，把 NULL 当函数地址跳过去。在 STM32 上一般是 0 地址（向量表起点），跳进去取出“函数指针“再跳，行为不可预测，多半是 HardFault 死循环。在 Linux 用户态收到 SIGSEGV，进程当场死。</p>
+<p>编译器一句话不说就让你过了。它觉得你是故意填 NULL 的。</p>
+<p><img src="../assets/ch14/slide1_NULL崩溃.png" alt="NULL 崩溃"></p>
+<h2 id="142-必填调用前检查"><a class="header" href="#142-必填调用前检查">14.2 必填：调用前检查</a></h2>
+<p>第一种做法：在统一接口里加一行检查。</p>
+<pre><code class="language-c">int led_on(struct led_base *me)
+{
+	if (!me)
+		return -1;
+
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
+	       "led_on: subclass must implement on()");
+	return me-&gt;ops-&gt;on(me);
+}
+</code></pre>
+<p><code>assert</code> 在调试构建里直接 abort，告诉你哪个文件哪一行触发了。Release 构建把 <code>NDEBUG</code> 打开，assert 编译产物直接消失，0 开销。</p>
+<p>调试期就抓住“忘记实现“的子类。这一类操作叫 <strong>必填</strong>，子类不实现，整个对象无效。</p>
+<p>灯的 <code>on</code> 和 <code>off</code> 就是必填。一颗灯不能开、不能关，那还叫什么灯？合同里的必填项，不填合同无效。</p>
+<p><img src="../assets/ch14/slide2_必须实现.png" alt="必填"></p>
+<h2 id="143-选填父类提供默认行为"><a class="header" href="#143-选填父类提供默认行为">14.3 选填：父类提供默认行为</a></h2>
+<p>但有些操作不是每种子类都需要自己实现。</p>
+<p><code>set_brightness</code>：PWM 灯支持调光，GPIO 灯不支持。GPIO 灯只有“开“和“关“，没有亮度概念。</p>
+<p>如果让 <code>led_set_brightness</code> 也走 <code>assert</code> 必填策略，GPIO 子类就得写一个空函数：</p>
+<pre><code class="language-c">static int gpio_set_brightness(struct led_base *me, uint8_t b)
+{
+	(void)me;
+	(void)b;
+	return 0;        /* 啥都不做 */
+}
+</code></pre>
+<p>每个不支持调光的子类都得写一个空函数，烦。</p>
+<p>更好的做法：把“安静跳过“的默认行为放到统一接口里：</p>
+<pre><code class="language-c">int led_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	if (!me || !me-&gt;ops)
+		return -1;
+
+	if (!me-&gt;ops-&gt;set_brightness) {
+		/* 默认行为：这种 LED 不支持调光，安静跳过 */
+		return 0;
+	}
+	return me-&gt;ops-&gt;set_brightness(me, brightness);
+}
+</code></pre>
+<p>子类填了 <code>set_brightness</code> 就走子类。子类没填，统一接口走默认。<strong>ops 表本身从来不改</strong>，NULL 就是 NULL，处理这个 NULL 的责任落在父类的统一接口上。</p>
+<p>这一类操作叫 <strong>选填</strong>。合同里的选填项，不填用默认条款，但合同主体没改过。</p>
+<p><img src="../assets/ch14/slide3_默认实现.png" alt="选填"></p>
+<h2 id="144-全必填接口interface"><a class="header" href="#144-全必填接口interface">14.4 全必填：接口（interface）</a></h2>
+<p>把策略推到极致：如果一张 ops 表里每一个 op 都是必填呢？</p>
+<pre><code class="language-c">struct sensor_ops {
+	int (*read)(struct sensor *me, int32_t *out);
+	int (*calibrate)(struct sensor *me);
+	int (*self_test)(struct sensor *me);
+};
+
+int sensor_read(struct sensor *me, int32_t *out)
+{
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;read);
+	return me-&gt;ops-&gt;read(me, out);
+}
+
+int sensor_calibrate(struct sensor *me)
+{
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;calibrate);
+	return me-&gt;ops-&gt;calibrate(me);
+}
+
+int sensor_self_test(struct sensor *me)
+{
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;self_test);
+	return me-&gt;ops-&gt;self_test(me);
+}
+</code></pre>
+<p>三个 op 全部 assert。任何 sensor 子类要加进这套体系，三件套必须全填。少一个，调试期立刻爆。</p>
+<p>这种“全是必填的 ops 表“，软件工程里叫 <strong>接口</strong>（interface）。一份只有规格、没有实现的合同。</p>
+<p><img src="../assets/ch14/slide4_全部必须实现.png" alt="全必填"></p>
+<p>真实工业项目里，传感器、电机、通讯模块这种“加入体系就要完整实现“的对象，ops 表都是接口风格。LED 这种“有些操作可有可无“的对象，是必填 + 选填混合。</p>
+<h2 id="145-三种策略一张表"><a class="header" href="#145-三种策略一张表">14.5 三种策略一张表</a></h2>
+<p>把刚才三种放一起看：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>策略</th><th>C 里的写法</th><th>C++ 里的写法</th><th>子类不填的后果</th></tr>
+</thead>
+<tbody>
+<tr><td>必填</td><td>统一接口里 <code>assert</code></td><td>纯虚函数 <code>virtual void f()=0;</code></td><td>调试期 assert 失败 / C++ 编译器拒绝实例化子类</td></tr>
+<tr><td>选填</td><td>统一接口里检查 NULL，提供默认</td><td>虚函数有默认实现 <code>virtual void f() {...}</code></td><td>子类继承父类默认行为</td></tr>
+<tr><td>全必填</td><td>ops 表所有字段都走必填</td><td>全是纯虚函数的抽象类（“接口”）</td><td>子类必须实现每一个</td></tr>
+</tbody>
+</table>
+</div>
+<p>C++ 里编译器替你把这三种区分开。C 里你自己在统一接口里实现这套区分。底下逻辑一样。</p>
+<p><img src="../assets/ch14/slide5_概念揭示.png" alt="概念揭示"></p>
+<p>Linux 内核的 <code>struct file_operations</code> 就是混合策略的代表。<code>read</code>、<code>write</code> 这种关键操作必填，<code>unlocked_ioctl</code>、<code>mmap</code> 这些选填，文件系统不支持就 NULL，VFS 层走默认行为。第 16 章会展开 file_operations 的实例。</p>
+<h2 id="146-c-对比-c"><a class="header" href="#146-c-对比-c">14.6 C 对比 C++</a></h2>
+<pre><code class="language-cpp">class LedBase {
+public:
+	virtual int on()  = 0;          /* 纯虚（必填） */
+	virtual int off() = 0;          /* 纯虚 */
+
+	virtual int set_brightness(uint8_t b) {   /* 虚（选填，有默认） */
+		(void)b;
+		return 0;
+	}
+};
+
+class LedGpio : public LedBase {
+public:
+	int on() override  { /* ... */ return 0; }
+	int off() override { /* ... */ return 0; }
+	/* set_brightness 不实现，继承父类默认 */
+};
+</code></pre>
+<p>C++ 编译器看到子类没实现 <code>on</code>、<code>off</code>，<strong>编译期拒绝</strong>让你 <code>LedGpio gpio_led;</code>：抽象类不能直接实例化。</p>
+<p>C 里编译器一句话不说，运行时 assert 才发现。区别只在出错的时机。</p>
+<p><img src="../assets/ch14/slide6_CvsCpp.png" alt="C vs C++"></p>
+<h2 id="147-视频里没讲透的几个细节"><a class="header" href="#147-视频里没讲透的几个细节">14.7 视频里没讲透的几个细节</a></h2>
+<h3 id="1471-assert-不是生产代码的最终防线"><a class="header" href="#1471-assert-不是生产代码的最终防线">14.7.1 assert 不是生产代码的最终防线</a></h3>
+<p>assert 在 release 构建里被 <code>NDEBUG</code> 关掉。生产代码里如果你只靠 assert，关掉之后那一行就成了空语句，NULL 又能打过来了。</p>
+<p>更稳的做法：assert + 错误返回值并存。</p>
+<pre><code class="language-c">int led_on(struct led_base *me)
+{
+	if (!me)
+		return -1;
+
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on);
+	if (!me-&gt;ops || !me-&gt;ops-&gt;on)
+		return -2;          /* release 构建的最后一道闸 */
+
+	return me-&gt;ops-&gt;on(me);
+}
+</code></pre>
+<p>调试期 assert 帮你定位问题，生产期错误码兜底。两个都不能少。</p>
+<h3 id="1472-为什么-ops-表用-const"><a class="header" href="#1472-为什么-ops-表用-const">14.7.2 为什么 ops 表用 const</a></h3>
+<p>工业项目里 ops 表都是这样定义：</p>
+<pre><code class="language-c">static const struct led_ops gpio_ops = {
+	.on  = gpio_on,
+	.off = gpio_off,
+};
+</code></pre>
+<p><code>static const</code> 意味着这个表在编译期就确定，链接到 <code>.rodata</code> 段（只读）。运行时任何修改都会触发段错误。</p>
+<p>为什么要 const？两个理由：</p>
+<ol>
+<li><strong>安全</strong>：跑飞的代码可能踩到 ops 表，把 <code>on</code> 改成野指针。const + .rodata 让这种踩踏立刻爆出来，比静默崩好。</li>
+<li><strong>缓存</strong>：所有相同子类的对象共享一份 ops 表（一个 ops 实例服务全部 GPIO LED 对象），只读段对 cache 友好。</li>
+</ol>
+<h3 id="1473-接口还是混合怎么选"><a class="header" href="#1473-接口还是混合怎么选">14.7.3 接口还是混合：怎么选</a></h3>
+<p>什么时候用全必填的接口风格，什么时候用必填 + 选填混合？</p>
+<p>如果 ops 里的每一个 op，子类都必须自己实现才有意义，那就是接口。例子：sensor 模块的 read/calibrate/self_test，每一个传感器都得自己提供。</p>
+<p>如果 ops 里有些 op 是“通用默认行为可用、子类需要的话覆写“，那就是混合。例子：LED 的 set_brightness，大部分 LED 默认走“不支持调光“是合理的。</p>
+<p>判据：<strong>没有合理的默认行为 → 必填 → 接口风格</strong>。<strong>有合理默认 → 选填 → 混合</strong>。</p>
+<p>工业代码里两种都常见。读源码遇到一个 ops 表先看父类的统一接口怎么处理 NULL：每一个 NULL 都 assert，那是接口；有些 NULL 走默认行为，那是混合。</p>
+<h3 id="1474-头文件里的那个分号c-纯虚的--0"><a class="header" href="#1474-头文件里的那个分号c-纯虚的--0">14.7.4 头文件里的那个分号（C++ 纯虚的 <code>= 0</code>）</a></h3>
+<pre><code class="language-cpp">virtual int on() = 0;     /* 纯虚 */
+</code></pre>
+<p>C++ 这个 <code>= 0</code> 不是赋值。它是一个语法占位，告诉编译器“这个函数没实现，子类必须实现“。底层做法是给虚函数表的对应槽位填一个特殊地址（一般是 <code>__cxa_pure_virtual</code>），子类没覆写就调到这个特殊函数，运行时报“pure virtual function called“。</p>
+<p>C 里你手动让 ops 表的对应字段保持 NULL，再在统一接口里 assert，做的是同一件事。C++ 把这一招用语法藏起来，C 让你看见齿轮。</p>
+<h3 id="1475-默认行为长什么样最好"><a class="header" href="#1475-默认行为长什么样最好">14.7.5 默认行为长什么样最好</a></h3>
+<p><code>led_set_brightness</code> 的默认是“安静跳过“。但默认也可以是别的。比如：</p>
+<pre><code class="language-c">int led_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	if (!me || !me-&gt;ops)
+		return -1;
+
+	if (me-&gt;ops-&gt;set_brightness)
+		return me-&gt;ops-&gt;set_brightness(me, brightness);
+
+	/* 默认：用 on/off 模拟 brightness */
+	if (brightness &gt; 50)
+		return me-&gt;ops-&gt;on(me);
+	else
+		return me-&gt;ops-&gt;off(me);
+}
+</code></pre>
+<p>GPIO 灯虽然不支持真调光，亮度大于 50% 就开、小于就关，也是一种合理默认。</p>
+<p>默认行为是父类设计的责任。子类要的“非默认“才填 ops 字段。</p>
+<h3 id="1476-一个-c-里的接口经典案例linkedlist-adt"><a class="header" href="#1476-一个-c-里的接口经典案例linkedlist-adt">14.7.6 一个 C 里的接口经典案例：LinkedList ADT</a></h3>
+<p>如果你做过数据结构题，会写过这种东西：</p>
+<pre><code class="language-c">/* 一份 LinkedList 接口 */
+struct list_ops {
+	int  (*push_front)(struct list *me, void *value);
+	int  (*push_back) (struct list *me, void *value);
+	int  (*pop_front) (struct list *me, void **out);
+	int  (*pop_back)  (struct list *me, void **out);
+	size_t (*size)    (const struct list *me);
+};
+
+struct list {
+	const struct list_ops *ops;
+};
+</code></pre>
+<p>任何想成为 list 的子类都得实现这 5 个 op 才上得了体系。</p>
+<pre><code class="language-c">/* 单链表实现 */
+struct sllist {
+	struct list base;
+	struct sllist_node *head;
+	size_t              count;
+};
+
+/* 双链表实现 */
+struct dllist {
+	struct list base;
+	struct dllist_node *head;
+	struct dllist_node *tail;
+	size_t              count;
+};
+
+/* 数组列表实现 */
+struct arraylist {
+	struct list base;
+	void   **buf;
+	size_t   capacity;
+	size_t   count;
+};
+</code></pre>
+<p>三种实现，时间复杂度不同（单链表 push_back O(n)，双链表 O(1)，数组 amortized O(1)），但对外暴露同一个 <code>struct list</code> 接口。应用层换实现一行不改。</p>
+<p>这就是 C 里“接口“的标准案例，和你这一章学的全必填 ops 表机制完全一样。Java 的 <code>java.util.List</code> 接口、C++ STL 的容器适配器，骨架都是这一套。</p>
+<p>整个 C 标准库（stdlib.h 的 <code>qsort</code>）也用这一招：你把比较函数（一个函数指针）作为参数传给 qsort，qsort 不知道你比的是 int、string、struct，只通过那个函数指针调你的实现。这是“参数化的接口“，单 op 版。</p>
+<p>ops 表 + 必填策略不是 LED 专属。任何“我有多种实现，要让上层无感切换“的场景，都用这一招。</p>
+<h3 id="1477-接口分离"><a class="header" href="#1477-接口分离">14.7.7 接口分离</a></h3>
+<p>如果一个 ops 表里既有“所有人必须做的事“，又有“少数人才做的事“，可以拆成两张表：</p>
+<pre><code class="language-c">struct led_basic_ops {       /* 所有 LED 必填 */
+	int (*on)(struct led_base *me);
+	int (*off)(struct led_base *me);
+};
+
+struct led_dim_ops {         /* 仅可调光的 LED 填 */
+	int (*set_brightness)(struct led_base *me, uint8_t brightness);
+};
+
+struct led_base {
+	const struct led_basic_ops *basic;     /* 必有 */
+	const struct led_dim_ops   *dim;       /* 可为 NULL */
+	const char                 *name;
+};
+</code></pre>
+<p>GPIO 灯：<code>basic</code> 填、<code>dim</code> 留 NULL。PWM 灯：两个都填。</p>
+<p>这是 SOLID 五原则里的“接口隔离原则“（ISP）的 C 写法。比单 ops 表混合更显式，但代价是父类多一个指针字段。Linux 内核里 file_operations 那张大表没拆，因为历史包袱；后出的子系统倾向于拆得更细。</p>
+<h2 id="148-你现在的代码在-stm32-上长什么样"><a class="header" href="#148-你现在的代码在-stm32-上长什么样">14.8 你现在的代码在 STM32 上长什么样</a></h2>
+<p>assert 在 STM32 上要小心：默认实现会调 <code>__assert_func</code>，里面常常是 <code>printf("..."); abort()</code>。printf 在 MCU 上要 retarget UART，abort 默认会跑 <code>_exit</code> 死循环。生产代码倾向于把 assert 替换成项目自己的错误日志 + 复位机制：</p>
+<pre><code class="language-c">#define ASSERT(cond)							\
+	do {								\
+		if (!(cond)) {						\
+			error_log(__FILE__, __LINE__, #cond);		\
+			system_reset();					\
+		}							\
+	} while (0)
+</code></pre>
+<p>错误日志写到非易失存储，下次开机能拉出来看哪一行炸了。完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/stm32-snippet/"><code>oop-in-c/code/14-pure-virtual/stm32-snippet/</code></a>。</p>
+<h2 id="149-你现在的代码在-linux-用户态长什么样"><a class="header" href="#149-你现在的代码在-linux-用户态长什么样">14.9 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p>Linux 用户态 assert 直接走 glibc 的实现，会把诊断信息打到 stderr 然后 abort。core dump 如果 ulimit 开了，gdb 拉出来能看到完整调用栈。</p>
+<p>完整 Linux 用户态 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/linux-snippet/"><code>oop-in-c/code/14-pure-virtual/linux-snippet/</code></a>。</p>
+<h2 id="1410-工业代码里的策略选择"><a class="header" href="#1410-工业代码里的策略选择">14.10 工业代码里的策略选择</a></h2>
+<p>工业控制板的 led 模块用混合策略（on/off 必填，set_brightness 选填），和本章 14.3 节一致。motor 模块就不一样，motor_base 的 ops 表有 24 个 op，全部必填：</p>
+<pre><code class="language-c">struct motor_ops {
+	int (*init)(struct motor_base *me, const struct motor_cfg *cfg);
+	int (*deinit)(struct motor_base *me);
+	int (*enable)(struct motor_base *me);
+	int (*disable)(struct motor_base *me);
+	int (*set_target_position)(struct motor_base *me, int32_t pos);
+	int (*get_current_position)(struct motor_base *me, int32_t *pos);
+	int (*set_target_speed)(struct motor_base *me, int32_t speed);
+	int (*emergency_stop)(struct motor_base *me);
+	/* ... 还有 16 个 ... */
+};
+</code></pre>
+<p>电机这种安全相关、行为复杂的对象，每一个 op 子类都必须明确表态，能做就实现，不能做就报错返回。没有“合理默认“。motor_ops 是接口风格的典型。</p>
+<p>判据回到 14.7.3：<strong>有没有合理的默认</strong>。没有，全必填，做成接口。有，混合。</p>
+<h2 id="1411-完整源码清单"><a class="header" href="#1411-完整源码清单">14.11 完整源码清单</a></h2>
+<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/pc/"><code>oop-in-c/code/14-pure-virtual/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
+<p><code>common/platform.h</code> 和 <code>common/platform_pc.c</code> 跟 ch01 一字不变，本章 Makefile 通过 <code>-I../../common</code> 引用。完整代码见 ch01 末尾完整源码清单。</p>
+<h3 id="文件-1mainc90-行"><a class="header" href="#文件-1mainc90-行">文件 1：<code>main.c</code>（90 行）</a></h3>
+<p>应用层。在 main 里展示三种策略：GPIO 灯 set_brightness 走默认行为不崩；PWM 灯三件套全填；temp_sensor 是一个完整接口实现，三件套都进子类。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * main.c - 演示三种 ops 表策略
+ *
+ * 1. GPIO 灯不支持调光：set_brightness 选填，调到走默认行为，不崩
+ * 2. PWM 灯三件套全填：每个调用都走子类实现
+ * 3. sensor 三件套全必填：演示 sensor_read 调到一个完整子类的情形
+ *
+ * 故意演示一段"忘了填 on" 的代码（注释保留），打开 NDEBUG 没开的话会触发 assert。
+ */
+
+#include "led.h"
+#include &lt;stdio.h&gt;
+
+/* 一个完整的 sensor 子类：温度传感器 */
+struct temp_sensor {
+	struct sensor base;
+	int32_t       last_value;
+};
+
+static int temp_read(struct sensor *me, int32_t *out)
+{
+	struct temp_sensor *self = (struct temp_sensor *)me;
+	self-&gt;last_value = 25;
+	*out = self-&gt;last_value;
+	printf("  [%s] read = %d C\n", me-&gt;name, *out);
+	return 0;
+}
+
+static int temp_calibrate(struct sensor *me)
+{
+	printf("  [%s] calibrate\n", me-&gt;name);
+	return 0;
+}
+
+static int temp_self_test(struct sensor *me)
+{
+	printf("  [%s] self_test\n", me-&gt;name);
+	return 0;
+}
+
+static const struct sensor_ops temp_ops = {
+	.read      = temp_read,
+	.calibrate = temp_calibrate,
+	.self_test = temp_self_test,
+};
+
+int main(void)
+{
+	struct led_gpio g_led_err;
+	struct led_pwm  g_led_stat;
+	struct temp_sensor g_temp;
+
+	led_gpio_init(&amp;g_led_err,  "ERR",  10, true);
+	led_pwm_init (&amp;g_led_stat, "STAT",  1, 50);
+
+	g_temp.base.ops  = &amp;temp_ops;
+	g_temp.base.name = "TEMP";
+	g_temp.last_value = 0;
+
+	printf("\n=========================================\n");
+	printf("  ch14 - pure virtual / virtual / interface\n");
+	printf("=========================================\n");
+
+	printf("\n--- 1. GPIO LED, no dimming support ---\n");
+	led_on(&amp;g_led_err.base);
+	led_off(&amp;g_led_err.base);
+	/* set_brightness 没填，统一接口走默认行为，不崩 */
+	led_set_brightness(&amp;g_led_err.base, 50);
+
+	printf("\n--- 2. PWM LED, full ops ---\n");
+	led_on(&amp;g_led_stat.base);
+	led_set_brightness(&amp;g_led_stat.base, 70);
+	led_off(&amp;g_led_stat.base);
+
+	printf("\n--- 3. sensor, all required ---\n");
+	int32_t v = 0;
+	sensor_self_test(&amp;g_temp.base);
+	sensor_calibrate(&amp;g_temp.base);
+	sensor_read(&amp;g_temp.base, &amp;v);
+
+	printf("\n=========================================\n");
+	printf("  3 strategies: required / optional / contract\n");
+	printf("=========================================\n");
+
+	printf("\nPress Enter to exit...\n");
+	getchar();
+	return 0;
+}
+</code></pre>
+<h3 id="文件-2container_ofh11-行"><a class="header" href="#文件-2container_ofh11-行">文件 2：<code>container_of.h</code>（11 行）</a></h3>
+<p>container_of 宏的最小可用版。和 ch13 同源，缩写一些注释。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+#ifndef MY_CONTAINER_OF_H
+#define MY_CONTAINER_OF_H
+
+#include &lt;stddef.h&gt;
+
+#define container_of(ptr, type, member)					\
+	((type *)((char *)(ptr) - offsetof(type, member)))
+
+#endif
+</code></pre>
+<h3 id="文件-3ledh75-行"><a class="header" href="#文件-3ledh75-行">文件 3：<code>led.h</code>（75 行）</a></h3>
+<p>LED 父类（必填 + 选填混合）+ sensor 接口（全必填）。注释把每一个 op 标了“必填“ / “选填”，看一眼就知道策略。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * led.h - 三种 ops 表策略：必填 / 选填 / 全必填
+ *
+ * 必填（纯虚函数）：on / off。子类不填，led_on 内部 assert 失败。
+ * 选填（带默认行为的虚函数）：set_brightness。子类不填，统一接口默认跳过。
+ * 全必填（接口）：示例 struct sensor_ops，三个 op 全是必填。
+ */
+
+#ifndef LED_H
+#define LED_H
+
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+
+struct led_base;
+
+struct led_ops {
+	int (*on)(struct led_base *me);                 /* 必填 */
+	int (*off)(struct led_base *me);                /* 必填 */
+	int (*set_brightness)(struct led_base *me,      /* 选填 */
+			      uint8_t brightness);
+};
+
+struct led_base {
+	const struct led_ops *ops;
+	const char           *name;
+	bool                  is_on;
+};
+
+int led_on(struct led_base *me);
+int led_off(struct led_base *me);
+int led_set_brightness(struct led_base *me, uint8_t brightness);
+
+/* GPIO 子类：只填 on / off，set_brightness 留空（不支持调光） */
+struct led_gpio {
+	struct led_base base;
+	uint8_t         pin;
+	bool            on_level;
+};
+
+void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level);
+
+/* PWM 子类：三件套全填 */
+struct led_pwm {
+	struct led_base base;
+	uint8_t         channel;
+	uint8_t         duty;
+};
+
+void led_pwm_init(struct led_pwm *me, const char *name,
+		  uint8_t channel, uint8_t duty);
+
+/* ============== 接口（全必填）示例 ============== */
+
+struct sensor;
+
+struct sensor_ops {
+	int (*read)(struct sensor *me, int32_t *out);   /* 全必填 */
+	int (*calibrate)(struct sensor *me);            /* 全必填 */
+	int (*self_test)(struct sensor *me);            /* 全必填 */
+};
+
+struct sensor {
+	const struct sensor_ops *ops;
+	const char              *name;
+};
+
+int sensor_read(struct sensor *me, int32_t *out);
+int sensor_calibrate(struct sensor *me);
+int sensor_self_test(struct sensor *me);
+
+#endif /* LED_H */
+</code></pre>
+<h3 id="文件-4ledc166-行"><a class="header" href="#文件-4ledc166-行">文件 4：<code>led.c</code>（166 行）</a></h3>
+<p>父类统一接口实现：<code>led_on / led_off</code> 走必填策略（assert + 错误返回）；<code>led_set_brightness</code> 走选填策略（NULL 检查 + 默认跳过）；<code>sensor_read / calibrate / self_test</code> 走全必填策略（每一个都 assert）。三种策略合在一份文件里看。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * led.c - 父类统一接口实现（必填 + 选填）
+ *
+ * led_on / led_off：必填。ops 没填或为 NULL，立刻 assert 报错并返回错误码。
+ *                  这一类对应 C++ 的纯虚函数。
+ * led_set_brightness：选填。ops 没填，安静返回 0。这一类对应 C++ 的虚函数
+ *                  （父类提供默认行为）。
+ *
+ * sensor_xxx 三件套：全必填，每一个都 assert。这是接口（interface）的形态。
+ */
+
+#include "led.h"
+#include "container_of.h"
+#include "platform.h"
+#include &lt;assert.h&gt;
+#include &lt;stdio.h&gt;
+
+/* ============== 父类统一接口（必填 + 选填混合） ============== */
+
+int led_on(struct led_base *me)
+{
+	if (!me)
+		return -1;
+
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp; "led_on: subclass must implement on()");
+	return me-&gt;ops-&gt;on(me);
+}
+
+int led_off(struct led_base *me)
+{
+	if (!me)
+		return -1;
+
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp; "led_off: subclass must implement off()");
+	return me-&gt;ops-&gt;off(me);
+}
+
+int led_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	if (!me || !me-&gt;ops)
+		return -1;
+
+	if (!me-&gt;ops-&gt;set_brightness) {
+		/* 默认行为：这种 LED 不支持调光，安静跳过 */
+		printf("  [%s] no dimming support, skip (brightness=%u)\n",
+		       me-&gt;name, (unsigned)brightness);
+		return 0;
+	}
+	return me-&gt;ops-&gt;set_brightness(me, brightness);
+}
+
+/* ============== GPIO 子类：只填 on / off ============== */
+
+static int gpio_on(struct led_base *me)
+{
+	struct led_gpio *self = container_of(me, struct led_gpio, base);
+	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
+	me-&gt;is_on = true;
+	printf("  [%s] GPIO Pin%u ON\n", me-&gt;name, (unsigned)self-&gt;pin);
+	return 0;
+}
+
+static int gpio_off(struct led_base *me)
+{
+	struct led_gpio *self = container_of(me, struct led_gpio, base);
+	platform_gpio_write(self-&gt;pin, !self-&gt;on_level);
+	me-&gt;is_on = false;
+	printf("  [%s] GPIO Pin%u OFF\n", me-&gt;name, (unsigned)self-&gt;pin);
+	return 0;
+}
+
+/* set_brightness 故意不填，GPIO 不支持调光 */
+static const struct led_ops gpio_ops = {
+	.on  = gpio_on,
+	.off = gpio_off,
+};
+
+void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level)
+{
+	me-&gt;base.ops   = &amp;gpio_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;pin        = pin;
+	me-&gt;on_level   = on_level;
+	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
+}
+
+/* ============== PWM 子类：三件套全填 ============== */
+
+static int pwm_on(struct led_base *me)
+{
+	struct led_pwm *self = container_of(me, struct led_pwm, base);
+	printf("  [%s] PWM ch%u duty=%u%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
+	me-&gt;is_on = true;
+	return 0;
+}
+
+static int pwm_off(struct led_base *me)
+{
+	struct led_pwm *self = container_of(me, struct led_pwm, base);
+	printf("  [%s] PWM ch%u duty=0%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel);
+	me-&gt;is_on = false;
+	return 0;
+}
+
+static int pwm_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	struct led_pwm *self = container_of(me, struct led_pwm, base);
+	if (brightness &gt; 100)
+		brightness = 100;
+	self-&gt;duty = brightness;
+	printf("  [%s] PWM ch%u duty=%u%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)brightness);
+	me-&gt;is_on = (brightness &gt; 0);
+	return 0;
+}
+
+static const struct led_ops pwm_ops = {
+	.on             = pwm_on,
+	.off            = pwm_off,
+	.set_brightness = pwm_set_brightness,
+};
+
+void led_pwm_init(struct led_pwm *me, const char *name,
+		  uint8_t channel, uint8_t duty)
+{
+	me-&gt;base.ops   = &amp;pwm_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;channel    = channel;
+	me-&gt;duty       = duty;
+}
+
+/* ============== sensor 接口：三件套全必填 ============== */
+
+int sensor_read(struct sensor *me, int32_t *out)
+{
+	if (!me || !out)
+		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;read &amp;&amp;
+	       "sensor.read is part of the interface contract");
+	return me-&gt;ops-&gt;read(me, out);
+}
+
+int sensor_calibrate(struct sensor *me)
+{
+	if (!me)
+		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;calibrate &amp;&amp;
+	       "sensor.calibrate is part of the interface contract");
+	return me-&gt;ops-&gt;calibrate(me);
+}
+
+int sensor_self_test(struct sensor *me)
+{
+	if (!me)
+		return -1;
+	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;self_test &amp;&amp;
+	       "sensor.self_test is part of the interface contract");
+	return me-&gt;ops-&gt;self_test(me);
+}
+</code></pre>
+<h3 id="文件-5makefile19-行"><a class="header" href="#文件-5makefile19-行">文件 5：<code>Makefile</code>（19 行）</a></h3>
+<pre><code class="language-makefile"># Makefile - ch14 pure virtual (PC)
+
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99 -I../../common
+TARGET  = demo
+SRCS    = main.c led.c ../../common/platform_pc.c
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(TARGET).exe
+</code></pre>
+<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
+<pre><code class="language-bash">cd oop-in-c/code/14-pure-virtual/pc
+make
+./demo
+</code></pre>
+<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<pre><code>[GPIO] Pin10 init as OUTPUT
+
+=========================================
+  ch14 - pure virtual / virtual / interface
+=========================================
+
+--- 1. GPIO LED, no dimming support ---
+[GPIO] Pin10 -&gt; HIGH (ON)
+  [ERR] GPIO Pin10 ON
+[GPIO] Pin10 -&gt; LOW (OFF)
+  [ERR] GPIO Pin10 OFF
+  [ERR] no dimming support, skip (brightness=50)
+
+--- 2. PWM LED, full ops ---
+  [STAT] PWM ch1 duty=50%
+  [STAT] PWM ch1 duty=70%
+  [STAT] PWM ch1 duty=0%
+
+--- 3. sensor, all required ---
+  [TEMP] self_test
+  [TEMP] calibrate
+  [TEMP] read = 25 C
+
+=========================================
+  3 strategies: required / optional / contract
+=========================================
+
+Press Enter to exit...
+</code></pre>
+<h2 id="1412-跑一遍"><a class="header" href="#1412-跑一遍">14.12 跑一遍</a></h2>
+<pre><code>cd oop-in-c/code/14-pure-virtual/pc
+make
+./demo
+</code></pre>
+<p>输出节选：</p>
+<pre><code>--- 1. GPIO LED, no dimming support ---
+[GPIO] Pin10 -&gt; HIGH
+  [ERR] GPIO Pin10 ON
+[GPIO] Pin10 -&gt; LOW
+  [ERR] GPIO Pin10 OFF
+  [ERR] no dimming support, skip (brightness=50)
+
+--- 2. PWM LED, full ops ---
+  [STAT] PWM ch1 duty=50%
+  [STAT] PWM ch1 duty=70%
+  [STAT] PWM ch1 duty=0%
+
+--- 3. sensor, all required ---
+  [TEMP] self_test
+  [TEMP] calibrate
+  [TEMP] read = 25 C
+</code></pre>
+<p>GPIO 灯调 set_brightness 走默认行为（“no dimming support, skip”），不崩。PWM 灯三件套全填，每次都走子类。sensor 三件套全必填，调过去都能进子类实现。</p>
+<p>如果你想体验“忘了填 on“的崩溃：把 led_gpio_init 里的 <code>me-&gt;base.ops = &amp;gpio_ops;</code> 改成 <code>me-&gt;base.ops = NULL;</code>，再编译跑，<code>led_on</code> 里的 assert 立刻报错。</p>
+<h2 id="1413-视频回放"><a class="header" href="#1413-视频回放">14.13 视频回放</a></h2>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1ZeoxB5EGS/">《C 语言·虚函数不实现会怎样｜纯虚·虚函数·接口》</a></p>
+</blockquote>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>封装、继承、多态、向上转型、向下转型、纯虚 / 虚 / 接口，C 里做 OOP 的全套武器你都见过了。</p>
+<p>但你还没见过它们组装在一起在一个真实项目里跑的样子。下一章把武器全部组装起来，演示一套完整的 LED 框架，换硬件应用层 0 改动。</p>
+<p>下一篇：<a href="15-Platform抽象.html">第 15 章 · 换硬件不改应用 · Platform 抽象到底</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../04-工程威力/13-container_of.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../04-工程威力/15-Platform抽象.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../04-工程威力/13-container_of.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../04-工程威力/15-Platform抽象.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

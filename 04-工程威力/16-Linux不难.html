@@ -1,0 +1,927 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch16 为什么 Linux 一点都不难 · 你已经在写 Linux 风格代码 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/04-工程威力/16-Linux不难.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-16-章--为什么-linux-一点都不难"><a class="header" href="#第-16-章--为什么-linux-一点都不难">第 16 章 · 为什么 Linux 一点都不难</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/"><code>oop-in-c/code/16-linux-style/</code></a></p>
+<p>做嵌入式 11 年，我发现 Linux 一点都不难。</p>
+<p>是有人故意让你觉得它难。</p>
+<p>这一章给你戳穿。前提是你已经懂了 ch15 的 platform 抽象。</p>
+<h2 id="161-上一章隔离了主板但芯片层呢"><a class="header" href="#161-上一章隔离了主板但芯片层呢">16.1 上一章隔离了主板，但芯片层呢</a></h2>
+<p>ch15 的 LED 框架隔离了主板：换主板方案，应用层 0 改动。</p>
+<p>但 <code>gpio_on</code> 里头调的是 <code>platform_gpio_write</code> 这个封装函数，封装函数内部走 ops 分发到当前选定的 platform 实例（PC 版 / STM32 版 / Linux 版），platform 实例本身就是写寄存器、写 sysfs 的具体代码。换芯片呢？从 STM32 换到瑞萨，BSRR 寄存器换名字了，platform_ops_stm32.c 里的实现要重写。</p>
+<p>主板的变化你的 LED 层隔离了。芯片的变化，谁来隔离？</p>
+<p><img src="../assets/ch16/slide1_芯片层问题.png" alt="芯片层问题"></p>
+<h2 id="162-同一招用第二次再加一层"><a class="header" href="#162-同一招用第二次再加一层">16.2 同一招用第二次：再加一层</a></h2>
+<p>答案，再加一层。Platform 层。</p>
+<p>不看寄存器，看功能。</p>
+<p>每家芯片的 GPIO 都能干什么？设方向、写电平、读电平。功能一样，寄存器不同。</p>
+<p>每家芯片的 I2C 都能干什么？发起传输、接收数据。功能一样，寄存器不同。</p>
+<p>UART、SPI 也一样，每家芯片提供同一组功能（产生时序、收发字节），实现不同。</p>
+<p>所以不看实现，按功能定义接口：</p>
+<pre><code class="language-c">struct gpio_ops {
+	int (*direction_output)(struct gpio_chip *gc, unsigned int offset, int value);
+	int (*get)(struct gpio_chip *gc, unsigned int offset);
+	void (*set)(struct gpio_chip *gc, unsigned int offset, int value);
+};
+</code></pre>
+<p>任何一家芯片都能实现这套接口。功能一样。</p>
+<p><img src="../assets/ch16/slide2_按功能抽象.png" alt="按功能抽象"></p>
+<h2 id="163-四层架构"><a class="header" href="#163-四层架构">16.3 四层架构</a></h2>
+<pre><code>应用层      只认 LED 接口     换主板方案不改
+LED 驱动层  只认 Platform 接口  换芯片不改
+Platform 层 对接具体芯片        芯片 A、B、C 各一份
+具体硬件    寄存器             芯片厂卖给你的
+</code></pre>
+<p>应用层调 led_on，led 驱动层调 platform 的写引脚接口，platform 层调具体芯片的寄存器。每一层只调下一层。</p>
+<p>LED 层隔离主板变化（同一份 led 代码，跑在 GPIO / PWM / I2C 三种灯上）。Platform 层隔离芯片变化（同一份 platform 接口，跑在不同 SoC 上）。</p>
+<p>同一招，隔离变化，用了两次。站的层次不同，机制完全相同。</p>
+<p><img src="../assets/ch16/slide3_四层架构.png" alt="四层架构"></p>
+<h2 id="164-1n-vs-nm乘法变加法"><a class="header" href="#164-1n-vs-nm乘法变加法">16.4 1×N vs N+M：乘法变加法</a></h2>
+<p>来算一笔账。</p>
+<p><strong>没有 platform 层</strong>：你有 3 种设备驱动（LED / sensor / motor），要跑在 5 家 SoC 上。每种驱动对每家 SoC 写一份。</p>
+<pre><code>driver × chip = 3 × 5 = 15 份代码
+</code></pre>
+<p>加一家 SoC？再写 3 份。15 → 18。</p>
+<p><strong>有 platform 层</strong>：3 种设备驱动只写一次，通过 platform 接口调用。5 家 SoC 各写一份 platform 适配。</p>
+<pre><code>driver + chip = 3 + 5 = 8 份代码
+</code></pre>
+<p>加一家 SoC？写 1 份 platform 适配就够。8 → 9。设备驱动一行不动。</p>
+<p>从乘法变成了加法。3 × 5 = 15，3 + 5 = 8。</p>
+<p><img src="../assets/ch16/slide4_乘法变加法.png" alt="1×N vs N+M"></p>
+<p>而且这 3 份设备驱动写出来，谁都能用。换芯片不影响。这就是 Linux 内核几万个驱动能在不同 SoC 上跑的原因。</p>
+<h2 id="165-linux-gpio-子系统真实代码"><a class="header" href="#165-linux-gpio-子系统真实代码">16.5 Linux GPIO 子系统：真实代码</a></h2>
+<p>打开 Linux 内核 <code>drivers/gpio/gpiolib.c</code> 第 3245 行：</p>
+<pre><code class="language-c">void gpiod_set_value(struct gpio_desc *desc, int value)
+{
+	VALIDATE_DESC_VOID(desc);
+	WARN_ON(desc-&gt;gdev-&gt;chip-&gt;can_sleep);
+	gpiod_set_value_nocheck(desc, value);
+}
+EXPORT_SYMBOL_GPL(gpiod_set_value);
+</code></pre>
+<p>调到底是同一个 <code>gpiolib.c</code> 第 3051 行的 <code>gpiod_set_raw_value_commit</code>：</p>
+<pre><code class="language-c">static void gpiod_set_raw_value_commit(struct gpio_desc *desc, bool value)
+{
+	struct gpio_chip	*gc;
+
+	gc = desc-&gt;gdev-&gt;chip;
+	trace_gpio_value(desc_to_gpio(desc), 0, value);
+	gc-&gt;set(gc, gpio_chip_hwgpio(desc), value);
+}
+</code></pre>
+<p>最后一行 <code>gc-&gt;set(gc, gpio_chip_hwgpio(desc), value)</code>，</p>
+<p>这就是你 ch11 / ch15 学的多态 dispatch。<code>gc</code> 是 <code>struct gpio_chip *</code>，<code>gc-&gt;set</code> 是函数指针。每家芯片的 <code>set</code> 字段指向自己的 <code>set</code> 实现。同一行 <code>gc-&gt;set(...)</code>，红灯走 vendorA 的 <code>set</code>，绿灯走 vendorB 的 <code>set</code>。</p>
+<p>驱动作者一行不改。</p>
+<pre><code class="language-c">/* drivers/leds/leds-gpio.c 的简化版 */
+static void gpio_led_set(struct led_classdev *led_cdev,
+			 enum led_brightness value)
+{
+	struct gpio_led_data *led_dat =
+		container_of(led_cdev, struct gpio_led_data, cdev);
+	gpiod_set_value(led_dat-&gt;gpiod, !!value);
+}
+</code></pre>
+<p>这一行 <code>container_of</code> 你 ch13 学过。这一行 <code>gpiod_set_value</code> 你刚刚见到，它内部走 <code>gc-&gt;set</code> 多态 dispatch 到具体 SoC。</p>
+<p>整个 <code>leds-gpio.c</code> 文件 200 多行，跨所有 SoC 通吃。芯片厂的工作只是写自己那份 <code>gc-&gt;set</code> 实现，driver 作者一行不动。</p>
+<p><img src="../assets/ch16/slide5_Linux_GPIO.png" alt="Linux GPIO 子系统"></p>
+<h2 id="166-struct-gpio_chip-真身"><a class="header" href="#166-struct-gpio_chip-真身">16.6 struct gpio_chip 真身</a></h2>
+<p>打开 Linux 内核 <code>include/linux/gpio/driver.h</code> 第 415 行：</p>
+<pre><code class="language-c">struct gpio_chip {
+	const char		*label;
+	struct gpio_device	*gpiodev;
+	struct device		*parent;
+	struct fwnode_handle	*fwnode;
+	struct module		*owner;
+
+	int			(*request)(struct gpio_chip *gc,
+						unsigned int offset);
+	void			(*free)(struct gpio_chip *gc,
+						unsigned int offset);
+	int			(*get_direction)(struct gpio_chip *gc,
+						unsigned int offset);
+	int			(*direction_input)(struct gpio_chip *gc,
+						unsigned int offset);
+	int			(*direction_output)(struct gpio_chip *gc,
+						unsigned int offset, int value);
+	int			(*get)(struct gpio_chip *gc,
+						unsigned int offset);
+	int			(*get_multiple)(struct gpio_chip *gc,
+						unsigned long *mask,
+						unsigned long *bits);
+	void			(*set)(struct gpio_chip *gc,
+						unsigned int offset, int value);
+	/* ... 还有 30 多个字段 ... */
+};
+</code></pre>
+<p>你看：</p>
+<ul>
+<li>第一段是元数据（<code>label</code>、<code>parent</code>、<code>owner</code>），相当于 <code>struct led_base</code> 里的 <code>name</code>。</li>
+<li>中间一大堆函数指针，就是你的 <code>struct led_ops</code>，只是字段更多。</li>
+<li>后面还有更多字段（中断、热插拔、debug、节点管理）省略了。</li>
+</ul>
+<p>这就是 ch11 你演化出来的 <code>struct led_base</code> + <code>struct led_ops</code>，<strong>放大成工业级</strong>的样子。</p>
+<p>整个 GPIO 子系统骨架，就这一招。</p>
+<h2 id="167-file_operations另一组同样的招"><a class="header" href="#167-file_operations另一组同样的招">16.7 file_operations：另一组同样的招</a></h2>
+<p>打开 Linux 内核 <code>include/linux/fs.h</code> 第 1852 行：</p>
+<pre><code class="language-c">struct file_operations {
+	struct module *owner;
+	loff_t (*llseek) (struct file *, loff_t, int);
+	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+	__poll_t (*poll) (struct file *, struct poll_table_struct *);
+	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+	int (*mmap) (struct file *, struct vm_area_struct *);
+	int (*open) (struct inode *, struct file *);
+	int (*flush) (struct file *, fl_owner_t id);
+	int (*release) (struct inode *, struct file *);
+	/* ... 30 多个字段 ... */
+} __randomize_layout;
+</code></pre>
+<p>这是 Linux 字符设备 / 块设备 / 网络套接字 / 文件系统都用的统一接口。你打开一个 <code>/dev/xxx</code>，VFS 层调 <code>f_op-&gt;read(file, buf, size, pos)</code>，<code>f_op</code> 就是这张表，挂在每个设备实例的 <code>struct file</code> 里。read 字段指向哪里？指向具体设备驱动的 read 实现。</p>
+<p><code>read</code> 是必填，<code>write</code> 是必填，<code>unlocked_ioctl</code> 是选填，文件系统支持就填，不支持留 NULL，VFS 层走默认行为或返回 <code>-ENOTTY</code>。这就是你 ch14 学的必填 + 选填混合策略。</p>
+<p>整个 Linux 文件子系统骨架，还是这一招。</p>
+<h2 id="1671-三个不同子系统都用同一个-file_operations"><a class="header" href="#1671-三个不同子系统都用同一个-file_operations">16.7.1 三个不同子系统都用同一个 file_operations</a></h2>
+<p>一份 <code>struct file_operations</code> 实例代表一个具体设备的字符接口。Linux 内核里随便挑三个子系统看：</p>
+<p><strong>字符设备：随机数生成器 <code>drivers/char/random.c</code></strong></p>
+<pre><code class="language-c">const struct file_operations random_fops = {
+	.read           = random_read_iter,
+	.write          = random_write_iter,
+	.poll           = random_poll,
+	.unlocked_ioctl = random_ioctl,
+	.fasync         = random_fasync,
+	.llseek         = noop_llseek,
+};
+</code></pre>
+<p><code>/dev/random</code> 这个文件背后挂的就是这一张表。<code>cat /dev/random</code> 时 VFS 层调 <code>f_op-&gt;read(file, buf, size, pos)</code>，转到 <code>random_read_iter</code>。</p>
+<p><strong>块设备：通用块层 <code>block/fops.c</code></strong></p>
+<pre><code class="language-c">const struct file_operations def_blk_fops = {
+	.open       = blkdev_open,
+	.release    = blkdev_release,
+	.read_iter  = blkdev_read_iter,
+	.write_iter = blkdev_write_iter,
+	.iopoll     = iocb_bio_iopoll,
+	.mmap       = blkdev_mmap,
+	.fsync      = blkdev_fsync,
+	/* ... */
+};
+</code></pre>
+<p><code>/dev/sda</code> 这种磁盘文件背后挂的是 <code>def_blk_fops</code>。</p>
+<p><strong>procfs：内核状态导出 <code>fs/proc/inode.c</code></strong></p>
+<pre><code class="language-c">static const struct file_operations proc_reg_file_ops = {
+	.llseek         = proc_reg_llseek,
+	.read           = proc_reg_read,
+	.write          = proc_reg_write,
+	.poll           = proc_reg_poll,
+	.unlocked_ioctl = proc_reg_unlocked_ioctl,
+	.mmap           = proc_reg_mmap,
+	.open           = proc_reg_open,
+	.release        = proc_reg_release,
+};
+</code></pre>
+<p><code>/proc/cpuinfo</code>、<code>/proc/meminfo</code>、<code>/proc/version</code> 这些路径背后挂的是 <code>proc_reg_file_ops</code>。</p>
+<p>三个完全不同的子系统（随机数生成器是字符设备、磁盘是块设备、proc 是虚拟文件系统）。三张完全不同的 <code>struct file_operations</code> 实例。但 VFS 层调用方式都是同一行：<code>f_op-&gt;read(file, buf, size, pos)</code>。VFS 不知道也不需要知道背后是哪种设备。</p>
+<p>这就是 ch15 你看到的 <code>platform_gpio_write(...)</code> 同一招放大到内核全局：上层只见普通封装函数，封装函数内部走 ops 分发到当前实例。同一个调用点，不同的子类，多态 dispatch 自动找对实现。</p>
+<h2 id="168-到处都是-ops-表"><a class="header" href="#168-到处都是-ops-表">16.8 到处都是 ops 表</a></h2>
+<pre><code>spi_controller    .transfer / .setup / ...     SPI 控制器
+gpio_chip         .set / .get / .request / ... GPIO 控制器
+i2c_algorithm     .master_xfer / ...           I2C 控制器
+net_device_ops    .ndo_start_xmit / ...        网卡
+ethtool_ops       .get_link / ...              网卡管理
+file_operations   .read / .write / ...         字符设备 / 文件系统
+inode_operations  .lookup / .create / ...      文件系统节点
+super_operations  .alloc_inode / ...           文件系统超级块
+v4l2_ioctl_ops    .vidioc_querycap / ...       V4L2（摄像头）
+snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
+</code></pre>
+<p>整个 Linux 内核 4000 万行，骨架就是这几招，struct 装数据、ops 表装函数指针、不同的子类填不同的实现、container_of 反推、initcall 自注册。</p>
+<p>读完这一章你打开内核源码，会发现 90% 的代码都是这几招的展开。</p>
+<p><img src="../assets/ch16/slide6_AT24_EEPROM.png" alt="到处都是 ops"></p>
+<h2 id="169-一个驱动跨所有芯片at24-案例"><a class="header" href="#169-一个驱动跨所有芯片at24-案例">16.9 一个驱动跨所有芯片：at24 案例</a></h2>
+<p>Linux 内核里有一个文件 <code>drivers/misc/eeprom/at24.c</code>。I2C EEPROM 的驱动。一个文件，支持几十种 EEPROM 型号（AT24C01、AT24C02、24C16、24C512……），跑在任何家 SoC 上，只要芯片厂的 I2C platform 层做好了。</p>
+<p>你不需要自己写 EEPROM 驱动。社区已经写好了。同样：I2C 扩展 IO、SPI 屏幕驱动、PWM 电机控制器，大部分都有现成的内核驱动。</p>
+<p>你以为自己要写的那些设备驱动，多数是在反复造轮子。</p>
+<p>没有 platform 层的时候，你给每家 SoC 写一份 EEPROM 驱动。有了 platform 层，一份 at24.c，到处用。</p>
+<h2 id="1610-platform-层你不用自己写"><a class="header" href="#1610-platform-层你不用自己写">16.10 Platform 层你不用自己写</a></h2>
+<p>但 platform 层本身要不要写？</p>
+<p>不需要。</p>
+<p>Linux 内核：半导体厂商已经把 platform 层写好了。你买一颗 SoC，BSP 包里 GPIO / I2C / SPI / UART，全部 ready。</p>
+<p>RT-Thread 也一样：PIN 设备、I2C 设备、SPI 设备，统一框架，芯片厂适配。</p>
+<p>Zephyr 同样：device tree binding + driver model，芯片厂提供 <code>gpio_dw.c</code> / <code>i2c_nrfx_twim.c</code> 这种文件。</p>
+<p>所以你的项目只需要关心：</p>
+<ol>
+<li>设备驱动层（多数从社区拿现成的）</li>
+<li>应用层（你自己写）</li>
+</ol>
+<p>Platform 层？芯片厂做好了。设备驱动？大部分社区已经有了。</p>
+<p>这就是为什么用 Linux 开发比裸机 MCU 还简单，不是 Linux 简单，是有人替你把难的部分做完了。前提是你得理解这种分层设计，知道每一层解决什么问题。</p>
+<p><img src="../assets/ch16/slide7_不用自己写.png" alt="Platform 不用自己写"></p>
+<h2 id="1611-视频里没讲透的几个细节"><a class="header" href="#1611-视频里没讲透的几个细节">16.11 视频里没讲透的几个细节</a></h2>
+<h3 id="16111-trace_gpio_value-这一行干什么"><a class="header" href="#16111-trace_gpio_value-这一行干什么">16.11.1 trace_gpio_value 这一行干什么</a></h3>
+<p>第 16.5 节贴的 <code>gpiod_set_raw_value_commit</code> 里有一行：</p>
+<pre><code class="language-c">trace_gpio_value(desc_to_gpio(desc), 0, value);
+</code></pre>
+<p>这是内核 ftrace 框架的钩子。打开 ftrace 之后，每一次 GPIO 写入都会被记录到 trace buffer，开发期 debug 极方便。生产构建里 trace 框架可以彻底关掉，那一行编译期消失。</p>
+<p>这是 Linux 内核常见的“埋点 + 可关闭“模式。本书 ch14 讲 assert 时提过类似思路（assert 在 release 关掉零开销）。</p>
+<h3 id="16112-export_symbol_gpl-是什么"><a class="header" href="#16112-export_symbol_gpl-是什么">16.11.2 EXPORT_SYMBOL_GPL 是什么</a></h3>
+<p><code>gpiod_set_value</code> 函数末尾这一行：</p>
+<pre><code class="language-c">EXPORT_SYMBOL_GPL(gpiod_set_value);
+</code></pre>
+<p>它做了两件事：</p>
+<ol>
+<li>把 <code>gpiod_set_value</code> 这个符号加到内核的导出符号表，让 loadable module 能链接到。</li>
+<li>标记 <code>_GPL</code>，意思是只有 GPL 兼容许可证的 module 才能用。</li>
+</ol>
+<p>这和 ch17 要讲的 initcall 机制同源，都是用 <code>__attribute__((section()))</code> 把信息塞进特殊段，运行时遍历。</p>
+<h3 id="16113-rt-thread--zephyr-同源"><a class="header" href="#16113-rt-thread--zephyr-同源">16.11.3 RT-Thread / Zephyr 同源</a></h3>
+<p>打开 RT-Thread <code>components/drivers/include/drivers/pin.h</code>：</p>
+<pre><code class="language-c">struct rt_pin_ops {
+	void (*pin_mode)(struct rt_device *device, rt_base_t pin, rt_uint8_t mode);
+	void (*pin_write)(struct rt_device *device, rt_base_t pin, rt_uint8_t value);
+	rt_int8_t (*pin_read)(struct rt_device *device, rt_base_t pin);
+	rt_err_t (*pin_attach_irq)(struct rt_device *device, rt_int32_t pin,
+				   rt_uint32_t mode, void (*hdr)(void *args), void *args);
+	rt_err_t (*pin_detach_irq)(struct rt_device *device, rt_int32_t pin);
+	rt_err_t (*pin_irq_enable)(struct rt_device *device, rt_base_t pin,
+				   rt_uint32_t enabled);
+	rt_base_t (*pin_get)(const char *name);
+};
+</code></pre>
+<p>Zephyr 的 <code>gpio_driver_api</code>：</p>
+<pre><code class="language-c">struct gpio_driver_api {
+	int (*pin_configure)(const struct device *port, gpio_pin_t pin, gpio_flags_t flags);
+	int (*port_get_raw)(const struct device *port, gpio_port_value_t *value);
+	int (*port_set_masked_raw)(const struct device *port, gpio_port_pins_t mask,
+				    gpio_port_value_t value);
+	/* ... */
+};
+</code></pre>
+<p>字段名稍有不同，机制完全一致。三个项目（Linux 内核、RT-Thread、Zephyr）都是 C 写的，都用 ops 表 + 函数指针。读完本书你打开任何一个项目源码不会陌生。</p>
+<h3 id="16114-device-tree怎么把硬件树挂上-ops-表"><a class="header" href="#16114-device-tree怎么把硬件树挂上-ops-表">16.11.4 device tree：怎么把硬件树挂上 ops 表</a></h3>
+<p>这个细节本章不展开。简单说：device tree 是 Linux / Zephyr 用来描述硬件拓扑的文本文件（比如 “GPIO bank A 在地址 0x40020000，连了 16 个引脚”）。启动期 device tree 被解析成 <code>struct device</code> 节点，每个节点根据 <code>compatible</code> 字符串找到对应的驱动，挂上 <code>ops</code> 表。</p>
+<p>device tree 解决的是“如何把 ops 表上挂的 chip 实例和实际硬件连起来“。本章你只要知道：注册（从静态全局 → device tree 动态）这一步，和 ops 表本身的机制无关。</p>
+<h3 id="16115-不要把-hal-库当-platform-层"><a class="header" href="#16115-不要把-hal-库当-platform-层">16.11.5 不要把 HAL 库当 platform 层</a></h3>
+<p>ST 的 HAL 库（<code>HAL_GPIO_WritePin</code> 那一套）经常被人当作 platform 抽象的例子。其实不是。HAL 库是“绑死 STM32 一家 + 函数式包装“，<code>HAL_GPIO_WritePin(GPIOA, ...)</code> 里的 GPIOA 是 STM32 寄存器布局的 typedef，绑得死死的。换到瑞萨 RA 上 GPIOA 这个符号都不存在。</p>
+<p>真正的 platform 层是抽象到“任何 SoC 都能实现“的程度。ops 表才是 platform 层的标准形态。HAL 库是 platform 层下面、绑死单家的实现，你用的时候只是 platform 层的一个具体子类。</p>
+<h3 id="16116-ai-时代的位置"><a class="header" href="#16116-ai-时代的位置">16.11.6 AI 时代的位置</a></h3>
+<p>有人说 AI 时代不需要学架构了，AI 能写代码。</p>
+<p>AI 能帮你写 gpio_on，能帮你写 platform 层适配，能从零生成一个 I2C 驱动。</p>
+<p>但决定“这里该用 ops 表还是 if-else“、“这层该抽象到什么程度”、“这个接口够不够稳定”，这一类问题不是 AI 给你答案，是你给 AI 答案，AI 才能照你的骨架往下写。</p>
+<p>而且 AI 是看你的代码仓库学习你的风格的。你的代码有分层，AI 输出就有分层。你的代码是一坨，AI 输出也是一坨。</p>
+<p>这就是 AI 时代你的核心竞争力，你的架构能力，决定了 AI 能帮你放大多少。</p>
+<p><img src="../assets/ch16/slide8_AI时代.png" alt="AI 时代"></p>
+<h2 id="1612-你现在的代码在-stm32-上长什么样"><a class="header" href="#1612-你现在的代码在-stm32-上长什么样">16.12 你现在的代码在 STM32 上长什么样</a></h2>
+<p>ch16 是工程哲学章，没有“STM32 snippet“，你已经会的 ch15 platform_ops 就是 STM32 端的样子。</p>
+<p>如果你想把本章 pc/ 里山寨的 gpio_chip 框架移植到 STM32 裸机上，做法是：</p>
+<ol>
+<li>把 <code>vendor_a_set</code> 里的 printf 替换成真实的 BSRR 写入。</li>
+<li>启动期（或 ch17 的 initcall）调一次 <code>gpiochip_add(&amp;vendor_a_chip)</code>。</li>
+<li>led 驱动一行不改。</li>
+</ol>
+<p>效果就是“一份 leds-gpio.c 跑在不同 SoC 上“，这就是 Linux 内核的工作模式。</p>
+<p>详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/stm32-snippet/"><code>oop-in-c/code/16-linux-style/stm32-snippet/</code></a>。</p>
+<h2 id="1613-你现在的代码在-linux-上长什么样"><a class="header" href="#1613-你现在的代码在-linux-上长什么样">16.13 你现在的代码在 Linux 上长什么样</a></h2>
+<p>本章整章就是讲 Linux 内核怎么用 OOP 风格组织自己。Linux 端的“snippet“就是内核源码本身（如何获取内核源码做本地参考见附录 D，下面是 v6.6 LTS 的关键路径）：</p>
+<ul>
+<li><code>include/linux/gpio/driver.h</code> 第 415 行：<code>struct gpio_chip</code> 真身</li>
+<li><code>drivers/gpio/gpiolib.c</code> 第 3245 行：<code>gpiod_set_value</code></li>
+<li><code>include/linux/fs.h</code> 第 1852 行：<code>struct file_operations</code></li>
+<li><code>include/linux/container_of.h</code> 第 18 行：<code>container_of</code> 真身</li>
+</ul>
+<p>读完本章 pc/ 山寨版再去读这四个内核源文件，你会发现“原来就是这一招“。</p>
+<h2 id="1614-工业代码里的对照"><a class="header" href="#1614-工业代码里的对照">16.14 工业代码里的对照</a></h2>
+<p>工业控制板项目里没有 Linux 内核（裸机 + RTOS），但用的是同一套思路：</p>
+<pre><code class="language-c">/* drivers/gpio/gpio_chip.h */
+struct gpio_chip {
+	const char *name;
+	const struct gpio_chip_ops *ops;
+	uint32_t base;
+	uint32_t ngpio;
+};
+
+struct gpio_chip_ops {
+	int  (*request)(struct gpio_chip *gc, uint32_t offset);
+	void (*set)(struct gpio_chip *gc, uint32_t offset, bool value);
+	bool (*get)(struct gpio_chip *gc, uint32_t offset);
+};
+</code></pre>
+<p>5 套产品，3 款主控芯片，driver 模块（led / motor / encoder / sensor / eeprom）跨产品共享。每款芯片提供一份 <code>gpio_chip</code> 实现 + 注册一次 <code>gpiochip_add</code>。</p>
+<p>跟 Linux 内核 90% 一致。这套架构是“工业总结的最佳工程实践“，不是某个项目独创的。</p>
+<h2 id="1615-完整源码清单"><a class="header" href="#1615-完整源码清单">16.15 完整源码清单</a></h2>
+<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/pc/"><code>oop-in-c/code/16-linux-style/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
+<h3 id="文件-1mainc43-行"><a class="header" href="#文件-1mainc43-行">文件 1：<code>main.c</code>（43 行）</a></h3>
+<p>启动入口。注册两家芯片，然后用同一份 <code>leds-gpio</code> 驱动接口分别点亮两家芯片上的灯。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * main.c - 山寨内核启动 + 同一份 leds-gpio 跑两家芯片
+ */
+
+#include "gpio_chip.h"
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+void vendor_a_probe(void);
+void vendor_b_probe(void);
+void led_gpio_brightness_set(struct gpio_desc *desc, int value);
+
+int main(void)
+{
+	printf("=========================================\n");
+	printf("  ch16 - linux-style gpio subsystem\n");
+	printf("=========================================\n");
+
+	/* 启动期注册 chip。真实内核里走 module_init。 */
+	vendor_a_probe();
+	vendor_b_probe();
+
+	/* leds-gpio 驱动通过 chip + offset 拿到 desc */
+	struct gpio_desc *led_red   = gpio_get_desc("vendorA-gpio", 5);
+	struct gpio_desc *led_green = gpio_get_desc("vendorB-gpio", 2);
+
+	printf("\n--- leds-gpio drives both chips ---\n");
+	led_gpio_brightness_set(led_red,   1);
+	led_gpio_brightness_set(led_green, 1);
+	led_gpio_brightness_set(led_red,   0);
+	led_gpio_brightness_set(led_green, 0);
+
+	printf("\n&gt;&gt;&gt; same gpiod_set_value() dispatches to two vendors &lt;&lt;&lt;\n");
+
+	free(led_red);
+	free(led_green);
+
+	printf("\nPress Enter to exit...\n");
+	getchar();
+	return 0;
+}
+</code></pre>
+<h3 id="文件-2leds_gpioc24-行"><a class="header" href="#文件-2leds_gpioc24-行">文件 2：<code>leds_gpio.c</code>（24 行）</a></h3>
+<p>设备驱动层。它只调一行 <code>gpiod_set_value</code>，不知道也不需要知道底下是哪家 SoC 的 GPIO 控制器。这就是真实内核 <code>drivers/leds/leds-gpio.c</code> 的山寨版。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * leds_gpio.c - 内核里的 leds-gpio 驱动山寨版
+ *
+ * 真实内核版定义在 drivers/leds/leds-gpio.c。它就调一行 gpiod_set_value，
+ * 不关心底下是哪家 SoC 的 GPIO 控制器。
+ *
+ * 这就是 Linux 内核驱动作者的世界：通过 ops 表 + 抽象接口，写一份代码
+ * 服务所有芯片。
+ */
+
+#include "gpio_chip.h"
+#include &lt;stdio.h&gt;
+
+void led_gpio_brightness_set(struct gpio_desc *desc, int value)
+{
+	/*
+	 * 这一行内部走 gc-&gt;set ， 多态 dispatch。
+	 * vendorA 走 vendor_a_set，vendorB 走 vendor_b_set。
+	 * 这个驱动不知道也不需要知道。
+	 */
+	gpiod_set_value(desc, value);
+}
+</code></pre>
+<h3 id="文件-3gpio_chiph49-行"><a class="header" href="#文件-3gpio_chiph49-行">文件 3：<code>gpio_chip.h</code>（49 行）</a></h3>
+<p>基类接口。<code>struct gpio_chip</code> 是每家芯片要实现的“模板“，<code>struct gpio_desc</code> 是 consumer 拿到的句柄。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * gpio_chip.h - "山寨" 一份 Linux 内核 gpio_chip
+ *
+ * 把 ch15 的 platform_ops 改个名字、改成"按 chip 分组"的形态，
+ * 你就得到了一份和 Linux 内核 GPIO 子系统 90% 相像的接口。
+ *
+ * 真实内核版定义在 include/linux/gpio/driver.h 第 415 行起，
+ * 字段比这里多得多（中断、热插拔、debug 等），但骨架就是这样。
+ */
+
+#ifndef GPIO_CHIP_H
+#define GPIO_CHIP_H
+
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+
+struct gpio_chip {
+	const char *label;
+	uint32_t    base;
+	uint32_t    ngpio;
+
+	int  (*request)(struct gpio_chip *gc, unsigned int offset);
+	void (*free)(struct gpio_chip *gc, unsigned int offset);
+	int  (*direction_output)(struct gpio_chip *gc,
+				 unsigned int offset, int value);
+	int  (*get)(struct gpio_chip *gc, unsigned int offset);
+	void (*set)(struct gpio_chip *gc, unsigned int offset, int value);
+
+	void *driver_data;     /* 给具体 chip 实现挂自己的 context */
+};
+
+/* 内核态 gpio consumer 接口（简化版） */
+struct gpio_desc {
+	struct gpio_chip *gc;
+	unsigned int      offset;
+};
+
+void gpiod_set_value(struct gpio_desc *desc, int value);
+int  gpiod_get_value(struct gpio_desc *desc);
+
+/* 注册 chip（真正内核里叫 gpiochip_add_data） */
+int gpiochip_add(struct gpio_chip *gc);
+
+/* 通过 chip + offset 拿 desc（真正内核走 device tree） */
+struct gpio_desc *gpio_get_desc(const char *chip_label, unsigned int offset);
+
+#endif /* GPIO_CHIP_H */
+</code></pre>
+<h3 id="文件-4gpiolibc66-行"><a class="header" href="#文件-4gpiolibc66-行">文件 4：<code>gpiolib.c</code>（66 行）</a></h3>
+<p>“内核“侧的注册表 + dispatch。<code>gpiod_set_value</code> 最后一行 <code>desc-&gt;gc-&gt;set(...)</code> 就是 16.5 节内核源码的山寨版。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * gpiolib.c - "山寨" 内核 gpiolib 的最小内核态
+ *
+ * 注册一组 gpio_chip，通过 desc 反向找到 chip，调 chip-&gt;set / chip-&gt;get。
+ * 真实内核版见 drivers/gpio/gpiolib.c 第 3245 行 gpiod_set_value。
+ *
+ * 内核里那段关键调用是这样：
+ *   gpiod_set_value -&gt; gpiod_set_value_nocheck -&gt; gpiod_set_raw_value_commit
+ *   -&gt; gc-&gt;set(gc, gpio_chip_hwgpio(desc), value);
+ *
+ * 最后一行 gc-&gt;set 就是你 ch11 学的多态 dispatch。
+ */
+
+#include "gpio_chip.h"
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdlib.h&gt;
+
+#define MAX_CHIPS	8
+
+static struct gpio_chip *s_chips[MAX_CHIPS];
+static int s_num_chips;
+
+int gpiochip_add(struct gpio_chip *gc)
+{
+	if (s_num_chips &gt;= MAX_CHIPS)
+		return -1;
+	s_chips[s_num_chips++] = gc;
+	printf("[gpiolib] chip '%s' registered (base=%u, ngpio=%u)\n",
+	       gc-&gt;label, gc-&gt;base, gc-&gt;ngpio);
+	return 0;
+}
+
+struct gpio_desc *gpio_get_desc(const char *chip_label, unsigned int offset)
+{
+	for (int i = 0; i &lt; s_num_chips; i++) {
+		if (strcmp(s_chips[i]-&gt;label, chip_label) == 0) {
+			struct gpio_desc *d = malloc(sizeof(*d));
+			d-&gt;gc     = s_chips[i];
+			d-&gt;offset = offset;
+			return d;
+		}
+	}
+	return NULL;
+}
+
+void gpiod_set_value(struct gpio_desc *desc, int value)
+{
+	if (!desc || !desc-&gt;gc)
+		return;
+
+	/* 这一行是 Linux 内核 drivers/gpio/gpiolib.c L3057 的山寨版：
+	 *   gc-&gt;set(gc, gpio_chip_hwgpio(desc), value);
+	 * 把 desc-&gt;offset 当 hwgpio 直接传过去。
+	 */
+	desc-&gt;gc-&gt;set(desc-&gt;gc, desc-&gt;offset, value);
+}
+
+int gpiod_get_value(struct gpio_desc *desc)
+{
+	if (!desc || !desc-&gt;gc)
+		return -1;
+	return desc-&gt;gc-&gt;get(desc-&gt;gc, desc-&gt;offset);
+}
+</code></pre>
+<h3 id="文件-5gpio_vendor_ac68-行"><a class="header" href="#文件-5gpio_vendor_ac68-行">文件 5：<code>gpio_vendor_a.c</code>（68 行）</a></h3>
+<p>厂商 A 的 <code>gpio_chip</code> 实现。每家芯片厂提供一份这样的文件，内核里对应 <code>drivers/gpio/gpio-rockchip.c</code> / <code>gpio-mxc.c</code> 这一族。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * gpio_vendor_a.c - 厂商 A 的 gpio_chip 驱动
+ *
+ * 假装这是某家 SoC 的 GPIO 控制器实现。把 chip-&gt;set 指向自己的
+ * 寄存器操作。在 PC 上用 printf 模拟。
+ *
+ * 真实 Linux 内核里的等价物：drivers/gpio/gpio-mxc.c、gpio-rockchip.c
+ * 等等。每家芯片厂提供一份这样的文件。
+ */
+
+#include "gpio_chip.h"
+#include &lt;stdio.h&gt;
+
+static int vendor_a_request(struct gpio_chip *gc, unsigned int offset)
+{
+	printf("    [vendorA] request offset=%u (write reg PORT_EN)\n",
+	       offset);
+	(void)gc;
+	return 0;
+}
+
+static void vendor_a_free(struct gpio_chip *gc, unsigned int offset)
+{
+	printf("    [vendorA] free offset=%u\n", offset);
+	(void)gc;
+}
+
+static int vendor_a_direction_output(struct gpio_chip *gc,
+				     unsigned int offset, int value)
+{
+	printf("    [vendorA] direction_output offset=%u (write reg DIR)\n",
+	       offset);
+	(void)gc;
+	(void)value;
+	return 0;
+}
+
+static int vendor_a_get(struct gpio_chip *gc, unsigned int offset)
+{
+	(void)gc;
+	(void)offset;
+	return 0;
+}
+
+static void vendor_a_set(struct gpio_chip *gc, unsigned int offset, int value)
+{
+	printf("    [vendorA] set offset=%u value=%d (DR_REG &lt;- 0x%08X)\n",
+	       offset, value, value ? (1u &lt;&lt; offset) : 0);
+	(void)gc;
+}
+
+static struct gpio_chip vendor_a_chip = {
+	.label            = "vendorA-gpio",
+	.base             = 0,
+	.ngpio            = 32,
+	.request          = vendor_a_request,
+	.free             = vendor_a_free,
+	.direction_output = vendor_a_direction_output,
+	.get              = vendor_a_get,
+	.set              = vendor_a_set,
+};
+
+void vendor_a_probe(void)
+{
+	gpiochip_add(&amp;vendor_a_chip);
+}
+</code></pre>
+<h3 id="文件-6gpio_vendor_bc66-行"><a class="header" href="#文件-6gpio_vendor_bc66-行">文件 6：<code>gpio_vendor_b.c</code>（66 行）</a></h3>
+<p>厂商 B 的 <code>gpio_chip</code> 实现。同样的接口，不同的寄存器风格（BSRR 模式，类似 STM32）。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * gpio_vendor_b.c - 厂商 B 的 gpio_chip 驱动
+ *
+ * 同样的接口，不同的内部实现（不同寄存器布局）。这一份是为了演示
+ * 同一份 gpiod_set_value 在不同芯片下走到不同实现。
+ */
+
+#include "gpio_chip.h"
+#include &lt;stdio.h&gt;
+
+static int vendor_b_request(struct gpio_chip *gc, unsigned int offset)
+{
+	printf("    [vendorB] request offset=%u (clear reg LOCK)\n", offset);
+	(void)gc;
+	return 0;
+}
+
+static void vendor_b_free(struct gpio_chip *gc, unsigned int offset)
+{
+	printf("    [vendorB] free offset=%u\n", offset);
+	(void)gc;
+}
+
+static int vendor_b_direction_output(struct gpio_chip *gc,
+				     unsigned int offset, int value)
+{
+	printf("    [vendorB] direction_output offset=%u (set reg MODE)\n",
+	       offset);
+	(void)gc;
+	(void)value;
+	return 0;
+}
+
+static int vendor_b_get(struct gpio_chip *gc, unsigned int offset)
+{
+	(void)gc;
+	(void)offset;
+	return 0;
+}
+
+static void vendor_b_set(struct gpio_chip *gc, unsigned int offset, int value)
+{
+	/* 厂商 B 用 SET / CLR 两个寄存器（类似 STM32 BSRR） */
+	uint32_t reg = value ? (1u &lt;&lt; offset) : (1u &lt;&lt; (offset + 16));
+	printf("    [vendorB] set offset=%u value=%d (BSRR &lt;- 0x%08X)\n",
+	       offset, value, reg);
+	(void)gc;
+}
+
+static struct gpio_chip vendor_b_chip = {
+	.label            = "vendorB-gpio",
+	.base             = 32,
+	.ngpio            = 16,
+	.request          = vendor_b_request,
+	.free             = vendor_b_free,
+	.direction_output = vendor_b_direction_output,
+	.get              = vendor_b_get,
+	.set              = vendor_b_set,
+};
+
+void vendor_b_probe(void)
+{
+	gpiochip_add(&amp;vendor_b_chip);
+}
+</code></pre>
+<h3 id="文件-7makefile19-行"><a class="header" href="#文件-7makefile19-行">文件 7：<code>Makefile</code>（19 行）</a></h3>
+<pre><code class="language-makefile"># Makefile - ch16 linux-style (PC)
+
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99
+TARGET  = demo
+SRCS    = main.c gpiolib.c gpio_vendor_a.c gpio_vendor_b.c leds_gpio.c
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(TARGET).exe
+</code></pre>
+<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
+<pre><code class="language-bash">cd oop-in-c/code/16-linux-style/pc
+make
+./demo
+</code></pre>
+<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<pre><code>=========================================
+  ch16 - linux-style gpio subsystem
+=========================================
+[gpiolib] chip 'vendorA-gpio' registered (base=0, ngpio=32)
+[gpiolib] chip 'vendorB-gpio' registered (base=32, ngpio=16)
+
+--- leds-gpio drives both chips ---
+    [vendorA] set offset=5 value=1 (DR_REG &lt;- 0x00000020)
+    [vendorB] set offset=2 value=1 (BSRR &lt;- 0x00000004)
+    [vendorA] set offset=5 value=0 (DR_REG &lt;- 0x00000000)
+    [vendorB] set offset=2 value=0 (BSRR &lt;- 0x00040000)
+
+&gt;&gt;&gt; same gpiod_set_value() dispatches to two vendors &lt;&lt;&lt;
+</code></pre>
+<p><code>led_gpio_brightness_set</code> 这个驱动函数对两个 LED 调同一行 <code>gpiod_set_value</code>。红灯走 vendorA 的寄存器（DR_REG），绿灯走 vendorB 的寄存器（BSRR 风格）。驱动一行不改。</p>
+<p>这就是 Linux 内核驱动作者每天的工作模式。</p>
+<h2 id="1616-视频回放"><a class="header" href="#1616-视频回放">16.16 视频回放</a></h2>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV13WofBcEmv/">《C 语言·为什么 Linux 一点都不难·Platform 层·分层威力·AI 时代》</a></p>
+</blockquote>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>驱动注册这一步在本章 main 里手写：<code>vendor_a_probe(); vendor_b_probe();</code>。Linux 内核几千个驱动是怎么注册的？也是手写一长串调用？</p>
+<p>不是。Linux 内核的 <code>main</code> 函数（你叫它 <code>start_kernel</code>）从来不改。加一个新驱动只写一行 <code>module_init(my_init)</code>，启动期自动挂上来。</p>
+<p>下一章揭穿这一招：链接器收卡片，启动时按号码拨。</p>
+<p>下一篇：<a href="17-initcall.html">第 17 章 · 4000 万行一招写完 · 链接自动初始化</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../04-工程威力/15-Platform抽象.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../04-工程威力/17-initcall.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../04-工程威力/15-Platform抽象.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../04-工程威力/17-initcall.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

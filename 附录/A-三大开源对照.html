@@ -1,0 +1,635 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>A · 三大开源项目对照（Linux 内核 / Zephyr / GObject） - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/附录/A-三大开源对照.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="附录-a--三大开源项目对照linux-内核--zephyr--gobject"><a class="header" href="#附录-a--三大开源项目对照linux-内核--zephyr--gobject">附录 A · 三大开源项目对照（Linux 内核 / Zephyr / GObject）</a></h1>
+<p>读到这里你已经看完了从 ch01 一颗 LED 到 ch20 工业控制板 24 虚方法电机的完整演化路径。所有的 OOP 抽象都在工业项目真实代码里跑过。</p>
+<p>但你可能还有一个怀疑：这套“struct + me + ops 表 + container_of + initcall“的写法，会不会只是某家中国公司的内部规范？或者只是工业控制板项目的偶然选择？</p>
+<p>不是。这套写法是世界标准模式。</p>
+<p>这一附录把同一个 OOP 模式放到全球三个最有影响力的 C 开源项目里横向对照：</p>
+<ul>
+<li><strong>Linux 内核</strong>：4000 万行 C 代码，地球上最大的工程项目</li>
+<li><strong>Zephyr RTOS</strong>：Linux 基金会托管的开源 RTOS，覆盖几百种 MCU</li>
+<li><strong>GObject</strong>：GTK 桌面环境与 GNOME 生态的对象系统，C 语言写的运行时</li>
+</ul>
+<p>三者语境不同，但抽象骨架同构。你看完这一附录会建立起一种眼光：以后看任何 C 大型项目，几分钟就能找到它的“struct + ops 表“骨架。</p>
+<h2 id="a1-同一个问题用-c-写出可扩展的设备抽象"><a class="header" href="#a1-同一个问题用-c-写出可扩展的设备抽象">A.1 同一个问题：用 C 写出可扩展的设备抽象</a></h2>
+<p>三个项目都要解决一个共同问题：<strong>怎么让 100 种不同的设备共用同一份上层代码</strong>？</p>
+<p>Linux 内核要让 100 种字符设备都能 <code>read()</code> / <code>write()</code>，但每种设备底下读写的实现完全不同。Zephyr 要让 100 种 MCU 的 GPIO 都能 <code>gpio_pin_set()</code> 调用，但每颗 MCU 的寄存器布局完全不同。GTK 要让 100 种 GUI 控件都能响应“点击事件“，但每种控件的渲染、布局、事件分发完全不同。</p>
+<p>它们的解法<strong>完全一致</strong>：把“差异“塞进一个 ops 表（虚函数表），把“统一接口“放在基类，应用层通过基类指针调用，运行时穿过 vptr 跳到具体实现。</p>
+<p>下面具体看每个项目怎么做。</p>
+<h2 id="a2-linux-内核的-file_operations"><a class="header" href="#a2-linux-内核的-file_operations">A.2 Linux 内核的 file_operations</a></h2>
+<p>Linux 内核里所有“可以被打开 / 读 / 写 / 关闭“的对象（普通文件、设备节点、pipe、socket、proc 节点 …）都通过同一个抽象 <code>struct file_operations</code> 表达自己。</p>
+<p>节选自 Linux 内核 v6.6 <code>include/linux/fs.h</code> 第 1852 行起（如何获取内核源码见附录 D）：</p>
+<pre><code class="language-c">struct file_operations {
+	struct module *owner;
+	loff_t (*llseek) (struct file *, loff_t, int);
+	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
+	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
+	int (*iopoll)(struct kiocb *kiocb, struct io_comp_batch *,
+	              unsigned int flags);
+	int (*iterate_shared) (struct file *, struct dir_context *);
+	__poll_t (*poll) (struct file *, struct poll_table_struct *);
+	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+	long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+	int (*mmap) (struct file *, struct vm_area_struct *);
+	int (*open) (struct inode *, struct file *);
+	int (*release) (struct inode *, struct file *);
+	int (*fsync) (struct file *, loff_t, loff_t, int datasync);
+	/* ... 后面还有十几个 ... */
+};
+</code></pre>
+<p>完整的 <code>file_operations</code> 有 30 多个函数指针。这就是这本书 ch20 你看到的 24 虚方法 ops 表的内核同款，只是规模更大。</p>
+<p>具体一个字符设备驱动会这样写自己的 ops 表：</p>
+<pre><code class="language-c">static const struct file_operations my_dev_fops = {
+	.owner   = THIS_MODULE,
+	.open    = my_dev_open,
+	.read    = my_dev_read,
+	.write   = my_dev_write,
+	.release = my_dev_release,
+};
+</code></pre>
+<p><code>static const</code> ops 全局唯一一份，所有具体设备实例共享。完全是这本书 ch10 / ch11 的写法。</p>
+<p>应用层调用 <code>read(fd, buf, size)</code> 经过 system call 层转到 <code>vfs_read(file, ...)</code>，最终是：</p>
+<pre><code class="language-c">file-&gt;f_op-&gt;read(file, buf, size, ppos);
+</code></pre>
+<p><code>f_op</code> 就是 <code>struct file_operations *</code>，跟你熟悉的 <code>me-&gt;ops-&gt;read(me, ...)</code> 一模一样，只是 Linux 把 <code>me</code> 叫 <code>file</code>。</p>
+<p>注意 <code>__user</code> 这个标记。它告诉编译器（实际是 Sparse 静态分析器）“这个指针指向的是用户空间地址，不能直接解引用，必须走 <code>copy_from_user / copy_to_user</code>”。这是 Linux 内核为了内核态 / 用户态隔离专门加的注解，工业代码里没有这一层（裸机或 RTOS 没有用户态）。本质还是把 <code>void *</code> 加了一个语义标签。</p>
+<h3 id="a21-linux-的-container_of-宏"><a class="header" href="#a21-linux-的-container_of-宏">A.2.1 Linux 的 container_of 宏</a></h3>
+<p>第 13 章讲了 <code>container_of</code> 宏。现在看它在内核里的定义。节选自 Linux 内核 <code>include/linux/container_of.h</code> 第 18 行：</p>
+<pre><code class="language-c">#define container_of(ptr, type, member) ({              \
+	void *__mptr = (void *)(ptr);                       \
+	static_assert(__same_type(*(ptr), ((type *)0)-&gt;member) ||  \
+	              __same_type(*(ptr), void),            \
+	              "pointer type mismatch in container_of()"); \
+	((type *)(__mptr - offsetof(type, member))); })
+</code></pre>
+<p>13.x 节推过的 <code>((type *)((char *)ptr - offsetof(type, member)))</code> 就是这个宏的核心。Linux 内核里加了 <code>static_assert</code> 类型检查，让你在编译期就发现“你给错了 member 名字“这种错误，但本质 100% 一致。</p>
+<p><code>((</code> 开头的双括号块是 GCC 的 statement expression 扩展（不是 C 标准），可以让一组语句作为表达式返回最后一个值。这让 <code>container_of</code> 既能做类型检查（中间的 <code>static_assert</code> 语句），又能返回一个指针表达式。C 标准里宏只能返回一个表达式，没法插入语句；GCC 扩展打破了这个限制，让宏的能力接近内联函数。</p>
+<p><code>container_of</code> 在 Linux 内核里到处都是。在内核源码树里 <code>grep -rn "container_of"</code> 能找到几万次调用。每一次“基类指针拿回子类指针“都要走它。</p>
+<p>最近的内核（5.x 之后）还提供了 <code>container_of_const</code>（同文件第 32 行），用 <code>_Generic</code> 关键字根据 <code>ptr</code> 的 const 性自动选择返回 <code>const T *</code> 还是 <code>T *</code>，更精确地保留类型限定符。这是 C11 的能力。这一层精致教学版可以忽略，知道存在就行。</p>
+<h3 id="a22-linux-gpio-子系统和工业项目一模一样"><a class="header" href="#a22-linux-gpio-子系统和工业项目一模一样">A.2.2 Linux GPIO 子系统：和工业项目一模一样</a></h3>
+<p>为了让你看清“同构“，再看一个具体子系统。Linux 内核 GPIO 抽象，节选自 <code>include/linux/gpio/driver.h</code> 第 415 行起：</p>
+<pre><code class="language-c">struct gpio_chip {
+	const char           *label;
+	struct gpio_device   *gpiodev;
+	struct device        *parent;
+	struct fwnode_handle *fwnode;
+	struct module        *owner;
+
+	int  (*request)(struct gpio_chip *gc, unsigned int offset);
+	void (*free)(struct gpio_chip *gc, unsigned int offset);
+	int  (*get_direction)(struct gpio_chip *gc, unsigned int offset);
+	int  (*direction_input)(struct gpio_chip *gc, unsigned int offset);
+	int  (*direction_output)(struct gpio_chip *gc, unsigned int offset,
+	                         int value);
+	int  (*get)(struct gpio_chip *gc, unsigned int offset);
+	int  (*get_multiple)(struct gpio_chip *gc, unsigned long *mask,
+	                     unsigned long *bits);
+	void (*set)(struct gpio_chip *gc, unsigned int offset, int value);
+	void (*set_multiple)(struct gpio_chip *gc, unsigned long *mask,
+	                     unsigned long *bits);
+	int  (*set_config)(struct gpio_chip *gc, unsigned int offset,
+	                   unsigned long config);
+	int  (*to_irq)(struct gpio_chip *gc, unsigned int offset);
+	/* ... 后面还有几十个字段（中断处理、调试输出、引脚有效性掩码等）... */
+
+	int     base;
+	u16     ngpio;
+	u16     offset;
+	const char *const *names;
+	bool    can_sleep;
+};
+</code></pre>
+<p>这个 <code>struct gpio_chip</code> 就是工业项目里 <code>platform_uart_dev_t</code> 的 Linux 版本：基类一份，每颗 GPIO 控制器（STM32 GPIO、i.MX GPIO、树莓派 BCM283x GPIO …）派生出自己的实现实例，挂上自己的 <code>request / direction_output / set / get</code>。</p>
+<p>注意基类字段顺序：先是 <code>label / gpiodev / parent / fwnode / owner</code>（公共元数据），然后是一大串函数指针（虚方法），最后是 <code>base / ngpio / offset / names / can_sleep</code>（公共数据成员）。这是 Linux 内核里大型基类的标准布局：metadata + ops + data。工业项目里的 <code>platform_device + ops + private</code> 也是这个结构。</p>
+<h3 id="a23-gpio-控制器的注册gpiochip_add_data"><a class="header" href="#a23-gpio-控制器的注册gpiochip_add_data">A.2.3 GPIO 控制器的注册：gpiochip_add_data</a></h3>
+<p>具体一颗 GPIO 控制器把自己注册进系统的方式（节选自 <code>drivers/gpio/gpiolib.c</code>，第 737 行）：</p>
+<pre><code class="language-c">int gpiochip_add_data_with_key(struct gpio_chip *gc, void *data,
+                               struct lock_class_key *lock_key,
+                               struct lock_class_key *request_key)
+{
+	struct gpio_device *gdev;
+	int base = 0;
+	int ret = 0;
+
+	gdev = kzalloc(sizeof(*gdev), GFP_KERNEL);
+	if (!gdev)
+		return -ENOMEM;
+	gdev-&gt;dev.bus = &amp;gpio_bus_type;
+	gdev-&gt;dev.parent = gc-&gt;parent;
+	gdev-&gt;chip = gc;
+
+	gc-&gt;gpiodev = gdev;
+	gpiochip_set_data(gc, data);
+
+	/* ... 引脚号分配、driver model 挂载、debugfs 暴露、IRQ 配置 ... */
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(gpiochip_add_data_with_key);
+</code></pre>
+<p>每一颗 GPIO 控制器的驱动（<code>drivers/gpio/gpio-stm32.c</code>、<code>gpio-bcm-kona.c</code>、<code>gpio-mvebu.c</code> 等）在自己的 probe 函数里调一次 <code>gpiochip_add_data(...)</code>，把自己挂进 GPIO 子系统。挂好之后这颗芯片所有的引脚就能被上层（其它驱动 / 用户空间 sysfs）按 offset 访问。</p>
+<p>这跟工业项目里 <code>platform_uart_register("uart3", ...)</code> 是同一个机制：一个具体硬件实例把自己的“句柄 + ops 表“注册到全局表里，应用层按名字 / 编号查找。骨架一样，只是 Linux 多了 driver model（device / bus / driver 三件套）+ 引用计数 + sysfs 暴露这几层包装。</p>
+<p>应用层（其它驱动）调用：</p>
+<pre><code class="language-c">gpiod_set_value(desc, 1);
+</code></pre>
+<p>底下穿过几层抽象最终到 <code>gc-&gt;set(gc, offset, value)</code>，跟这本书 ch20 工业项目里 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> <strong>同构</strong>。</p>
+<h3 id="a24-linux-的-initcall-机制"><a class="header" href="#a24-linux-的-initcall-机制">A.2.4 Linux 的 initcall 机制</a></h3>
+<p>第 17 章讲过的 initcall，看内核里的定义。节选自 Linux 内核 <code>include/linux/init.h</code>：</p>
+<pre><code class="language-c">typedef int (*initcall_t)(void);
+
+#define core_initcall(fn)         __define_initcall(fn, 1)
+#define postcore_initcall(fn)     __define_initcall(fn, 2)
+#define arch_initcall(fn)         __define_initcall(fn, 3)
+#define subsys_initcall(fn)       __define_initcall(fn, 4)
+#define fs_initcall(fn)           __define_initcall(fn, 5)
+#define device_initcall(fn)       __define_initcall(fn, 6)
+#define late_initcall(fn)         __define_initcall(fn, 7)
+</code></pre>
+<p>7 级排序，跟工业项目的 INIT_BOARD_EXPORT / INIT_PREV_EXPORT / INIT_DEVICE_EXPORT / … 一一对应。</p>
+<p>具体宏展开：</p>
+<pre><code class="language-c">#define __define_initcall(fn, id) \
+	___define_initcall(fn, id, .initcall##id)
+</code></pre>
+<p>把函数指针放进 ELF 的 <code>.initcall1</code> / <code>.initcall2</code> / … 段。系统启动时遍历这些段依次调用：</p>
+<pre><code class="language-c">/* init/main.c 里 */
+static initcall_entry_t *initcall_levels[] = {
+	__initcall0_start,
+	__initcall1_start,
+	__initcall2_start,
+	__initcall3_start,
+	/* ... */
+};
+
+static void do_initcall_level(unsigned int level, char *command_line)
+{
+	initcall_entry_t *fn;
+	for (fn = initcall_levels[level]; fn &lt; initcall_levels[level+1]; fn++)
+		do_one_initcall(initcall_from_entry(fn));
+}
+</code></pre>
+<p>这就是 Linux 内核 4000 万行代码里成千上万个 <code>module_init(my_driver_init)</code> 的全部秘密。工业项目的 INIT_xxx_EXPORT 宏一字不差地复刻这个机制（参考 RT-Thread 实现）。</p>
+<h2 id="a3-zephyr-rtos-的-device-模型"><a class="header" href="#a3-zephyr-rtos-的-device-模型">A.3 Zephyr RTOS 的 device 模型</a></h2>
+<p>Zephyr 是 Linux 基金会托管的开源 RTOS，专门跑在资源受限的 MCU 上（几十 KB RAM 起步）。它要解决的问题是 Linux 的微缩版：怎么让一个 RTOS 同时支持 Nordic nRF52、TI MSP430、Espressif ESP32 等几百种 MCU 的 GPIO / UART / SPI / I²C / 定时器外设。</p>
+<p>Zephyr 的解法叫 <strong>device model</strong>。核心抽象在 <code>include/zephyr/device.h</code>：</p>
+<pre><code class="language-c">struct device {
+	const char *name;
+	const void *config;
+	const void *api;       /* 指向 driver API 结构体（ops 表）*/
+	void *data;
+};
+</code></pre>
+<p><code>api</code> 字段就是 ops 表，叫 “API”。注意四个字段的设计：<code>name</code> 是字符串名，<code>config</code>（编译期常量配置）和 <code>data</code>（运行期可变数据）分开存储，这是嵌入式特有的优化。<code>config</code> 通常放 ROM（Flash），<code>data</code> 通常放 RAM。教学版常把两者混在一起，工业 RTOS 把它们物理分离能节省紧张的 RAM。</p>
+<p>GPIO 子系统的 driver API：</p>
+<pre><code class="language-c">struct gpio_driver_api {
+	int  (*pin_configure)(const struct device *port,
+	                       gpio_pin_t pin, gpio_flags_t flags);
+	int  (*port_get_raw)(const struct device *port,
+	                     gpio_port_value_t *value);
+	int  (*port_set_masked_raw)(const struct device *port,
+	                             gpio_port_pins_t mask,
+	                             gpio_port_value_t value);
+	int  (*port_set_bits_raw)(const struct device *port,
+	                          gpio_port_pins_t pins);
+	int  (*port_clear_bits_raw)(const struct device *port,
+	                             gpio_port_pins_t pins);
+	int  (*port_toggle_bits)(const struct device *port,
+	                          gpio_port_pins_t pins);
+	int  (*pin_interrupt_configure)(const struct device *port,
+	                                 gpio_pin_t pin,
+	                                 enum gpio_int_mode mode,
+	                                 enum gpio_int_trig trig);
+	int  (*manage_callback)(const struct device *port,
+	                         struct gpio_callback *cb, bool set);
+	uint32_t (*get_pending_int)(const struct device *dev);
+};
+</code></pre>
+<p>11 个虚方法。比 Linux 内核 GPIO 抽象简单（嵌入式不需要那么多花样），但比这本书 ch01 教学版复杂。</p>
+<p>应用层调用 <code>gpio_pin_set(dev, pin, 1)</code> 展开后：</p>
+<pre><code class="language-c">const struct gpio_driver_api *api = dev-&gt;api;
+api-&gt;port_set_bits_raw(dev, BIT(pin));
+</code></pre>
+<p>跟 Linux 的 <code>gc-&gt;set(gc, offset, value)</code> 同构，跟工业项目的 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> 同构。</p>
+<h3 id="a31-zephyr-的-device_dt_inst_define-宏"><a class="header" href="#a31-zephyr-的-device_dt_inst_define-宏">A.3.1 Zephyr 的 DEVICE_DT_INST_DEFINE 宏</a></h3>
+<p>Zephyr 把 initcall 风格做得更工业化。一个 GPIO 驱动注册自己的方式：</p>
+<pre><code class="language-c">DEVICE_DT_INST_DEFINE(idx,
+                      gpio_stm32_init,           /* init 函数 */
+                      NULL,                       /* pm 回调 */
+                      &amp;gpio_stm32_data_##idx,    /* 实例数据 */
+                      &amp;gpio_stm32_cfg_##idx,     /* 实例配置 */
+                      PRE_KERNEL_1,               /* 初始化等级 */
+                      CONFIG_GPIO_INIT_PRIORITY,  /* 优先级 */
+                      &amp;gpio_stm32_driver_api);    /* ops 表 */
+</code></pre>
+<p><code>DEVICE_DT_INST_DEFINE</code> 这个宏展开后会做几件事：</p>
+<ol>
+<li>在 <code>.z_init_PRE_KERNEL_1_xxx</code> 段塞一个函数指针，启动时自动调用</li>
+<li>在 <code>.device_states</code> 段塞一个 <code>struct device</code> 实例</li>
+<li>把 <code>&amp;gpio_stm32_driver_api</code> 链到 <code>dev-&gt;api</code></li>
+</ol>
+<p>跟工业项目的 <code>INIT_DEVICE_EXPORT(my_setup)</code> 加全局 <code>extern led_base_t *green_led;</code> 是一回事。差别只在 Zephyr 用编译期模板（多个 <code>_##idx</code> 后缀）批量生成实例，更精致。</p>
+<h3 id="a32-zephyr-设备树编译期展开式的设备描述"><a class="header" href="#a32-zephyr-设备树编译期展开式的设备描述">A.3.2 Zephyr 设备树：编译期展开式的设备描述</a></h3>
+<p>Zephyr 的“哪些设备存在 + 各自参数“信息来自 <code>.dts</code> 设备树文件，但和 Linux 不同的是：Linux 在运行时解析 dtb 二进制，Zephyr 在编译期通过宏展开把 dts 的内容变成 C 字面量。</p>
+<p>某块板的 dts 写：</p>
+<pre><code>&amp;i2c1 {
+    status = "okay";
+    clock-frequency = &lt;I2C_BITRATE_FAST&gt;;
+
+    temp_sensor: max31827@5a {
+        compatible = "maxim,max31827";
+        reg = &lt;0x5a&gt;;
+    };
+};
+</code></pre>
+<p>Zephyr 的工具链（<code>gen_defines.py</code>）把这一段在编译期翻译成 C 宏：</p>
+<pre><code class="language-c">#define DT_NODELABEL_temp_sensor_REG_0_VAL_ADDRESS 0x5a
+#define DT_NODELABEL_temp_sensor_BUS DT_NODELABEL_i2c1
+</code></pre>
+<p>驱动代码用 <code>DT_INST_REG_ADDR(idx)</code> 这种宏在编译期就把 0x5a 嵌进函数体，运行时没有任何解析开销。这是 Zephyr 比 Linux 多走的一步：把“设备描述 + 设备实例化“完全推到编译期，运行时只剩下 ops 表派发。</p>
+<p>这跟工业项目的 <code>*_cfg.c</code> 是不同实现方式但同一思想：把“系统里有什么设备“从代码里抽出来集中描述，应用层和驱动层不依赖具体描述。</p>
+<h2 id="a4-gobject把-c-class-体系完整模拟出来"><a class="header" href="#a4-gobject把-c-class-体系完整模拟出来">A.4 GObject：把 C++ class 体系完整模拟出来</a></h2>
+<p>GObject 是 GTK / GNOME 桌面环境的对象系统，用纯 C 实现。它走得最远：不只支持单继承 + ops 表，还支持运行时类型识别、属性系统、信号系统，把 C++ class 体系完整模拟出来。</p>
+<p>GObject 的核心数据结构（简化示意，真实代码在 <code>glib-2.0/gobject/gtype.h</code>）：</p>
+<pre><code class="language-c">typedef struct _GObject GObject;
+typedef struct _GObjectClass GObjectClass;
+
+struct _GObject {
+	GTypeInstance  g_type_instance;     /* 实例数据 */
+	volatile guint ref_count;
+	GData         *qdata;
+};
+
+struct _GObjectClass {
+	GTypeClass    g_type_class;          /* 类元信息 */
+
+	/* 虚方法 */
+	GObject *(*constructor)(GType type,
+	                        guint n_construct_properties,
+	                        GObjectConstructParam *construct_properties);
+	void    (*set_property)(GObject *object, guint property_id,
+	                        const GValue *value, GParamSpec *pspec);
+	void    (*get_property)(GObject *object, guint property_id,
+	                        GValue *value, GParamSpec *pspec);
+	void    (*dispose)(GObject *object);
+	void    (*finalize)(GObject *object);
+	/* ... */
+};
+</code></pre>
+<p><code>GObject</code> 是所有 GTK 控件的根基类。<code>GObjectClass</code> 是它的 ops 表（GObject 的术语叫“class struct“）。</p>
+<p>具体一个控件（比如 <code>GtkButton</code>）的继承链：</p>
+<pre><code>GObject
+ └── GInitiallyUnowned
+      └── GtkWidget
+           └── GtkContainer
+                └── GtkBin
+                     └── GtkButton
+</code></pre>
+<p>每一层都按这本书 ch12 的写法把父类塞进自己的第一个字段：</p>
+<pre><code class="language-c">struct _GtkButton {
+	GtkBin     parent_instance;   /* 父类实例 */
+	/* GtkButton 自己的字段 */
+	gchar     *label;
+	guint      relief : 2;
+	guint      use_underline : 1;
+	/* ... */
+};
+
+struct _GtkButtonClass {
+	GtkBinClass parent_class;     /* 父类的 ops 表 */
+	/* GtkButton 自己的虚方法 */
+	void (*pressed)  (GtkButton *button);
+	void (*released) (GtkButton *button);
+	void (*clicked)  (GtkButton *button);
+	void (*activate) (GtkButton *button);
+};
+</code></pre>
+<p>向上转型：</p>
+<pre><code class="language-c">GtkButton *button = gtk_button_new_with_label("OK");
+GtkWidget *widget = (GtkWidget *)button;     /* 子类直接转父类 */
+</code></pre>
+<p>向下转型：</p>
+<pre><code class="language-c">GtkWidget *widget = ...;
+GtkButton *button = G_TYPE_CHECK_INSTANCE_CAST(widget,
+                                                GTK_TYPE_BUTTON,
+                                                GtkButton);
+</code></pre>
+<p><code>G_TYPE_CHECK_INSTANCE_CAST</code> 这个宏背后是运行时类型检查（RTTI），底下用了一份全局的 type ID 注册表。它比单纯的 C 强转多了一道安全检查：“你确认这个 widget 真的是 GtkButton 吗？”</p>
+<p>这是 GObject 比裸 C OOP 多的最重要一层：<strong>运行时类型系统</strong>。每个 GObject 类型在系统里注册一个 <code>GType</code>（实质是个 uintptr_t），父子关系存在一份全局表里。<code>G_TYPE_CHECK_INSTANCE_CAST</code> 在运行时按这份表检查“<code>widget</code> 的 GType 是不是 GtkButton 或它的子类“，是就成立，否则给 warning 并返回 <code>NULL</code>。</p>
+<p>工业项目和 Linux 内核一般不做这一层，因为 RTTI 有运行时开销（几十纳秒每次转型），嵌入式资源紧张不愿付。GObject 服务的桌面 GUI 场景对类型安全的需求高过性能，所以付得起。</p>
+<h3 id="a41-gobject-的虚函数调用"><a class="header" href="#a41-gobject-的虚函数调用">A.4.1 GObject 的虚函数调用</a></h3>
+<p>调一个虚方法：</p>
+<pre><code class="language-c">gtk_button_clicked(button);
+</code></pre>
+<p>展开后大致是：</p>
+<pre><code class="language-c">void gtk_button_clicked(GtkButton *button)
+{
+	GtkButtonClass *klass = GTK_BUTTON_GET_CLASS(button);
+	klass-&gt;clicked(button);
+}
+</code></pre>
+<p><code>GTK_BUTTON_GET_CLASS(button)</code> 这个宏沿着 <code>button-&gt;parent_instance.g_type_instance.g_class</code> 的指针链拿到 ops 表（在 GObject 术语里叫 class struct）。</p>
+<p>完全是 ch11 的多态：vptr 拿出 vtable，vtable 里取函数指针，间接跳转。</p>
+<p>GObject 比这本书的 <code>me-&gt;ops-&gt;fn(me)</code> 多套了几层（type system + class system + property system），但抽象骨架完全一致。</p>
+<h3 id="a42-gobject-的信号系统"><a class="header" href="#a42-gobject-的信号系统">A.4.2 GObject 的信号系统</a></h3>
+<p>GObject 还有一层这本书没讲过的能力：<strong>信号（Signal）</strong>，跨对象的回调机制。注册：</p>
+<pre><code class="language-c">g_signal_connect(button, "clicked",
+                 G_CALLBACK(on_button_clicked), user_data);
+</code></pre>
+<p>按下按钮时，GObject 内部 emit <code>"clicked"</code> 信号，所有订阅者自动收到。</p>
+<p>这跟工业项目的 <code>fan_status_change_cb_register</code> 是同一个东西的升级版：信号是“每个对象可以有任意多种事件，每种事件可以有任意多个订阅者“，回调注册是“每个对象固定一个事件、一个订阅者“。GObject 把这一层模式化了，写一行 <code>g_signal_connect</code> 就完成所有的注册 + 调度 + 解绑。</p>
+<p>这是 OOP 模式从单一回调进化到事件总线的演化路径。工业项目 + Linux 内核里相同的模式叫 notifier chain（<code>include/linux/notifier.h</code>），骨架一致，命名不同。</p>
+<h2 id="a5-三个项目的对照表"><a class="header" href="#a5-三个项目的对照表">A.5 三个项目的对照表</a></h2>
+<p>四套代码（这本书 + Linux 内核 + Zephyr + GObject）放在一起：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>概念</th><th>书 ch10-ch11</th><th>Linux 内核</th><th>Zephyr</th><th>GObject</th></tr>
+</thead>
+<tbody>
+<tr><td>基类实例</td><td><code>struct led_base</code></td><td><code>struct file</code> / <code>struct gpio_chip</code></td><td><code>struct device</code></td><td><code>GObject</code></td></tr>
+<tr><td>ops 表</td><td><code>struct led_ops</code></td><td><code>struct file_operations</code> / <code>struct gpio_chip</code> 内嵌</td><td><code>struct gpio_driver_api</code></td><td><code>GObjectClass</code> 中的虚方法字段</td></tr>
+<tr><td>ops 字段</td><td><code>me-&gt;ops</code></td><td><code>file-&gt;f_op</code> / <code>gc-&gt;set</code></td><td><code>dev-&gt;api</code></td><td><code>instance-&gt;g_class</code></td></tr>
+<tr><td>调用</td><td><code>me-&gt;ops-&gt;on(me)</code></td><td><code>f-&gt;f_op-&gt;read(f, ...)</code></td><td><code>api-&gt;port_set_bits_raw(dev, ...)</code></td><td><code>klass-&gt;clicked(button)</code></td></tr>
+<tr><td>子类嵌入基类</td><td><code>struct led { struct led_base base; ... }</code></td><td><code>struct cdev { struct kobject kobj; ... }</code></td><td>（字段 + dt 配置组合）</td><td><code>struct GtkButton { GtkBin parent_instance; ... }</code></td></tr>
+<tr><td>向下转型</td><td><code>(struct led *)me</code> 或 <code>container_of</code></td><td><code>container_of(ptr, struct cdev, kobj)</code></td><td>（通过 <code>dev-&gt;data</code>）</td><td><code>G_TYPE_CHECK_INSTANCE_CAST</code></td></tr>
+<tr><td>initcall 等级</td><td>INIT_DEVICE_EXPORT 等 7 级</td><td>core/postcore/…/late 7 级</td><td>PRE_KERNEL_1 / POST_KERNEL / APPLICATION</td><td>编译期 + GType 注册时执行</td></tr>
+<tr><td>注册机制</td><td><code>extern led_base_t *green_led;</code></td><td><code>register_chrdev</code> + <code>module_init</code> / <code>gpiochip_add_data</code></td><td><code>DEVICE_DT_INST_DEFINE</code> 宏</td><td><code>g_type_register_static</code></td></tr>
+<tr><td>类型检查</td><td>无（裸强转）</td><td>无（裸强转）</td><td>无（裸强转）</td><td>RTTI（<code>G_TYPE_CHECK_INSTANCE_CAST</code>）</td></tr>
+<tr><td>事件机制</td><td>单 cb 字段</td><td>callback / notifier_chain</td><td>callback 数组</td><td>signal / property</td></tr>
+</tbody>
+</table>
+</div>
+<p>10 行对照下来，<strong>结构完全同构</strong>。Linux 内核、Zephyr、GObject 的 C 代码风格各有差异（缩进、命名、宏怎么写），但骨架都是 struct + me + ops 表 + 子类嵌入基类 + container_of 转型 + 链接器自动初始化。</p>
+<p>每个项目又在标准骨架上按自己的语境加了一些扩展：Linux 加 driver model + 内核态 / 用户态隔离，Zephyr 加编译期 dts 展开，GObject 加 RTTI + signal 总线。这些扩展不是“另一套架构“，是同一套架构的细化。</p>
+<h2 id="a6-这套模式的历史"><a class="header" href="#a6-这套模式的历史">A.6 这套模式的历史</a></h2>
+<p>这套写法不是任何单一团队发明的，是 1980 至 2000 年代 C 工程界几代人逐步沉淀出来的。</p>
+<p>最早的形式可以追到 1980 年代 BSD UNIX 的设备驱动框架（<code>struct cdevsw</code>，是 <code>file_operations</code> 的祖先）。1990 年代 GTK / GNOME 项目把 OOP 模式系统化，催生 GObject。同期 Linux 内核 0.x 年代，Linus 把 BSD 的 <code>cdevsw</code> 引入 Linux 并演化成 <code>file_operations</code>。2000 年代各家 RTOS（FreeRTOS / RT-Thread / Zephyr 等）继承这套模式并按嵌入式资源限制做精简版。</p>
+<p>到 2020 年代，这套模式已经是 C 大型项目的事实标准。任何想做“可扩展、可移植、可维护“的 C 项目，最后都会收敛到这种形态。区别只在每个项目按自己的语境做了微调（命名、宏的写法、是否有 RTTI 等）。</p>
+<p>中国市面上的嵌入式书绝大多数没有讲到这一层。它们停留在“配寄存器“或“调用 HAL 函数“，没有再往上抽象。所以工程师从书里学到的代码组织方式和真实工业项目之间有断层。</p>
+<p>这本书前 18 章铺垫的所有抽象，加 ch19-ch20 的工业代码，加这一附录的三大开源对照，目的就是把这个断层补上：让你看完之后，看 Linux 内核源码不陌生，看 Zephyr 不陌生，看 GTK 不陌生，看任何一份工业 C 代码不陌生。</p>
+<h2 id="a7-怎么读这三个项目的源码"><a class="header" href="#a7-怎么读这三个项目的源码">A.7 怎么读这三个项目的源码</a></h2>
+<p>如果你想自己动手读这三个项目的源码：</p>
+<p><strong>Linux 内核（推荐入口）：</strong></p>
+<ul>
+<li>从 <code>include/linux/fs.h</code> 看 <code>struct file_operations</code></li>
+<li>从 <code>drivers/char/mem.c</code>（最简单的字符设备驱动 <code>/dev/null</code>）开始读，几百行</li>
+<li>看明白后再读 <code>drivers/gpio/gpiolib.c</code>，看 <code>gpio_chip</code> 怎么注册和调用</li>
+<li>最后看 <code>init/main.c</code> 里 <code>do_initcalls()</code>，看 7 级 initcall 怎么调度</li>
+</ul>
+<p><strong>Zephyr：</strong></p>
+<ul>
+<li>从 <code>include/zephyr/device.h</code> 看 <code>struct device</code> 抽象</li>
+<li>看 <code>drivers/gpio/gpio_stm32.c</code>（如果用 STM32 平台），从 <code>DEVICE_DT_INST_DEFINE</code> 入手</li>
+<li>一个 driver 可以一晚上读完</li>
+</ul>
+<p><strong>GObject：</strong></p>
+<ul>
+<li>从 <code>glib-2.0/gobject/gobject.h</code> 看 <code>struct _GObject</code></li>
+<li>从 <code>glib-2.0/gobject/gtype.h</code> 看 type system 注册流程</li>
+<li>难度比 Linux / Zephyr 高，但只要前两个看明白，GObject 一周能搞清</li>
+</ul>
+<p>读这三个项目的诀窍：<strong>永远先找 ops 表（vtable）</strong>。ops 表里的方法名告诉你这个对象支持哪些操作。剩下的 base struct 字段都是私有数据，用得到的时候再细看。</p>
+<p>看到一个 callback 就找它在哪里被调用、谁注册了它（通常是另一个驱动或框架核心）。</p>
+<p>看到一个 <code>container_of</code> 就停下来想：这个函数被某个 framework 调用，传进来的是基类指针，但函数里要用子类字段，所以要把基类指针“翻“回子类指针。</p>
+<p>养成这套阅读习惯，你已经超过 90% 的中国嵌入式工程师。</p>
+<h2 id="下一篇"><a class="header" href="#下一篇">下一篇</a></h2>
+<p><a href="B-STM32完整工程.html">附录 B · STM32 完整工程</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../05-工业实战/20-子控案例.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../附录/B-STM32完整工程.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../05-工业实战/20-子控案例.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../附录/B-STM32完整工程.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

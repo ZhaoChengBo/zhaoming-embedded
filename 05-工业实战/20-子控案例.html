@@ -1,0 +1,783 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch20 工业控制板子控案例 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/05-工业实战/20-子控案例.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-20-章--工业控制板子控案例"><a class="header" href="#第-20-章--工业控制板子控案例">第 20 章 · 工业控制板子控案例</a></h1>
+<p>参考代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/motor_24vfuncs/"><code>industrial/motor_24vfuncs/</code></a> 是水平电机 + 垂直电机驱动的脱敏骨架，<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/platform_layer/"><code>industrial/platform_layer/</code></a> 是 UART / I²C / SPI 统一抽象层。两份骨架跟章节正文里贴的接口字节级对应。完整可 build 的小工程参考附录 B / C 的 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/stm32_full/"><code>industrial/stm32_full/</code></a> 和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/linux_full/"><code>industrial/linux_full/</code></a>。</p>
+<p>上一章讲主控板，它管的是相对简单的外设：开关型的 LED、读写型的 EEPROM、读温度的传感器、状态机带回调的风扇。这一章讲子控板，它管的是真正复杂的事：两路电机的运动控制。</p>
+<p>电机驱动是工业项目里 OOP 抽象能力最被考验的地方。原因有三个：</p>
+<p>第一，电机品种多。同一块板可能既要驱动伺服电机（通过 UART 走厂家私有命令协议），又要驱动直流电机（H 桥 PWM 控制）。两种电机能力差距巨大但应用层接口必须统一。</p>
+<p>第二，电机的控制接口不是“开“和“关“两个动作，是 24 个独立动作（启动、停止、速度模式、相对移动、绝对定位、回零、加减速度、限位、跟随误差、I²t 保护 …）。</p>
+<p>第三，电机有大量异步事件（位置变化、状态变化、错误中断），必须支持多回调。</p>
+<p>子控板项目里水平电机驱动 <code>h_motor</code> 把这三件事一次性解决。下面围绕它展开整章，再把垂直电机 <code>v_motor</code> 作为对照，把 Platform 抽象层 UART/I²C/SPI 三栈看一遍，最后给出跨 MCU 移植清单。</p>
+<h2 id="201-24-个虚方法的-ops-表"><a class="header" href="#201-24-个虚方法的-ops-表">20.1 24 个虚方法的 ops 表</a></h2>
+<p>节选自子控板项目 <code>app/drivers/h_motor/h_motor_base.h</code>：</p>
+<pre><code class="language-c">typedef struct {
+	void (*motor_stop)(struct h_motor_base *me);
+	void (*motor_start)(struct h_motor_base *me);
+	void (*move_velocity_mode)(struct h_motor_base *me,
+	                            h_motor_base_move_dir_t dir);
+	void (*move_relative_mode)(struct h_motor_base *me, double move_mm);
+	void (*move_absolute_mode)(struct h_motor_base *me, double pos_mm);
+	void (*velocity_set)(struct h_motor_base *me, int32_t velocity);
+	void (*acce_dece_set)(struct h_motor_base *me,
+	                      uint32_t acce, uint32_t dece);
+	void (*manual_mode)(struct h_motor_base *me, bool is_manual);
+	void (*status_get)(struct h_motor_base *me);
+	bool (*status_get_sync)(struct h_motor_base *me,
+	                        h_motor_base_status_t *status);
+	void (*cur_pos_get)(struct h_motor_base *me);
+	void (*enable)(struct h_motor_base *me, bool enable);
+	void (*home)(struct h_motor_base *me);
+	void (*home_set)(struct h_motor_base *me, double offset_mm);
+	void (*positive_limit)(struct h_motor_base *me, uint32_t limit_mm);
+	void (*negative_limit)(struct h_motor_base *me, int32_t limit_mm);
+	void (*fault_clear)(struct h_motor_base *me);
+	void (*following_err_enable)(struct h_motor_base *me, bool enable);
+	void (*following_err_limit_set)(struct h_motor_base *me,
+	                                double limit_mm);
+	void (*encoder_ratio_set)(struct h_motor_base *me, double cnt_per_mm);
+	void (*i2t_fault_enable)(struct h_motor_base *me, bool enable);
+	void (*i2t_peak_current_set)(struct h_motor_base *me,
+	                              uint16_t current_001a);
+	void (*i2t_continuous_current_set)(struct h_motor_base *me,
+	                                   uint16_t current_001a);
+	void (*i2t_peak_time_set)(struct h_motor_base *me,
+	                           uint16_t time_ms);
+} h_motor_base_ops_t;
+</code></pre>
+<p>24 个函数指针。这是这本书里你看到的最大的 ops 表。</p>
+<p>逐组看这些方法在解决什么问题：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>组</th><th>方法</th><th>解决什么</th></tr>
+</thead>
+<tbody>
+<tr><td>启停</td><td><code>motor_start / motor_stop / enable</code></td><td>上电、断电、安全停止</td></tr>
+<tr><td>三种运动模式</td><td><code>move_velocity_mode / move_relative_mode / move_absolute_mode</code></td><td>速度模式（持续转动）、相对移动（再走 100mm）、绝对定位（去到 500mm）</td></tr>
+<tr><td>运动参数</td><td><code>velocity_set / acce_dece_set</code></td><td>速度、加减速度</td></tr>
+<tr><td>状态查询</td><td><code>status_get / status_get_sync / cur_pos_get</code></td><td>异步触发 + 同步阻塞 + 读位置</td></tr>
+<tr><td>回零</td><td><code>home / home_set</code></td><td>寻找零点开关、设置零点偏移</td></tr>
+<tr><td>限位</td><td><code>positive_limit / negative_limit</code></td><td>软件限位</td></tr>
+<tr><td>故障</td><td><code>fault_clear</code></td><td>清除故障状态</td></tr>
+<tr><td>跟随误差</td><td><code>following_err_enable / following_err_limit_set</code></td><td>实际位置和命令位置差超过阈值时报错</td></tr>
+<tr><td>编码器</td><td><code>encoder_ratio_set</code></td><td>编码器脉冲数 / 毫米的比例</td></tr>
+<tr><td>I²t 保护</td><td><code>i2t_fault_enable / i2t_peak_current_set / i2t_continuous_current_set / i2t_peak_time_set</code></td><td>电机过载保护</td></tr>
+</tbody>
+</table>
+</div>
+<p>这些方法不是凭空想出来的。它们是真正的工业控制板对电机驱动的全部需求。在 ACM 伺服电机上，每个虚方法对应一次“把命令打包成厂家私有协议帧、推进工作队列、由工作线程异步走 UART 发出去“的过程：</p>
+<pre><code class="language-c">/* 节选自 h_motor_acm.c 内部，简化示意 */
+typedef struct {
+	uint8_t  cmd;       /* 厂家私有命令字节, 例如速度 / 位置 / I2T 限流 */
+	int32_t  arg;
+} acm_work_t;
+
+static void acm_velocity_set(h_motor_base_t *me, int32_t velocity)
+{
+	h_motor_acm_t *self = (h_motor_acm_t *)me;
+	acm_work_t work = {
+		.cmd = ACM_CMD_VELOCITY_SET,
+		.arg = velocity,
+	};
+	osMessageQueuePut(self-&gt;work_queue, &amp;work, 0, 0);
+}
+
+static void acm_following_err_limit_set(h_motor_base_t *me, double limit_mm)
+{
+	h_motor_acm_t *self = (h_motor_acm_t *)me;
+	int32_t limit_cnt = (int32_t)(limit_mm * self-&gt;encoder_cnt_per_mm);
+	acm_work_t work = {
+		.cmd = ACM_CMD_FOLLOWING_ERR_SET,
+		.arg = limit_cnt,
+	};
+	osMessageQueuePut(self-&gt;work_queue, &amp;work, 0, 0);
+}
+
+static void acm_i2t_peak_current_set(h_motor_base_t *me,
+                                     uint16_t current_001a)
+{
+	h_motor_acm_t *self = (h_motor_acm_t *)me;
+	acm_work_t work = {
+		.cmd = ACM_CMD_I2T_PEAK_SET,
+		.arg = current_001a,
+	};
+	osMessageQueuePut(self-&gt;work_queue, &amp;work, 0, 0);
+}
+</code></pre>
+<p>每个虚方法只做一件事：把命令打包推进工作队列，立刻返回。真正的串口字节流由 <code>acm_work_thread</code> 内部按厂家协议组帧后从 UART 发出。这就是“代码长什么样的“在工业项目里的最终形态：应用层调一个 <code>h_motor_velocity_set(h_motor_dev, 200)</code>，进到基类层封装函数内部走 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> ops dispatch，跳转到 <code>acm_velocity_set</code>，把命令推进工作队列就返回。工作线程异步把命令组帧、走 UART 总线、收响应、必要时回调通知应用层。应用层永远只见普通函数 <code>h_motor_velocity_set(...)</code>，看不到 ops 字段、看不到工作队列、看不到 UART。这一连串操作书前面 18 章每一章都铺垫过。</p>
+<h3 id="2011-24-个虚方法是怎么长出来的"><a class="header" href="#2011-24-个虚方法是怎么长出来的">20.1.1 24 个虚方法是怎么长出来的</a></h3>
+<p>第一次读到 24 个虚方法你可能本能地觉得“太多了“。这一节讲清楚：每个虚方法都是工程演化逼出来的，没有一个是装饰。</p>
+<p>最早的版本只有 4 个方法：<code>start / stop / move / enable</code>。这能驱动玩具电机，跑工业场景一周就崩。下面这张表对照着写出哪个方法是因为踩了什么坑加上来的：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>加上的方法</th><th>对应的工程问题</th></tr>
+</thead>
+<tbody>
+<tr><td><code>move_velocity_mode</code> / <code>move_relative_mode</code> / <code>move_absolute_mode</code></td><td>早期 <code>move(速度, 距离)</code> 一个接口表达不清三种语义。“持续转 vs 走指定距离 vs 去指定坐标“必须分开</td></tr>
+<tr><td><code>velocity_set</code> 单独抽出</td><td>运动中要动态改速度，把 velocity 从 move 参数里抽出来变成独立 setter</td></tr>
+<tr><td><code>acce_dece_set</code></td><td>加速度过大伺服报警，必须能配加减速曲线</td></tr>
+<tr><td><code>home</code> / <code>home_set</code></td><td>上电不知道电机当前位置，必须找零点开关；零点不是绝对零，要支持偏移</td></tr>
+<tr><td><code>positive_limit / negative_limit</code></td><td>软件限位，超出范围拒绝运动</td></tr>
+<tr><td><code>following_err_enable / following_err_limit_set</code></td><td>跟随误差监控（命令位置 vs 实际位置差），是伺服系统标配的安全机制</td></tr>
+<tr><td><code>i2t_fault_enable / i2t_peak_current_set / i2t_continuous_current_set / i2t_peak_time_set</code></td><td>I²t 过载保护：短时大电流 + 长时小电流的电机损坏阈值</td></tr>
+<tr><td><code>status_get</code> / <code>status_get_sync</code> 两份</td><td>异步状态查询（不阻塞）和同步状态查询（必须立刻拿到）业务上都要</td></tr>
+<tr><td><code>cur_pos_get</code> 异步</td><td>位置读取频率高，避免阻塞业务线程</td></tr>
+<tr><td><code>manual_mode</code></td><td>上位机要切到手动操作模式，电机要从自动控制切到外部按键控制</td></tr>
+<tr><td><code>fault_clear</code></td><td>故障锁定后要主动清除才能继续动作</td></tr>
+<tr><td><code>encoder_ratio_set</code></td><td>不同机械传动比，编码器脉冲数和实际位移之间要标定</td></tr>
+</tbody>
+</table>
+</div>
+<p>每加一行 ops 都来自实际现场的需求或事故。这就是工业接口为什么“看起来比教学版臃肿“的原因。</p>
+<h2 id="202-子类-h_motor_acm把异步操作翻译成阻塞接口"><a class="header" href="#202-子类-h_motor_acm把异步操作翻译成阻塞接口">20.2 子类 h_motor_acm：把异步操作翻译成阻塞接口</a></h2>
+<p>电机驱动里最棘手的不是 24 个虚方法本身，而是它们底下都是<strong>异步</strong>操作。</p>
+<p>伺服电机通过 UART 走厂家私有协议下命令。下完命令到电机响应，中间有几毫秒的等待。期间应用层不能干等。但应用层调用 <code>h_motor_velocity_set(h_motor_dev, 200)</code> 这一行写起来必须像同步的（基类层封装函数内部走 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> 把命令推进队列）。</p>
+<p>工业代码的解法是：每个电机实例自带一个工作线程加消息队列。所有 ops 调用先把命令推进队列，立刻返回；工作线程把队列里的命令一条条取出来，按厂家协议组帧、从 UART 发出去、等响应，必要时通过回调通知应用层。</p>
+<p>节选自 <code>app/drivers/h_motor/h_motor_acm.h</code>：</p>
+<pre><code class="language-c">typedef struct {
+	h_motor_base_t super;     /* 基类放在第一字段 */
+
+	platform_device_t  uart_dev;
+	int32_t            clutch_pin;
+	int32_t            rev_en_pin;
+	int32_t            en_pin;
+	int32_t            fwd_pin;
+	int32_t            fault_detect_pin;
+
+	osMessageQueueId_t work_queue;     /* 命令队列 */
+	osMessageQueueId_t rx_queue;
+	osThreadId_t       work_thread;    /* 工作线程 */
+	osThreadId_t       rx_thread;
+
+	h_motor_acm_rx_buf_t rx_buf;
+	uint32_t             rcv_last_byte_ticks;
+
+	Button                  fault_detect_btn;
+	h_motor_base_status_t   status;
+
+	double  encoder_cnt_per_mm;
+	int32_t max_following_error;
+	int16_t max_motor_current;
+	int16_t max_i2t_sum;
+	bool    i2t_reg_unsupported;
+	uint8_t debug_print_cnt;
+	uint32_t last_work_id;
+} h_motor_acm_t;
+</code></pre>
+<p>注意几个工程实践的细节。</p>
+<p><strong><code>super</code> 字段命名。</strong> 教学版常用 <code>base</code>，这个项目用 <code>super</code>，含义一样：指向父类那部分内存。<code>super</code> 这个名字借鉴 Java/Python 的语义，强调“这是父类（superclass）的部分“。叫什么名字不重要，整个项目命名一致就行。</p>
+<p><strong>两个工作线程加两个消息队列。</strong> <code>work_queue + work_thread</code> 处理“应用层下来的命令“，<code>rx_queue + rx_thread</code> 处理“电机串口响应数据“。两套独立避免死锁（命令线程在等响应时不会卡死接收线程）。</p>
+<p><strong>fault_detect_btn。</strong> 故障检测引脚被当成“按键“对待。<code>Button</code> 来自 MultiButton 库，专门做去抖动加长按 / 短按 / 双击事件。把硬件故障引脚的电平变化也当作“按键事件“统一处理。这是教学版从来想不到的细节。</p>
+<p><strong>最大值字段（max_following_error / max_motor_current / max_i2t_sum）。</strong> 运行期间持续记录峰值。出问题时这些字段是黄金调试信息，能告诉你“电机最大跟随误差到多少“、“瞬时电流多大”。教学版不会写这种东西，工业版离了就是黑盒。</p>
+<p><strong><code>i2t_reg_unsupported</code> 标志位。</strong> 适配同型号但不同固件版本的伺服电机：旧固件没有 I²t 寄存器，标志位置 <code>true</code> 后 ops 里相关函数变 no-op。教学版常忽略“同一颗芯片不同固件“这种工业现实。</p>
+<p><strong><code>last_work_id</code>。</strong> 命令排序号。把命令推进 work_queue 时打一个 id，处理完一条响应一条。配合 <code>debug_print_cnt</code> 调试时能精确知道“哪条命令响应丢了“。</p>
+<p>构造函数（节选）：</p>
+<pre><code class="language-c">typedef struct {
+	const char *uart_name;
+	const char *clutch_pin_name;
+	const char *rev_en_pin_name;
+	const char *en_pin_name;
+	const char *fwd_pin_name;
+	const char *fault_detect_pin_name;
+} h_motor_acm_init_param_t;
+
+void h_motor_acm_init(h_motor_acm_t *me,
+                      h_motor_acm_init_param_t *init_param);
+</code></pre>
+<p>构造参数全是字符串引脚名（“PE.0”、“PE.1” 等）。具体引脚号通过 <code>platform_pin_get(name)</code> 查表得到。这是 platform 抽象的核心：上层代码不写“PE_0 = 0x4801080C“，只写字符串名字。换芯片只改 platform 层的引脚名表。</p>
+<h2 id="203-v_motor-子类同一个基类指针指两种完全不同的电机"><a class="header" href="#203-v_motor-子类同一个基类指针指两种完全不同的电机">20.3 v_motor 子类：同一个基类指针指两种完全不同的电机</a></h2>
+<p>子控板上还有一路垂直电机。它和水平电机硬件方案完全不同：水平电机是 ACM 伺服电机（UART + 厂家私有命令协议），垂直电机是 IFX007T H 桥 PWM 控制的直流电机。控制方式天差地别。</p>
+<p>垂直电机基类（节选自 <code>app/drivers/v_motor/v_motor_base.h</code>）：</p>
+<pre><code class="language-c">typedef enum {
+	V_MOTOR_BASE_MOVE_DOWN = 0,
+	V_MOTOR_BASE_MOVE_UP,
+	V_MOTOR_BASE_MOVE_STOP,
+} v_motor_base_dir_t;
+
+typedef struct {
+	void (*motor_stop)(struct v_motor_base *me);
+	void (*motor_move)(struct v_motor_base *me,
+	                   v_motor_base_dir_t dir);
+	void (*fault_clear)(struct v_motor_base *me);
+} v_motor_base_ops_t;
+
+typedef struct v_motor_base {
+	const v_motor_base_ops_t *ops;
+	v_motor_base_dir_t move_state;
+	v_motor_move_status_changed v_motor_move_status_changed_cb;
+	v_motor_err_cb_t err_cb;
+} v_motor_base_t;
+</code></pre>
+<p>只有 3 个 ops 方法（停 / 走 / 清故障），加 2 个回调（状态变化 / 错误）。比水平电机简单一个量级。原因是直流电机没有“绝对定位“的概念，能力域窄得多。</p>
+<p>IFX007T 子类（节选自 <code>v_motor_ifx007t.h</code>）：</p>
+<pre><code class="language-c">typedef struct {
+	v_motor_base_t supper;     /* 基类放在第一字段 */
+	int32_t ctrl_1_pin;
+	int32_t ctrl_2_pin;
+	int32_t sleep1_pin;
+	int32_t sleep2_pin;
+} v_motor_ifx007t_t;
+</code></pre>
+<p>IFX007T 是英飞凌一颗 H 桥驱动芯片。两个控制引脚 + 两个使能引脚。<code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。简单到几行 GPIO 操作就完成。</p>
+<p>应用层接口风格完全统一：</p>
+<pre><code class="language-c">/* environment_cfg/environment_export.h */
+extern h_motor_base_t *h_motor_dev;
+extern v_motor_base_t *v_motor_dev;     /* 同样是 *_base 类型 */
+
+/* 应用层调封装函数，看不到 ops 表 */
+h_motor_move_absolute(h_motor_dev, 1500.0);
+v_motor_move(v_motor_dev, V_MOTOR_BASE_MOVE_UP);
+</code></pre>
+<p><code>h_motor_move_absolute</code> / <code>v_motor_move</code> 是 <code>h_motor.c</code> / <code>v_motor.c</code> 里的封装函数（同 ch01 1.10 节 <code>led_on</code> 套路），内部走 <code>me-&gt;ops-&gt;move_absolute_mode(me, ...)</code> / <code>me-&gt;ops-&gt;motor_move(me, ...)</code> dispatch 到具体电机实现（ACM 伺服 / IFX007T H 桥）。</p>
+<p>垂直电机是另一组 base + ops 表（接口比水平电机简单，因为直流电机的能力域窄）。两个基类不互相继承，是平行的。</p>
+<p>这反映一个 OOP 设计原则：<strong>继承沿“能力 / 接口的相似度“建，不沿“硬件的相似度“建</strong>。水平电机和垂直电机在硬件层面相似度最低，但因为它们都得“被应用层用同一种方式驱动“,所以各自有一个独立的 base 接口。教学版常犯的错是看到“这两个东西都是电机“就硬塞到一个基类里，最后发现各种“水平电机的方法垂直电机不需要“、“垂直电机的方法水平电机不支持”，被迫加 <code>if (motor_type == HORIZONTAL) ... else ...</code>，多态退化成手动派发。</p>
+<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，只在 <code>v_motor_base_ops_t</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
+<h2 id="204-三种回调状态位置错误"><a class="header" href="#204-三种回调状态位置错误">20.4 三种回调：状态、位置、错误</a></h2>
+<p>电机异步地往应用层喷三种事件：状态变化、位置变化、错误。每种独立一个回调。</p>
+<pre><code class="language-c">typedef void (*status_cb_t)(h_motor_base_status_t *status,
+                            struct h_motor_base *me);
+typedef void (*cur_pos_cb_t)(double pos_mm,
+                             struct h_motor_base *me);
+typedef void (*err_cb_t)(h_motor_base_err_id_t err_id,
+                         struct h_motor_base *me);
+
+typedef struct h_motor_base {
+	h_motor_base_ops_t *ops;
+	status_cb_t  status_cb;
+	cur_pos_cb_t cur_pos_cb;
+	err_cb_t     err_cb;
+} h_motor_base_t;
+</code></pre>
+<p>应用层注册：</p>
+<pre><code class="language-c">h_motor_base_status_get_cb_register(h_motor_dev, on_motor_status);
+h_motor_base_cur_pos_cb_register(h_motor_dev, on_motor_pos_update);
+h_motor_base_fault_cb_register(h_motor_dev, on_motor_error);
+</code></pre>
+<p>注册之后，电机驱动内部凡是状态有变化就调 <code>me-&gt;status_cb(...)</code>，位置每 10ms 上来一次就调 <code>me-&gt;cur_pos_cb(...)</code>，发生通信故障 / 硬件故障就调 <code>me-&gt;err_cb(...)</code>。</p>
+<p>为什么不像主控板上某些驱动那样有 5 种 cb？因为电机的事件类型确实就这三种。每种事件类型一个 cb，做到“刚好够用、不再多 1 个、不再少 1 个“。OOP 不是越多越好，是匹配真实需求。</p>
+<p>回调里传基类指针 <code>struct h_motor_base *me</code> 让回调函数知道“我是为哪个电机被调起来“。系统里有水平电机一路 + 垂直电机一路时，同一个 <code>on_motor_status</code> 函数能服务两个 motor，靠 <code>me</code> 区分。这就是教学版 ch01 讲过的“挂号单“在事件回调场景的延伸。</p>
+<h2 id="205-编码器与位置开关两个简单驱动作对照"><a class="header" href="#205-编码器与位置开关两个简单驱动作对照">20.5 编码器与位置开关：两个简单驱动作对照</a></h2>
+<p>不是所有驱动都需要 ops 表。看两个反面例子：编码器（encoder）和位置开关（position_switch）。</p>
+<p><strong>编码器。</strong> 节选自 <code>app/drivers/encoder/encoder.h</code>：</p>
+<pre><code class="language-c">struct encoder;
+
+typedef void (*encoder_cur_pos_get_cb_t)(struct encoder *me, double cur_pos);
+typedef void (*encoder_fw_version_cb_t)(struct encoder *me, uint32_t ver);
+typedef void (*encoder_glitch_cnt_cb_t)(struct encoder *me, uint32_t cnt);
+
+typedef struct encoder {
+	platform_spi_device_t  *spi_dev;
+	int32_t                 overspeed_pin;
+	int32_t                 reserved_pin0;
+	int32_t                 reserved_pin1;
+	encoder_cur_pos_get_cb_t cur_pos_get_cb;
+	encoder_fw_version_cb_t  fw_ver_cb;
+	encoder_glitch_cnt_cb_t  glitch_cnt_cb;
+	osMessageQueueId_t       work_queue;
+	osThreadId_t             work_thread;
+} encoder_t;
+
+void encoder_init(encoder_t *me, encoder_init_param_t *init_param);
+void encoder_cur_pos_get(encoder_t *me);
+void encoder_cur_pos_cb_register(encoder_t *me,
+                                 encoder_cur_pos_get_cb_t cb);
+</code></pre>
+<p>只一种实现（项目里就只有一种 SPI 编码器），没有 ops 表。但仍然是 struct + me + 三种回调 + 工作线程的完整结构。</p>
+<p><strong>位置开关。</strong> 节选自 <code>app/drivers/position_switch/position_switch.h</code>：</p>
+<pre><code class="language-c">typedef struct position_switch {
+	int32_t top_stop_pin;
+	int32_t top_dece_pin;
+	int32_t bottom_stop_pin;
+	int32_t bottom_dece_pin;
+	int32_t home_pin;
+	position_swich_change_cb_t status_change_cb;
+	Button top_stop_btn;
+	Button top_dece_btn;
+	Button bottom_stop_btn;
+	Button bottom_dece_btn;
+	Button home_btn;
+} position_switch_t;
+</code></pre>
+<p>5 个限位开关塞进一个 struct，每个开关用 <code>Button</code> 库做去抖。一个统一的 <code>status_change_cb</code> 把哪个开关变化了通过 enum 参数告诉上层：</p>
+<pre><code class="language-c">typedef enum {
+	POSITION_SWITCH_TOP_STOP = 0,
+	POSITION_SWITCH_TOP_DECE,
+	POSITION_SWITCH_BOTTOM_STOP,
+	POSITION_SWITCH_BOTTOM_DECE,
+	POSITION_SWITCH_HOME,
+} position_switch_id_t;
+
+typedef void (*position_swich_change_cb_t)(position_switch_id_t id,
+                                            position_switch_status_t status,
+                                            struct position_switch *me);
+</code></pre>
+<p>教学版会犯的错：5 个开关写 5 份 driver 代码。或者反过来：把 5 个开关塞到 5 个 ops 函数里。两个都不对。这里的解法是“概念上属于同一个东西的多个开关“打包成一个 struct，事件类型用 enum 区分。</p>
+<h2 id="206-platform-层uart--i²c--spi-的统一抽象"><a class="header" href="#206-platform-层uart--i²c--spi-的统一抽象">20.6 Platform 层：UART / I²C / SPI 的统一抽象</a></h2>
+<p>子控板这边的电机控制要走 UART（RS-485 物理层 + 厂家私有命令协议），编码器要走 SPI，温度传感器要走 I²C。三种总线接口完全不同，但应用层不应该感知到这些差别。Platform 层负责吸收这些差别。</p>
+<p><code>app/platform/</code> 目录下的核心头文件：</p>
+<pre><code>platform_def.h           # 错误码、通用类型
+platform_pin.h           # GPIO 抽象
+platform_uart.h          # UART 抽象
+platform_i2c.h           # I²C 抽象
+platform_spi.h           # SPI 抽象
+platform_device.h        # 设备注册表
+platform_module_export.h # initcall 宏（上一章讲过）
+arch/cortex_m7/...       # ARM Cortex-M7 实现
+board/h7_evb/...         # 这块板子的引脚映射
+</code></pre>
+<p>UART 抽象的接口（节选自 <code>platform_uart.h</code>）：</p>
+<pre><code class="language-c">typedef struct platform_uart_configure {
+	uint32_t baud_rate;
+	uint32_t data_bits   :4;
+	uint32_t stop_bits   :2;
+	uint32_t parity      :2;
+	uint32_t bit_order   :1;
+	uint32_t invert      :1;
+	uint32_t flowcontrol :1;
+	uint32_t reserved    :5;
+} platform_uart_configure_t;
+
+typedef struct platform_uart_device {
+	struct platform_device parent;             /* 嵌入通用 device 基类 */
+	const struct platform_uart_ops *uart_ops;
+	platform_uart_configure_t configure;
+} platform_uart_dev_t;
+
+typedef struct platform_uart_ops {
+	platform_err_t (*open)(platform_uart_dev_t *dev);
+	platform_err_t (*close)(platform_uart_dev_t *dev);
+	uint32_t (*read)(platform_uart_dev_t *dev,
+	                 uint32_t pos, void *pbuf, uint32_t size);
+	uint32_t (*write)(platform_uart_dev_t *dev,
+	                  uint32_t pos, const void *pbuf, uint32_t size);
+	platform_err_t (*configure)(platform_uart_dev_t *dev,
+	                            platform_uart_configure_t *cfg);
+} platform_uart_ops_t;
+
+platform_err_t platform_hw_uart_register(platform_uart_dev_t *dev,
+                                         const char *name, void *pdata);
+</code></pre>
+<p>注意第一个字段 <code>struct platform_device parent</code>：这是<strong>两层继承</strong>。<code>platform_uart_dev_t</code> 继承通用 <code>platform_device</code>（提供 register / find / open / close 这些通用接口），自己再加 UART 特有的 <code>uart_ops</code> 和 <code>configure</code>。这就是 ch12 讲过的“基类放第一个字段“在 platform 层的应用。</p>
+<p>应用层（或者驱动层）调用：</p>
+<pre><code class="language-c">platform_uart_dev_t *uart3 = (platform_uart_dev_t *)
+                             platform_device_find("uart3");
+uart3-&gt;uart_ops-&gt;configure(uart3, &amp;my_cfg);
+uart3-&gt;uart_ops-&gt;open(uart3);
+uart3-&gt;uart_ops-&gt;write(uart3, 0, data, len);
+</code></pre>
+<p>完全是第 11 章的多态形态：每个具体硬件 UART 实现一组 <code>platform_uart_ops_t</code> 函数，挂到 <code>platform_uart_dev_t.uart_ops</code>。SPI、I²C 同结构。</p>
+<p>I²C 抽象用 message 数组的形式（前一章 max31827 用过）：</p>
+<pre><code class="language-c">typedef struct {
+	uint16_t addr;       /* 设备地址 */
+	uint16_t flags;      /* PLATFORM_I2C_WR / PLATFORM_I2C_RD */
+	uint16_t len;
+	uint8_t *buf;
+} platform_i2c_msg_t;
+
+uint32_t platform_i2c_transfer(platform_i2c_bus_device_t *bus,
+                               platform_i2c_msg_t *msgs, uint32_t num);
+</code></pre>
+<p>一次 <code>platform_i2c_transfer(bus, msgs, 2)</code> 完成“先写寄存器地址、再读两字节“的标准 I²C 序列。Linux 内核 <code>i2c_transfer</code> 同款 API。</p>
+<p>SPI 抽象用 <code>platform_spi_device_t</code> 表示一个具体片选下的设备（不是 SPI 总线）：每个 SPI 设备绑定一根 CS 引脚 + 时钟相位 / 极性配置。一条 SPI 总线挂多个设备时，每个设备一个 <code>platform_spi_device_t</code> 实例。</p>
+<p>应用层一行查表 <code>platform_device_find("uart3")</code> 拿到设备指针，剩下全靠 vtable 派发。<strong>换 MCU 不改一行应用层代码</strong>。这是第 15 章“换硬件不改应用“的真实落地，比 ch15 教学版的样子复杂多了，但抽象骨架完全一样。</p>
+<h2 id="207-跨-mcu-移植清单什么会变--什么不会变"><a class="header" href="#207-跨-mcu-移植清单什么会变--什么不会变">20.7 跨 MCU 移植清单：什么会变 / 什么不会变</a></h2>
+<p>子控板现在跑在 STM32H743。如果要移植到 i.MX RT1170（恩智浦 Cortex-M7）或者 GD32H7（兆易创新国产 Cortex-M7），具体改什么？</p>
+<p><strong>一定不会变（占代码量约 85%）：</strong></p>
+<ul>
+<li>所有 driver（h_motor / encoder / position_switch / led 等等），它们只调 platform 层接口</li>
+<li>所有应用层逻辑（状态机、协议解析、和主控通信）</li>
+<li>所有 OOP 抽象（base / ops / 子类）</li>
+<li>行业认证流程相关的所有代码（参数校验、错误处理、日志）</li>
+</ul>
+<p><strong>会变（占代码量约 10%）：</strong></p>
+<ul>
+<li><code>platform/arch/</code> 下的 ARM 体系结构相关代码（中断向量、低功耗、缓存控制），不同厂家虽然同是 Cortex-M7，外设地址映射不同</li>
+<li><code>platform/board/</code> 下的这块板的引脚映射、时钟树配置</li>
+<li>启动文件（startup.s）、链接脚本（.ld）</li>
+</ul>
+<p><strong>完全重写（占代码量约 5%）：</strong></p>
+<ul>
+<li>HAL 库（STM32 用 STM32CubeMX 生成，i.MX 用 NXP MCUXpresso，GD32 用 GD32CubeMX），这部分是 MCU 厂家自己提供的，平台层通过函数指针把它们的差异吸收掉</li>
+</ul>
+<p>具体清单：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>文件类别</th><th>STM32H7 → i.MX RT1170</th><th>STM32H7 → GD32H7</th></tr>
+</thead>
+<tbody>
+<tr><td><code>app/drivers/*.c/.h</code></td><td>不改</td><td>不改</td></tr>
+<tr><td><code>app/actor/*.c/.h</code></td><td>不改</td><td>不改</td></tr>
+<tr><td><code>app/platform/platform_*.h</code>（接口层）</td><td>不改</td><td>不改</td></tr>
+<tr><td><code>app/platform/arch/cortex_m7/cm7_irq.c</code> 中断映射</td><td>部分改：i.MX 中断号不同</td><td>部分改：GD32 中断号不同</td></tr>
+<tr><td><code>app/platform/arch/cortex_m7/cm7_cache.c</code> D-Cache</td><td>不改（同是 CMSIS API）</td><td>不改</td></tr>
+<tr><td><code>app/platform/board/&lt;board&gt;/pin_table.c</code></td><td>全改：GPIO 地址映射不同</td><td>全改：但和 STM32 高度相似</td></tr>
+<tr><td><code>app/platform/board/&lt;board&gt;/clock_init.c</code></td><td>全改：i.MX 时钟树差异大</td><td>部分改：GD32 时钟树和 STM32 相似</td></tr>
+<tr><td><code>Drivers/&lt;MCU厂&gt;_HAL/</code> 整目录</td><td>换成 NXP MCUXpresso</td><td>换成 GD32 标准外设库</td></tr>
+<tr><td><code>STM32H7xxXX_FLASH.ld</code> 链接脚本</td><td>改地址（i.MX RT1170 有 SDRAM 域）</td><td>改地址（GD32 Flash 大小不同）</td></tr>
+<tr><td><code>Core/Src/main.c</code> CubeMX 生成</td><td>用 MCUXpresso 重新生成</td><td>用 GD32CubeMX 重新生成</td></tr>
+<tr><td><code>startup_xxx.s</code> 启动文件</td><td>换成 i.MX 启动</td><td>换成 GD32 启动</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>具体行级别会变的例子。</strong> 比如某个 UART 实现文件 <code>platform_hw_uart_stm32h7.c</code> 里：</p>
+<pre><code class="language-c">/* STM32H7 版本 */
+huart-&gt;Instance = USART3;
+huart-&gt;Init.BaudRate = 115200;
+HAL_UART_Init(huart);
+</code></pre>
+<p>迁移到 i.MX RT1170 这一段变成：</p>
+<pre><code class="language-c">/* i.MX RT1170 版本 */
+LPUART_GetDefaultConfig(&amp;config);
+config.baudRate_Bps = 115200;
+LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
+</code></pre>
+<p>平台层把这种差异完全吸收。<code>platform_uart_ops_t</code> 的 <code>write</code> 实现内部用哪家 HAL 函数完全不影响驱动层和应用层。</p>
+<p>这就是为什么这本书前 18 章铺垫的所有 OOP 抽象在工业项目里<strong>真的有用</strong>：8 万行代码移植到新 MCU，只动 5%~15%。如果没有这套抽象，每次换 MCU 等于推倒重写。</p>
+<h2 id="208-子控板的-initcall-顺序"><a class="header" href="#208-子控板的-initcall-顺序">20.8 子控板的 initcall 顺序</a></h2>
+<p>子控板用的 initcall 7 级和主控板一样（都是参考 RT-Thread 实现）。但各级里跑的具体内容不同：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>级别</th><th>主控板上的代表</th><th>子控板上的代表</th></tr>
+</thead>
+<tbody>
+<tr><td>1 BOARD</td><td>STM32 时钟树 + GPIO PINMUX</td><td>同上</td></tr>
+<tr><td>2 PREV</td><td>EasyLogger init</td><td>EasyLogger init</td></tr>
+<tr><td>3 DEVICE</td><td>platform_uart / i2c / spi 注册</td><td>多了 platform_pwm（直驱直流电机用）</td></tr>
+<tr><td>4 COMPONENT</td><td>Letter Shell + 异步事件框架</td><td>多了 MultiButton 框架（位置开关用）</td></tr>
+<tr><td>5 ENV</td><td>LED / 温度 / 风扇 cfg</td><td>水平电机 cfg + 垂直电机 cfg + 编码器 cfg + 位置开关 cfg</td></tr>
+<tr><td>6 APP</td><td>业务状态机订阅事件</td><td>运动控制状态机订阅电机回调</td></tr>
+<tr><td>7 READY</td><td>看门狗启动</td><td>同上</td></tr>
+</tbody>
+</table>
+</div>
+<p>这是同一套机制服务两块完全不同的板。骨架不变，每一级的内容按板上有什么外设填进去。</p>
+<h2 id="209-与教学版的差距小结"><a class="header" href="#209-与教学版的差距小结">20.9 与教学版的差距小结</a></h2>
+<p>把第 19 章的 12 件差距延伸到子控板：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>#</th><th>维度</th><th>教学版</th><th>工业版子控板</th></tr>
+</thead>
+<tbody>
+<tr><td>13</td><td>ops 表规模</td><td>3-5 个虚函数</td><td>24 个虚函数（h_motor）+ 3 个虚函数（v_motor）平行</td></tr>
+<tr><td>14</td><td>异步抽象</td><td>直接调函数</td><td>工作线程 + 消息队列把异步翻译成同步（每个电机两套队列）</td></tr>
+<tr><td>15</td><td>总线统一抽象</td><td>各驱动直接调 HAL</td><td>platform_uart / spi / i²c 三层 ops 表统一吸收</td></tr>
+<tr><td>16</td><td>多平面继承</td><td>单一基类</td><td>h_motor 和 v_motor 平行（不强行共基类）</td></tr>
+<tr><td>17</td><td>工程历史</td><td>一次写完</td><td>持续演化，每个字段都对应过去的某个 bug</td></tr>
+<tr><td>18</td><td>跨 MCU 移植成本</td><td>重写 100%</td><td>重写 5%~15%</td></tr>
+</tbody>
+</table>
+</div>
+<p>加上主控板的 12 件，总共 18 件差距。每一件都不神秘，每一件都对应一个具体的工程问题。</p>
+<p>读完这两章你应该能拿到任何一份工业项目的驱动代码，5 分钟看出它的骨架：基类、ops 表、子类层级、回调机制、initcall 注册、Platform 抽象层。剩下的“它为什么这样写“，可以慢慢读，但<strong>架构看一眼就懂</strong>。</p>
+<h2 id="2010-驱动模块完整代码索引"><a class="header" href="#2010-驱动模块完整代码索引">20.10 驱动模块完整代码索引</a></h2>
+<p>跟第 19 章一样，本章不是“抄一份就能 <code>make &amp;&amp; ./demo</code>“的工程章。子控板代码量比主控板还大，依赖 RTOS、伺服厂家私有命令协议栈、电机厂家私有寄存器映射，没办法把整块板裁出来塞进 PC 模拟。</p>
+<p>这一节把本章每个驱动模块的“完整代码“对应到具体来源（仓库里整理后的接口骨架 + 章节正文里贴的实现节选），让你读完后知道每段代码可以在哪里看到原貌。</p>
+<h3 id="20101-水平电机驱动-h_motor201--202--204-节"><a class="header" href="#20101-水平电机驱动-h_motor201--202--204-节">20.10.1 水平电机驱动 h_motor（20.1 / 20.2 / 20.4 节）</a></h3>
+<p>完整骨架位于 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/motor_24vfuncs/"><code>industrial/motor_24vfuncs/</code></a>：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>文件</th><th>角色</th><th>章节正文对应节选</th></tr>
+</thead>
+<tbody>
+<tr><td><code>h_motor_base.h</code></td><td>24 虚方法 ops 表 + 三种回调 + 应用层接口（<code>h_motor_base_velocity_set</code> 等封装函数声明）</td><td>20.1 节“24 个虚方法的 ops 表“代码块 + 20.4 节“三种回调“代码块</td></tr>
+<tr><td><code>h_motor_acm.h</code></td><td>ACM 伺服电机子类 struct + 构造参数</td><td>20.2 节“节选自 <code>app/drivers/h_motor/h_motor_acm.h</code>“代码块</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>h_motor_base.c</code>（封装函数实现，每个函数体内部走 <code>me-&gt;ops-&gt;xxx(me, ...)</code> dispatch）和 <code>h_motor_acm.c</code>（24 个虚方法的具体厂家协议实现 + 工作线程 + 消息队列）<strong>没有放进仓库</strong>。原因有两条：</p>
+<p>第一，<code>h_motor_acm.c</code> 涉及伺服电机厂家的私有寄存器映射（每个寄存器地址、bit 含义、操作时序），这部分是商业敏感信息，整理后再发表的成本高于教学收益。</p>
+<p>第二，工作线程 + 消息队列的具体实现绑定在 RTOS 上（CMSIS-RTOS2 API），脱离 RTOS 移植到 PC 模拟需要重写一遍同步原语，对 OOP 教学价值有限。</p>
+<p>20.2 节正文已经把 OOP 角度的全部要点讲清楚：</p>
+<ul>
+<li>子类把 <code>h_motor_base_t super</code> 放第一字段（向上转型零代价）</li>
+<li>工作线程 + 消息队列把异步操作翻译成“看起来同步“的接口</li>
+<li>故障检测引脚通过 <code>Button</code> 库当成“按键事件“统一处理</li>
+<li>性能监控字段（<code>max_following_error / max_motor_current / max_i2t_sum</code>）持续记录峰值</li>
+<li><code>i2t_reg_unsupported</code> 标志位适配同芯片不同固件</li>
+<li>命令排序号 <code>last_work_id</code> 配合调试</li>
+</ul>
+<p>20.1 节贴的 <code>acm_velocity_set / acm_following_err_limit_set / acm_i2t_peak_current_set</code> 三个函数节选示意了“虚方法 → 工作队列 → 厂家协议组帧 → UART 发送“的标准模式，照这个模式可以补出剩下 21 个虚方法。</p>
+<h3 id="20102-垂直电机驱动-v_motor203-节"><a class="header" href="#20102-垂直电机驱动-v_motor203-节">20.10.2 垂直电机驱动 v_motor（20.3 节）</a></h3>
+<p>20.3 节贴的是 <code>v_motor_base.h</code> 基类（3 虚方法 ops 表 + 2 回调）+ <code>v_motor_ifx007t.h</code> 子类 struct。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
+<p>垂直电机的实现细节很简单（H 桥 PWM 直驱，每个 ops 函数就是几行 GPIO 操作），20.3 节正文已经把行为描述完整：</p>
+<blockquote>
+<p><code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。</p>
+</blockquote>
+<p>按这个描述自己写一份 <code>v_motor_ifx007t.c</code> 就是几十行 GPIO 调用。教学版到这里 OOP 抽象已经讲完，剩下是芯片驱动细节。</p>
+<h3 id="20103-编码器--位置开关205-节"><a class="header" href="#20103-编码器--位置开关205-节">20.10.3 编码器 / 位置开关（20.5 节）</a></h3>
+<p>20.5 节贴的是 <code>encoder.h</code> + <code>position_switch.h</code> 两个 struct 定义和回调签名。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
+<p>20.5 节正文要传达的核心是反面教材：单实现驱动不要硬上 ops 表（<code>struct + me</code> 就够），多个相似硬件信号（5 个限位开关）要打包成一个 struct + enum 区分而不是 5 份独立 driver。这两条 OOP 原则跟具体 <code>.c</code> 实现无关，所以仓库里没有放完整实现。</p>
+<h3 id="20104-platform-层-uart--i²c--spi206-节"><a class="header" href="#20104-platform-层-uart--i²c--spi206-节">20.10.4 Platform 层 UART / I²C / SPI（20.6 节）</a></h3>
+<p>UART 抽象骨架位于 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/platform_layer/platform_uart.h"><code>industrial/platform_layer/platform_uart.h</code></a>：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>文件</th><th>角色</th><th>章节正文对应节选</th></tr>
+</thead>
+<tbody>
+<tr><td><code>platform_uart.h</code></td><td>UART ops 表 + 设备注册接口</td><td>20.6 节“UART 抽象的接口“代码块</td></tr>
+<tr><td><code>platform_module_export.h</code></td><td>initcall 7 级宏（第 19 章已用过）</td><td>第 19 章 19.6 节</td></tr>
+</tbody>
+</table>
+</div>
+<p>I²C / SPI 的接口在仓库里没有单独贴出来，因为骨架跟 UART 同构（设备 struct + ops 表 + 字符串名字注册表查找）。20.6 节正文里贴的 <code>platform_i2c_msg_t</code> 结构和 <code>platform_i2c_transfer</code> 接口是 I²C 抽象的核心；SPI 抽象按 <code>platform_spi_device_t</code> 一句话讲过：每个具体片选下的设备一个实例，绑定 CS 引脚 + 时钟相位 / 极性。</p>
+<p>具体硬件后端（<code>platform_uart_stm32h7.c</code> / <code>platform_uart_imxrt.c</code> 等）依赖各家 MCU 的 HAL 库，跟 OOP 教学主线无关，仓库里不放。</p>
+<h3 id="20105-完整工程参考"><a class="header" href="#20105-完整工程参考">20.10.5 完整工程参考</a></h3>
+<p>如果你想看一份<strong>完整、可跑、跨 STM32 / Linux 双后端</strong>的工程（不是接口骨架而是完整可编译版本），看附录 B 和附录 C：</p>
+<ul>
+<li>附录 B：<code>industrial/stm32_full/</code> STM32F407 4 颗 LED 流水灯，跑通 ch01-ch17 全部 OOP 抽象</li>
+<li>附录 C：<code>industrial/linux_full/</code> 树莓派 / Linux 用户态版本，core / include / drivers 三个目录跟 STM32 版字节级一致</li>
+</ul>
+<p>这两个工程比 ch19/ch20 的样本简单一个量级（只有 LED，没有电机 / 编码器 / 限位开关 / 厂家私有协议栈），但是它们是完整的、可编译的、可烧到板上跑的。教学闭环在那两份工程上，工业现实在 ch19/ch20 的接口样本上。两边一起看，OOP 在嵌入式里的完整光谱就齐了。</p>
+<h3 id="一句话总结"><a class="header" href="#一句话总结">一句话总结</a></h3>
+<p>本章把工业 OOP 抽象能力的天花板（24 虚方法 + 异步翻译同步 + 跨 MCU 移植）讲完了。每个驱动模块对应到 <code>industrial/motor_24vfuncs/</code> 和 <code>industrial/platform_layer/</code> 下的真实接口骨架 + 章节正文里的实现节选。完整可跑的小工程在附录 B / C 的 <code>industrial/stm32_full/</code> 和 <code>industrial/linux_full/</code>，要看完整伺服电机驱动的现实形态本章正文 + <code>industrial/motor_24vfuncs/</code> 已经齐全。</p>
+<h2 id="2011-下一章"><a class="header" href="#2011-下一章">20.11 下一章</a></h2>
+<p>到这里全书五个部分讲完。接下来是四个附录：</p>
+<p>附录 A：把这套 OOP 模式放到全球三个最大的开源项目（Linux 内核、Zephyr RTOS、GObject）里横向对照，证明它不是中国本地的发明，是世界标准模式。这是这本书的“权威性“印证：你在 ch01-ch20 学到的所有抽象，每一个都能在这三个项目里找到对应。</p>
+<p>附录 B：完整的 STM32 工程，跑通全书所有抽象。</p>
+<p>附录 C：完整的 Linux 用户态工程，跑通全书所有抽象。</p>
+<p>附录 D：配套代码索引、视频清单、编译运行指南。</p>
+<p>下一篇：<a href="../附录/A-三大开源对照.html">附录 A · 三大开源项目对照</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../05-工业实战/19-主控案例.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../附录/A-三大开源对照.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../05-工业实战/19-主控案例.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../附录/A-三大开源对照.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

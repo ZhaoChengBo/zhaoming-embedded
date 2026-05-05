@@ -1,0 +1,511 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch05 HAL 库源码漫游 · 从抽象接口到平台实现 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/01-封装/05-HAL映射.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-5-章--hal-库源码漫游"><a class="header" href="#第-5-章--hal-库源码漫游">第 5 章 · HAL 库源码漫游</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/"><code>oop-in-c/code/05-hal-mapping/</code></a></p>
+<h2 id="51-你天天用-hal_gpio_init"><a class="header" href="#51-你天天用-hal_gpio_init">5.1 你天天用 HAL_GPIO_Init</a></h2>
+<p>你知道它为什么叫这个名字吗？</p>
+<p>封装四章学完了：第 1 章 struct + me、第 2 章 static + 不透明指针、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。</p>
+<p>但学的东西“是不是真的工业标准“，光我说不算。打开 STM32 HAL 库源码，亲眼验证。</p>
+<p>这一章不教新概念。它是验证课。要做的事：把 HAL 库的设计逐项映射回前 4 章学过的东西。学完你会发现，你这一个月学的，就是几千个工业函数背后的同一套机制。</p>
+<h2 id="52-gpio_typedef-就是-struct"><a class="header" href="#52-gpio_typedef-就是-struct">5.2 GPIO_TypeDef 就是 struct</a></h2>
+<p>打开 STM32 HAL 库源码（教学包里有等价的简化版 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/pc/gpio_typedef.h"><code>gpio_typedef.h</code></a>，真实文件叫 <code>stm32h7xx.h</code>）找到 GPIO 的类型定义：</p>
+<pre><code class="language-c">typedef struct {
+	uint32_t MODER;     /* 模式寄存器 */
+	uint32_t OTYPER;    /* 输出类型寄存器 */
+	uint32_t OSPEEDR;   /* 输出速度寄存器 */
+	uint32_t PUPDR;     /* 上下拉寄存器 */
+	uint32_t IDR;       /* 输入数据寄存器（只读） */
+	uint32_t ODR;       /* 输出数据寄存器 */
+	uint32_t BSRR;      /* 置位 / 复位寄存器 */
+	uint32_t LCKR;      /* 锁定寄存器 */
+} GPIO_TypeDef;
+</code></pre>
+<p><code>MODER</code> 配模式，<code>OTYPER</code> 配推挽 / 开漏，<code>OSPEEDR</code> 配速度，<code>BSRR</code> 拉电平。八个寄存器属于“一个 GPIO 端口“这一个对象。</p>
+<p>把它们打包成一个 struct。</p>
+<p>第 1 章你给一颗 LED 打包 <code>pin / brightness / is_on</code>，是这个套路。ST 工程师给一个 GPIO 端口打包 <code>MODER / OTYPER / ...</code>，是同一个套路。同一个对象的所有数据，装进一个 struct。</p>
+<p>GPIO_TypeDef 就是 STM32 工程师的 <code>struct led</code>。</p>
+<p><img src="../assets/ch05/slide1_GPIO_TypeDef.png" alt="GPIO_TypeDef 就是 struct"></p>
+<h2 id="53-gpioa--gpiob--gpioc-就是多实例"><a class="header" href="#53-gpioa--gpiob--gpioc-就是多实例">5.3 GPIOA / GPIOB / GPIOC 就是多实例</a></h2>
+<p>芯片设计师设计了一个 GPIO 模块，寄存器、时序、功能全定义好了。</p>
+<p>然后呢？复制粘贴。</p>
+<p>A 端口一份，B 端口一份，C 端口一份。每一份的寄存器布局完全一样，只有起始地址不同。</p>
+<p>那 HAL 库怎么做的？没有复制粘贴代码。只用一个 <code>GPIO_TypeDef</code> 描述所有 GPIO，然后定义三个指向不同地址的指针：</p>
+<pre><code class="language-c">/* 真实 STM32H7 头文件里这一段 */
+#define GPIOA   ((GPIO_TypeDef *)0x58020000UL)
+#define GPIOB   ((GPIO_TypeDef *)0x58020400UL)
+#define GPIOC   ((GPIO_TypeDef *)0x58020800UL)
+</code></pre>
+<p><code>0x58020000</code> 是 GPIOA 寄存器组在 SoC 内存映射里的物理基地址。芯片硬件设计的时候这个地址就定好了，CPU 用普通 <code>STR</code> / <code>LDR</code> 指令访问这块内存，访问到的是真实的 GPIO 寄存器（这种“硬件寄存器映射到 CPU 地址空间“的机制叫 MMIO）。</p>
+<p>GPIOB 比 GPIOA 偏移 0x400 字节（1 KB），GPIOC 又偏移 0x400。三个端口寄存器布局完全一致，只是物理基地址不同。</p>
+<p>唯一变化的是地址。</p>
+<p>第 1 章你给三颗 LED 开三张挂号单（<code>red_led / green_led / blue_led</code>），是这个套路。ST 给三个 GPIO 端口开三个指针（<code>GPIOA / GPIOB / GPIOC</code>），是同一个套路。同一份 struct 定义，多个独立实例。</p>
+<p><img src="../assets/ch05/slide2_内存布局.png" alt="内存布局"></p>
+<h2 id="54-gpio_typedef-gpiox-就是-me-指针"><a class="header" href="#54-gpio_typedef-gpiox-就是-me-指针">5.4 GPIO_TypeDef *GPIOx 就是 me 指针</a></h2>
+<p>再看 HAL 函数：</p>
+<pre><code class="language-c">void HAL_GPIO_Init(GPIO_TypeDef *GPIOx, GPIO_InitTypeDef *init);
+void HAL_GPIO_DeInit(GPIO_TypeDef *GPIOx, uint32_t pin);
+void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t pin, GPIO_PinState state);
+GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t pin);
+void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t pin);
+</code></pre>
+<p>注意每个函数的第一个参数 <code>GPIO_TypeDef *GPIOx</code>。</p>
+<p>这就是 me 指针。</p>
+<p><code>GPIOx</code> 这个名字 ST 起得很妙：x 是占位符，意思是“哪一个 GPIO 都行“。你传 <code>GPIOA</code>，就操作 A 端口；传 <code>GPIOB</code>，就操作 B 端口。</p>
+<pre><code class="language-c">HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);    /* 操作 GPIOA Pin5 */
+HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); /* 操作 GPIOC Pin13 */
+</code></pre>
+<p>同一个函数 <code>HAL_GPIO_WritePin</code>，传不同的 me 指针 (<code>GPIOA</code> / <code>GPIOC</code>)，操作不同的实例。</p>
+<p>第 1 章 <code>led_on(&amp;red_led)</code> / <code>led_on(&amp;green_led)</code>，是这个套路。</p>
+<p><img src="../assets/ch05/slide3_函数映射.png" alt="函数映射"></p>
+<h2 id="55-hal_gpio_-前缀--init--deinit"><a class="header" href="#55-hal_gpio_-前缀--init--deinit">5.5 HAL_GPIO_ 前缀 + Init / DeInit</a></h2>
+<p>再看函数名前缀：<code>HAL_GPIO_</code>。</p>
+<p>LED 模块叫 <code>led_</code>，HAL 库 GPIO 模块叫 <code>HAL_GPIO_</code>。前缀就是类名。</p>
+<p><code>HAL_GPIO_Init</code> 是构造函数，<code>HAL_GPIO_DeInit</code> 是析构函数。第 3 章学的命名规范，HAL 库工程师严格遵守。</p>
+<p>不只 GPIO。打开 HAL 库的其他模块：</p>
+<pre><code>HAL_UART_Init     / HAL_UART_DeInit
+HAL_SPI_Init      / HAL_SPI_DeInit
+HAL_I2C_Init      / HAL_I2C_DeInit
+HAL_TIM_Base_Init / HAL_TIM_Base_DeInit
+HAL_ADC_Init      / HAL_ADC_DeInit
+</code></pre>
+<p>每个外设都是同一个套路。<code>HAL_&lt;MOD&gt;_Init</code> 配置外设，<code>HAL_&lt;MOD&gt;_DeInit</code> 复位回默认状态，中间的操作函数都带 <code>HAL_&lt;MOD&gt;_</code> 前缀。</p>
+<p><strong>几千个 HAL 函数，就这一招。</strong></p>
+<h2 id="56-h-是菜单--c-内-static-是后厨"><a class="header" href="#56-h-是菜单--c-内-static-是后厨">5.6 .h 是菜单 + .c 内 static 是后厨</a></h2>
+<p>打开 <code>stm32h7xx_hal_gpio.h</code>，里面只有函数声明 + 类型定义：</p>
+<pre><code class="language-c">/* stm32h7xx_hal_gpio.h（节选） */
+void HAL_GPIO_Init(GPIO_TypeDef *GPIOx, GPIO_InitTypeDef *GPIO_Init);
+void HAL_GPIO_DeInit(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin);
+HAL_StatusTypeDef HAL_GPIO_LockPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+void HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin);
+</code></pre>
+<p>这是菜单，开发者能调的全在这里。</p>
+<p>打开 <code>stm32h7xx_hal_gpio.c</code>，除了上面的函数实现，还有内部参数验证 / 位操作辅助等内容。这些细节 ST 没暴露给用户用，是后厨的事。</p>
+<p>第 2 章学的 <code>.h</code> 是菜单、<code>.c</code> 是后厨、内部辅助加 <code>static</code>，HAL 库工程师严格遵守。</p>
+<p><img src="../assets/ch05/slide4_映射总表.png" alt="映射总表"></p>
+<h2 id="57-完整映射表"><a class="header" href="#57-完整映射表">5.7 完整映射表</a></h2>
+<p>把前 4 章的概念汇总到一张表：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>你学的（ch01-ch04）</th><th>HAL 库里的</th></tr>
+</thead>
+<tbody>
+<tr><td><code>struct led</code>（数据打包，ch01）</td><td><code>GPIO_TypeDef</code></td></tr>
+<tr><td><code>red_led / green_led</code>（多实例，ch01）</td><td><code>GPIOA / GPIOB / GPIOC</code></td></tr>
+<tr><td><code>struct led *me</code>（me 指针，ch01）</td><td><code>GPIO_TypeDef *GPIOx</code></td></tr>
+<tr><td><code>led_</code> 前缀（命名规范，ch03）</td><td><code>HAL_GPIO_</code> 前缀</td></tr>
+<tr><td><code>led_init / led_deinit</code>（生命周期，ch03）</td><td><code>HAL_GPIO_Init / HAL_GPIO_DeInit</code></td></tr>
+<tr><td><code>.h</code> 菜单 + <code>.c</code> 后厨（ch02）</td><td><code>stm32h7xx_hal_gpio.h</code> + <code>.c</code></td></tr>
+<tr><td><code>static</code> 工具函数（ch02）</td><td><code>static</code> 工具函数（一字不差）</td></tr>
+<tr><td><code>static const</code> 常量（ch04）</td><td><code>#define GPIO_MODE_OUTPUT 0x01U</code> 类宏定义</td></tr>
+<tr><td>数据归位 + .bss 段（ch04）</td><td>GPIO 寄存器在硬件 MMIO 区，每端口一片，启动期固定布局</td></tr>
+</tbody>
+</table>
+</div>
+<p>六组对应。每一项都不是巧合。</p>
+<p>不只 GPIO。UART_TypeDef、SPI_TypeDef、TIM_TypeDef，HAL 库的每个外设都按这套规则组织。</p>
+<p><img src="../assets/ch05/slide5_完整总览.png" alt="完整总览"></p>
+<h2 id="58-hal_gpio_writepin-内部到底在做什么"><a class="header" href="#58-hal_gpio_writepin-内部到底在做什么">5.8 HAL_GPIO_WritePin 内部到底在做什么</a></h2>
+<p>带你看一行最关键的代码：<code>HAL_GPIO_WritePin</code> 写到底，CPU 实际执行了什么。</p>
+<p>简化版的真实实现（来自 <code>stm32h7xx_hal_gpio.c</code>）：</p>
+<pre><code class="language-c">void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin,
+                       GPIO_PinState PinState)
+{
+	if (PinState != GPIO_PIN_RESET)
+		GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin;          /* 拉高 */
+	else
+		GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* 拉低 */
+}
+</code></pre>
+<p><code>BSRR</code> 是 Bit Set / Reset Register，一个 32 位寄存器：</p>
+<ul>
+<li>低 16 位：写 1 把对应引脚拉高，写 0 无影响</li>
+<li>高 16 位：写 1 把对应引脚拉低，写 0 无影响</li>
+</ul>
+<p>举个具体例子。<code>HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET)</code> 想把 PA5 拉高。</p>
+<p><code>GPIO_PIN_5</code> 是宏 <code>((uint16_t)0x0020)</code>（即 <code>1 &lt;&lt; 5</code>，位 5 是 1）。</p>
+<p>代码执行 <code>GPIOx-&gt;BSRR = 0x0020</code>。这一句翻译成汇编是一条 <code>STR</code> 指令，把 <code>0x0020</code> 写入地址 <code>GPIOA + offsetof(GPIO_TypeDef, BSRR)</code>，也就是 <code>0x58020000 + 0x18 = 0x58020018</code>。</p>
+<pre><code>LDR  r0, =0x58020018       ; GPIOA-&gt;BSRR 的物理地址
+LDR  r1, =0x0020           ; 要写的值（位 5 是 1）
+STR  r1, [r0]              ; 一次 32 位 store，PA5 拉高
+</code></pre>
+<p>一个周期搞定。从 C 函数调用进来到 PA5 真的有 3.3V 电压，整条路径不到 100 纳秒。</p>
+<p>为什么 BSRR 设计成“写 1 才生效，写 0 无影响“？为了让多任务 / 多中断同时操作不同引脚时不打架。中断半路改 PA5，主循环改 PA7，两个写到 BSRR 都是单条原子指令，互不影响。</p>
+<p>如果 ST 没做这个 BSRR 设计，你要拉 PA5 就得先读 ODR 再 OR <code>1 &lt;&lt; 5</code> 再写回 ODR，三条指令。中断在中间插一脚改其他引脚，状态就乱了。</p>
+<p>这种“硬件帮你做并发安全“的设计哲学，在工业代码里到处都是。第 11 章讲多态、第 17 章讲 initcall 都会再回到这条线。</p>
+<h2 id="585-bsrr--odr--lckr--三个寄存器一组对照"><a class="header" href="#585-bsrr--odr--lckr--三个寄存器一组对照">5.8.5 BSRR / ODR / LCKR · 三个寄存器一组对照</a></h2>
+<p>GPIO_TypeDef 里和“输出值“相关的寄存器其实有三个：BSRR、ODR、LCKR。三者各有职责，看完这一组对照你能更深地理解为什么 ST 工程师把“写一个引脚电平“做成 BSRR 而不是直接 ODR。</p>
+<p><strong>ODR (Output Data Register)</strong>：32 位，每位对应一个引脚的“目标输出电平“。读 ODR 拿到当前所有 16 个引脚的状态，写 ODR 同时改 16 个引脚。</p>
+<pre><code class="language-c">GPIOA-&gt;ODR |= (1 &lt;&lt; 5);     /* 把 PA5 拉高 */
+</code></pre>
+<p>这一行是 read-modify-write 三条指令：先读 ODR、再 OR、再写回 ODR。中断在中间插一脚改 ODR，状态就乱了。</p>
+<p><strong>BSRR (Bit Set / Reset Register)</strong>：32 位写入专用寄存器，不能读（读出来全 0）。低 16 位写 1 把对应引脚置位，高 16 位写 1 把对应引脚复位，写 0 无影响。</p>
+<pre><code class="language-c">GPIOA-&gt;BSRR = (1 &lt;&lt; 5);     /* 把 PA5 拉高 */
+</code></pre>
+<p>一条 32 位 store 指令搞定。其他引脚位写 0 不受影响，所以这条写不会和别的中断改别的引脚冲突。<strong>原子的 single-pin set 操作</strong>。</p>
+<p><strong>LCKR (Lock Register)</strong>：32 位，把指定引脚的配置（mode / type / speed / pull）锁死，写一次后这些字段直到芯片复位前都不能改。用在“系统启动后绝不允许重配的关键引脚“，比如 reset signal、外部时钟输入。</p>
+<p>把 ch01-ch04 学的 <code>platform_gpio_write</code> 和 BSRR 对一遍：</p>
+<pre><code class="language-c">/* ch01-ch04 里你写的 */
+void platform_gpio_write(uint8_t pin, bool value)
+{
+	if (value)
+		BSRR_SET(pin);     /* 教学伪代码 */
+	else
+		BSRR_RESET(pin);
+}
+
+/* HAL_GPIO_WritePin 真实实现 */
+void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin,
+                       GPIO_PinState PinState)
+{
+	if (PinState != GPIO_PIN_RESET)
+		GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin;
+	else
+		GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;
+}
+</code></pre>
+<p>两边骨架一致：判断 high / low、写 BSRR 不同的位区。差别只在 HAL 多了 <code>GPIO_TypeDef *GPIOx</code> 这个 me 指针（支持多端口），ch01-ch04 简化为只有一个全局端口。</p>
+<p><strong>几千个 HAL 函数就一个套路</strong>这句话不是我说的，是 ST 工程师写 HAL 时的设计哲学。每个外设都是 <code>XXX_TypeDef + XXX_Init / DeInit + 操作函数</code> 这一套，每个操作函数底下都是寄存器 store。HAL 库教学价值最大的部分在这一层：让你看到“工业级框架的骨架就是 ch01-ch04 的几个动作“。</p>
+<h2 id="59-你现在的代码在-stm32-上跑"><a class="header" href="#59-你现在的代码在-stm32-上跑">5.9 你现在的代码在 STM32 上跑</a></h2>
+<p>PC 模拟版在 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/pc/"><code>oop-in-c/code/05-hal-mapping/pc/</code></a>。Makefile + main.c + hal_gpio.c + gpio_typedef.h 一个文件不少，gcc 编完就跑。</p>
+<p>真实 STM32 上的等效片段（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/stm32-snippet/hal_gpio_real.c"><code>oop-in-c/code/05-hal-mapping/stm32-snippet/hal_gpio_real.c</code></a>）：</p>
+<pre><code class="language-c">GPIO_InitTypeDef cfg = {0};
+
+__HAL_RCC_GPIOA_CLK_ENABLE();
+
+cfg.Pin   = GPIO_PIN_5;
+cfg.Mode  = GPIO_MODE_OUTPUT_PP;
+cfg.Pull  = GPIO_NOPULL;
+cfg.Speed = GPIO_SPEED_FREQ_HIGH;
+HAL_GPIO_Init(GPIOA, &amp;cfg);
+
+HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+HAL_Delay(500);
+HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+</code></pre>
+<p>PC 模拟版和 STM32 真实版的接口几乎一字不差。前 4 章学的所有概念，在真实硬件上原样落地。</p>
+<h2 id="510-你现在的代码在-linux-用户态长什么样"><a class="header" href="#510-你现在的代码在-linux-用户态长什么样">5.10 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p>Linux 用户态没有 STM32 那种 BSRR 寄存器直写。从用户态到硬件的路径是这样：</p>
+<pre><code class="language-c">write("/sys/class/gpio/gpio13/value", "1")
+   -&gt; kernel 调 gpio_chip 的 .set 方法
+   -&gt; 具体 GPIO controller driver
+   -&gt; 最终还是 BSRR 或类似的硬件寄存器
+</code></pre>
+<p><a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/linux-snippet/sysfs_gpio_real.c"><code>oop-in-c/code/05-hal-mapping/linux-snippet/sysfs_gpio_real.c</code></a> 演示了用户态最朴素的 sysfs 用法：</p>
+<pre><code class="language-c">gpio_export(13);
+gpio_set_dir(13, "out");
+gpio_write(13, 1);
+sleep(1);
+gpio_write(13, 0);
+</code></pre>
+<p>sysfs 的“把硬件当文件“机制怎么和内核的 <code>file_operations</code> + <code>gpio_chip</code> 衔接起来，是第 16 章的内容。这一章先看到“用户态调用还是同一个套路“。</p>
+<p>新内核推荐 libgpiod 替代 sysfs，附录 C 会展开。</p>
+<h2 id="511-工业代码里的对应"><a class="header" href="#511-工业代码里的对应">5.11 工业代码里的对应</a></h2>
+<p>我做的工业控制板项目里所有的驱动都按 HAL 这套路子组织。每个底层 driver 都有自己的 <code>&lt;MOD&gt;_TypeDef</code>、自己的 init/deinit、自己的命名前缀。</p>
+<p>随便举一个例子。DS2433（1-Wire EEPROM）的头文件骨架：</p>
+<pre><code class="language-c">/* drivers/eeprom/ds2433.h - DS2433 1-Wire EEPROM */
+typedef struct {
+	/* 内部字段 (这一章先关注外层结构, 字段含义随用随说) */
+	uint8_t       w1_pin;     /* 单总线引脚 */
+	uint16_t      capacity;   /* 容量 */
+} ds2433_t;
+
+/* 构造 / 析构 - 跟 ch03 学的 init/deinit 模式一字不差 */
+int ds2433_init(ds2433_t *me, uint8_t w1_pin);
+int ds2433_deinit(ds2433_t *me);
+
+/* 读 / 写 - 第一参数是 me 指针, 跟 ch01 学的一样 */
+int ds2433_read(ds2433_t *me, uint32_t addr, void *buf, size_t n);
+int ds2433_write(ds2433_t *me, uint32_t addr, const void *buf, size_t n);
+</code></pre>
+<p>字段命名、<code>&lt;MOD&gt;_TypeDef</code> 风格、init/deinit 配对、<code>me</code> 指针作为第一参数，跟 HAL 库的 GPIO 一字不差，跟前 4 章你学的一字不差。</p>
+<blockquote>
+<p><strong>这一节有意省略的部分</strong>：真实工业代码里 EEPROM 还会拆成“父类 + 子类“两份头文件，父类 <code>eeprom_base.h</code> 放对外统一接口（<code>eeprom_read</code> / <code>eeprom_write</code>），多种 EEPROM 实现（DS2433 / AT24Cxx / Flash 模拟）通过一张函数指针表分发到具体硬件。这一招叫<strong>多态</strong>，是 ch06（继承）→ ch07-09（函数指针 + ops 表）→ ch10-11（vptr + dispatch）整个 OOP 系列展开的主题。这一章你看到“工业代码也是 struct + me + init/deinit + 命名前缀“这一层就够了，别的层级在后面学到了再回来看。</p>
+</blockquote>
+<p>字段 / 命名 / 生命周期一应俱全，和 HAL 库的 GPIO 是同一个骨架。</p>
+<p>如果你有项目维护经验，应该能看出来：50 个驱动按这套路子写完，新人接手看一个文件就懂结构。这就是命名规范的复利效应。</p>
+<h2 id="512-跑一遍"><a class="header" href="#512-跑一遍">5.12 跑一遍</a></h2>
+<pre><code class="language-bash">cd oop-in-c/code/05-hal-mapping/pc
+make
+./demo
+</code></pre>
+<p>输出节选：</p>
+<pre><code>==============================================
+  HAL maps to ch01-ch04 concepts.
+==============================================
+
+--- HAL_GPIO_Init for GPIOA Pin5 (output, push-pull) ---
+  [HAL_GPIO_Init] GPIOA Pin5: Mode=Output Speed=High No Pull
+
+--- HAL_GPIO_Init for GPIOC Pin13 (board LED) ---
+  [HAL_GPIO_Init] GPIOC Pin13: Mode=Output Speed=Low No Pull
+
+--- Same function, different me pointer ---
+  [HAL_GPIO_WritePin] GPIOA Pin5 -&gt; HIGH
+  [HAL_GPIO_WritePin] GPIOC Pin13 -&gt; LOW
+
+==============================================
+  Mapping table
+    you learned         &lt;-&gt; HAL real name
+    struct led          &lt;-&gt; GPIO_TypeDef
+    red_led, green_led  &lt;-&gt; GPIOA, GPIOB, GPIOC
+    struct led *me      &lt;-&gt; GPIO_TypeDef *GPIOx
+    led_ prefix         &lt;-&gt; HAL_GPIO_ prefix
+    led_init / deinit   &lt;-&gt; HAL_GPIO_Init / DeInit
+    static helpers      &lt;-&gt; static inside hal_gpio.c
+==============================================
+</code></pre>
+<p>教学版用真实 HAL 命名跑了一个最小例子。所有概念对应关系一目了然。</p>
+<h2 id="513-视频回放"><a class="header" href="#513-视频回放">5.13 视频回放</a></h2>
+<p>想听口播版的可以看 B 站这一期视频：</p>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1feQbBVECg/">《HAL 库几千个函数·就一个套路｜C 语言封装·源码验证》</a></p>
+</blockquote>
+<p>视频里讲了“芯片设计师复制粘贴 GPIO 模块“、“同一份代码多份数据“等可视化类比，节奏更紧凑。书里把每一项映射展开得更细，并给了从 C 函数调用到物理电压输出的全路径剖析（5.8 节）。</p>
+<p>封装篇到这里彻底闭环。第 1 章到第 4 章学的是机制，第 5 章看到这套机制就是工业 HAL 库的骨架。</p>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>但你的 LED 模块再干净，也只是一个驱动。真实项目里你会写 GPIO 灯、PWM 灯、I2C 灯、串口控制的灯，五种灯。</p>
+<p>你认认真真写完五个驱动模块，会发现一半代码是重复的。<code>init / deinit / on / off</code> 套路一样，只是底层硬件不同。</p>
+<p>怎么消灭重复？继承篇开始。</p>
+<p>下一篇：<a href="../02-继承/06-代码一半重复.html">第 6 章 · 你的代码一半是重复的</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../01-封装/04-数据归位.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../02-继承/06-代码一半重复.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../01-封装/04-数据归位.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../02-继承/06-代码一半重复.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

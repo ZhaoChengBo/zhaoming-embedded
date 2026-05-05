@@ -1,0 +1,626 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch02 同事改了一行 LED 全乱了 · static 与信息隐藏 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/01-封装/02-同事改了一行.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-2-章--同事改了一行-led-全乱了"><a class="header" href="#第-2-章--同事改了一行-led-全乱了">第 2 章 · 同事改了一行 LED 全乱了</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/"><code>oop-in-c/code/02-static-hiding/</code></a></p>
+<h2 id="21-一个真实场景"><a class="header" href="#21-一个真实场景">2.1 一个真实场景</a></h2>
+<p>第 1 章你给三颗 LED 发了挂号单，代码只写一份，问题解决了。</p>
+<p>提交、合并、上线。</p>
+<p>一周后同事来找你：你 LED 模块好像有 bug，红灯不亮了。</p>
+<p>你去看代码，main.c 里没动过。再翻 git log，发现同事在另一个文件里加了一行：</p>
+<pre><code class="language-c">extern struct led red_led;
+
+/* 我做了点优化，让 pin 直接 = 999 */
+red_led.pin = 999;
+</code></pre>
+<p>他不是恶意的。他可能在做硬件适配实验，可能手抖打错变量名，可能临时调试忘了撤回。但效果是确定的：你的红灯被驱动到一个不存在的引脚，从此不亮。</p>
+<p>你打开微信想质问他，想了想，默默把聊天框关了。你心想：我的代码明明没问题啊。</p>
+<p>对，你的代码确实没问题。问题是别人能碰你的代码。你的 struct 是敞开的，任何人从任何地方都能 <code>red_led.pin = ...</code> 把它改坏。</p>
+<p><img src="../assets/ch02/slide1_问题代码.png" alt="你的数据是敞开的"></p>
+<p>银行不会把客户的钱放在路边让大家自取。柜台是有的，密码是有的，流程是有的。你的 struct 就是钱，函数就是柜台，现在缺一把锁。</p>
+<h2 id="22-第一把锁--static"><a class="header" href="#22-第一把锁--static">2.2 第一把锁 · static</a></h2>
+<p>C 语言给你一把锁，叫 <code>static</code>。</p>
+<p>去过饭店。前台是给客人用的（点菜、付钱、吃饭），后厨是给厨师用的（备料、炒菜）。客人进后厨只会添乱。所以后厨的门是锁的。</p>
+<p>代码也一样。有些函数是给外面用的（开灯、关灯、调亮度），这些是前台。有些函数是你内部用的（更新硬件状态、检查参数合不合法），这些是后厨。</p>
+<p>怎么把后厨锁起来？在函数前面加一个词 <code>static</code>。</p>
+<p>加了 <code>static</code>，这个函数就只在它所在的 <code>.c</code> 文件里能用。别的 <code>.c</code> 文件想调它，链接器报 <code>undefined reference</code>。门锁上了，找都找不到。</p>
+<p>变量也一样。文件作用域的变量加 <code>static</code>，就只在本文件可见。</p>
+<p><img src="../assets/ch02/slide2_static后厨.png" alt="static = 后厨的门锁"></p>
+<p>举个例子。<code>led.c</code> 里有两个内部工具函数，一个统一更新硬件状态，一个检查亮度合不合法：</p>
+<pre><code class="language-c">static void update_hardware(struct led *me)
+{
+	platform_gpio_write(me-&gt;pin, me-&gt;is_on);
+}
+
+static bool brightness_valid(uint8_t brightness)
+{
+	return brightness &lt;= 100;
+}
+</code></pre>
+<p>前面加 <code>static</code>，这两个函数对 <code>main.c</code> 不存在。<code>main.c</code> 里写 <code>update_hardware(red);</code> 链接器直接报错。后厨锁上了。</p>
+<h2 id="23-第二把锁--头文件--菜单"><a class="header" href="#23-第二把锁--头文件--菜单">2.3 第二把锁 · 头文件 = 菜单</a></h2>
+<p>锁后厨只解决一半问题。<code>static</code> 锁住的是函数，但你的 struct 字段 <code>pin / brightness / is_on</code> 还是敞着。同事 <code>red_led.pin = 999</code> 这一行还是能改坏你的数据。</p>
+<p>得给客人发一份菜单。菜单上写什么？菜名和价格（也就是函数声明）。菜单上不写什么？配方（也就是字段定义和函数实现）。</p>
+<p>你的 <code>.h</code> 文件就是菜单。<code>.c</code> 文件就是配方。</p>
+<p>第 1 章 <code>led.h</code> 里写了完整的 struct 定义：</p>
+<pre><code class="language-c">/* ch01 led.h */
+struct led {
+	uint8_t pin;
+	uint8_t brightness;
+	bool    is_on;
+};
+</code></pre>
+<p><code>#include "led.h"</code> 的任何文件都看得到字段名、字段顺序、字段类型，自然也都能 <code>me-&gt;pin = 999</code> 直接改。</p>
+<p>ch02 的修复很小：把字段定义从 <code>led.h</code> 搬到 <code>led.c</code>，<code>led.h</code> 里只留一行：</p>
+<pre><code class="language-c">/* ch02 led.h */
+struct led;
+</code></pre>
+<p>这行叫前向声明（forward declaration）。它告诉编译器：有这么个类型，但具体长什么样我不告诉你。</p>
+<p>字段名一字不动（<code>pin / brightness / is_on</code>），改的只是 visibility。</p>
+<p>外部代码：</p>
+<pre><code class="language-c">#include "led.h"   /* 只看到 struct led; */
+
+struct led *red = led_create(13);
+red-&gt;pin = 999;       /* 编译报错: invalid use of undefined type */
+</code></pre>
+<p><code>gcc</code> 在 <code>red-&gt;pin</code> 这一行直接拒绝继续：它知道有个 <code>struct led</code>，但不知道里面有没有 <code>pin</code>。这种“看得到指针，看不到字段“的写法叫不透明指针（opaque pointer）。</p>
+<p>字段定义只在 <code>led.c</code> 内部：</p>
+<pre><code class="language-c">/* ch02 led.c */
+struct led {
+	uint8_t pin;
+	uint8_t brightness;
+	bool    is_on;
+};
+</code></pre>
+<p>外部要操作 LED，只能走 <code>led.h</code> 暴露的函数：<code>led_create / led_destroy / led_on / led_off / led_set_brightness / led_get_state</code>。这些函数是菜单上写明的菜，外部能点。其他的，菜单上没有，碰不到。</p>
+<p><img src="../assets/ch02/slide3_头文件菜单.png" alt="头文件 = 菜单"></p>
+<h2 id="24-这个东西叫什么"><a class="header" href="#24-这个东西叫什么">2.4 这个东西叫什么</a></h2>
+<p>你刚才跟我做的事，把不该让外面碰的东西藏起来，只通过接口和外界打交道，软件工程里有个名字。</p>
+<p>它叫信息隐藏（information hiding）。</p>
+<p>David Parnas 1972 年那篇 “On the Criteria To Be Used in Decomposing Systems into Modules” 第一次系统讲清楚这件事。中文叫信息隐藏，也常归到 encapsulation 这个大概念底下。</p>
+<p>你不是从我这里背了一个定义，是从一个具体痛点（同事改一行你的 LED 全乱了）出发，自己推出了 <code>static</code> + 不透明指针这套解。这种被自己说服的理解，是背不出来的。</p>
+<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。飞机驾驶舱里关键开关都有保护盖，不是飞行员不靠谱，是一个手滑代价太大。你的代码也一样，锁起来不是不信任同事，是不让任何人手滑。</p>
+<h2 id="25-c-对-c"><a class="header" href="#25-c-对-c">2.5 C 对 C++</a></h2>
+<p>如果你写过 C++，你会写：</p>
+<pre><code class="language-cpp">class Led {
+public:
+	int  on();
+	int  off();
+	int  set_brightness(uint8_t b);
+private:
+	uint8_t pin_;
+	uint8_t brightness_;
+	bool    is_on_;
+	void    update_hardware();
+};
+</code></pre>
+<p>而 C 里写的是：</p>
+<pre><code class="language-c">/* led.h */
+struct led;
+int led_on(struct led *me);
+int led_off(struct led *me);
+int led_set_brightness(struct led *me, uint8_t b);
+
+/* led.c */
+struct led {
+	uint8_t pin;
+	uint8_t brightness;
+	bool    is_on;
+};
+static void update_hardware(struct led *me);
+</code></pre>
+<p>做的是一模一样的事。</p>
+<p>C++ 的 <code>private:</code> 等同于 C 的“字段定义只放在 <code>.c</code>“加“工具函数加 <code>static</code>”。<code>public:</code> 等同于“声明放在 <code>.h</code>“。</p>
+<p>底层机器码差不多。C++ 的 <code>private</code> 是编译期检查（编译器看到外部碰 <code>pin_</code> 直接报错），C 的不透明指针也是编译期检查（编译器看到外部碰 <code>me-&gt;pin</code> 直接报错）。运行时一行 cost 都没多。</p>
+<p><img src="../assets/ch02/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
+<p>第 1 章的恒等是 <code>struct + me = class + this</code>。</p>
+<p>这一章的恒等是 <code>static + .h/.c 分离 = private + public</code>。</p>
+<p>两条加起来，C++ 面向对象的两个核心机制（封装和成员函数），你已经全懂了。而且不是背的，是自己用 C 推出来的。</p>
+<h2 id="26-视频里没讲透的几个细节"><a class="header" href="#26-视频里没讲透的几个细节">2.6 视频里没讲透的几个细节</a></h2>
+<h3 id="261-不透明指针-vs-暴露字段反事实推演"><a class="header" href="#261-不透明指针-vs-暴露字段反事实推演">2.6.1 不透明指针 vs 暴露字段，反事实推演</a></h3>
+<p>技术上你有三种藏字段的强度。</p>
+<p>第一种，完全不藏（ch01 的写法）：字段在 <code>.h</code>，外部 <code>me-&gt;pin = 999</code> 编译过、链接过、运行也“过“，bug 在生产环境出现。</p>
+<p>第二种，约定藏（注释里写“请勿直接修改“）：字段还在 <code>.h</code>，外部能改，靠 review 拦住。review 漏一次就是 bug。</p>
+<p>第三种，机制藏（ch02 的写法）：字段在 <code>.c</code>，前向声明在 <code>.h</code>，外部 <code>me-&gt;pin = 999</code> 编译就过不去。0 漏网概率。</p>
+<p>哪种是工业代码里的主流？看场景：</p>
+<ul>
+<li><strong>跨二进制库边界</strong>用第三种。libc <code>FILE *</code> / POSIX <code>pthread_t</code> / Win32 <code>HANDLE</code> / RT-Thread <code>rt_device_t</code> / Linux 内核 <code>struct kobject *</code> 这些都是。应用代码和库内部物理分离，中间只能传句柄</li>
+<li><strong>同一份工程一起编译的应用代码</strong>（你做的产品里大部分代码属于这种）几乎全用第二种：字段在 <code>.h</code> 公开 + <code>static</code> 工具函数 + 命名纪律。GitHub 上 nginx、Redis、LVGL 这一类主流 C 项目，struct 字段都在 <code>.h</code>，靠纪律隔离。第 4 章数据归位会把这种工业常态形态展开</li>
+</ul>
+<p>第三种的代价是字段隐藏后调用方不能 <code>sizeof</code>，所有对象生命周期得由库自己管（你需要 <code>xxx_create / xxx_destroy</code> 这一对接口）。这在跨二进制库场景值得，因为 ABI 兼容是硬需求。在自家应用代码里，字段 <code>.h</code> 公开 + 直接 <code>struct led red;</code> 用对象本身，工程上更顺手。</p>
+<p>工业控制板项目里 <code>eeprom_base_t</code> 是中间形态：</p>
+<pre><code class="language-c">/* eeprom_base.h */
+struct eeprom_ops;            /* 前向声明 ops 表 */
+
+typedef struct {
+	struct eeprom_ops *ops;   /* 这个字段对应用公开 */
+} eeprom_base_t;
+</code></pre>
+<p><code>struct eeprom_ops</code> 字段（一堆函数指针）私有，但外层 <code>eeprom_base_t</code> 公开能 <code>sizeof</code>。这叫“部分藏“，藏 ops 表的内部接口，不藏外层壳。本书第 9 章会演化到这个形态。</p>
+<p>ch02 主体演示的是第三种（完整不透明指针），是为了把“信息隐藏“机制讲透。后面章节大多用第二种 + 直接持有对象的工业常态写法。</p>
+<h3 id="262-为什么-ledh-里-forward-decl-要写-struct-led"><a class="header" href="#262-为什么-ledh-里-forward-decl-要写-struct-led">2.6.2 为什么 led.h 里 forward decl 要写 struct led;</a></h3>
+<p>你可能见过这种写法：</p>
+<pre><code class="language-c">typedef struct led led_t;
+</code></pre>
+<p>效果几乎一样。但 Linux 内核明确反对 typedef struct，理由在第 1 章 1.7.3 节讲过：<code>typedef</code> 把“这是个结构体“这件事藏起来。读 <code>led_t *me</code> 你不知道它能不能 <code>.</code> 或 <code>-&gt;</code>，读 <code>struct led *me</code> 你立刻知道。</p>
+<p>本书统一不 typedef struct，包括前向声明。<code>struct led;</code> 这一行同时承担两件事：声明类型存在 + 不暴露字段。</p>
+<h3 id="263-led_create--led_destroy-用-malloc-的取舍"><a class="header" href="#263-led_create--led_destroy-用-malloc-的取舍">2.6.3 led_create / led_destroy 用 malloc 的取舍</a></h3>
+<p>ch01 里 <code>struct led red_led;</code> 是栈上对象，外部能直接定义。ch02 字段藏起来后，外部 <code>struct led red;</code> 编译器立刻报错 <code>storage size of 'red' isn't known</code>。编译器不知道 struct 多大，自然不知道分多少栈。</p>
+<p>只能让 <code>led.c</code> 内部分配。最直观的方式是 <code>malloc</code>，外部拿 <code>struct led *</code> 这个指针句柄回去。<code>FILE *</code> / <code>pthread_t</code> / <code>HANDLE</code> / <code>SOCKET</code> 都是这个模式。</p>
+<p><code>malloc</code> 在嵌入式里以前有“堆碎片、确定性、实时性“的争议。<strong>这是 1990 年代裸机 8051 / 小 RAM MCU 时代留下的 dogma，不是现代嵌入式现实</strong>。FreeRTOS heap_4 / heap_5、RT-Thread 的 mp 和 heap、量产级状态机框架的事件池，都是动态内存机制，工业控制和汽车电子项目里大量在用。MISRA C:2012 amendment 1、DO-178C 都已经允许有约束的动态内存。</p>
+<p>真正的工业纪律不是“不用 malloc“，是<strong>生命周期管理</strong>：</p>
+<ul>
+<li>配对销毁：每个 alloc 一定有对应的 free 路径</li>
+<li><code>goto cleanup</code>：异常退出分阶段释放（2.6.8 节展开）</li>
+<li>引用计数：共享所有权用 <code>kref_get / kref_put</code>（Linux 内核标准）</li>
+</ul>
+<p>只有少数特殊场景才优先用静态预分配：8051 / M0 + 16 KB 这种小 RAM 场景，或者中断热路径每秒几百万次 alloc 的极端情况。这些情况下选 <code>malloc</code> 还是静态分配是工程决策，不是教条。第 4 章数据归位会展示同一组数据怎么按场景选静态实例 / <code>malloc</code> / 对象池。</p>
+<h3 id="264-命名规范决策"><a class="header" href="#264-命名规范决策">2.6.4 命名规范决策</a></h3>
+<p><code>led_create</code> / <code>led_destroy</code> 的命名是有考虑的。</p>
+<p>不叫 <code>led_new</code> / <code>led_delete</code>：和 C++ 关键字撞，读代码容易误认为 C++。</p>
+<p>不叫 <code>led_alloc</code> / <code>led_free</code>：alloc 暗示纯内存分配，create / destroy 暗示构造 / 析构语义。</p>
+<p>不叫 <code>led_open</code> / <code>led_close</code>：open / close 是 POSIX 文件接口的语义，留给 sysfs 用。</p>
+<p>工业代码里 <code>led_base_t *</code> 这种句柄常用 <code>led_xxx_init(led_xxx_t *me, ...)</code> 命名，因为对象是栈上分配（实例字段公开给本驱动模块），<code>init</code> 是“对已分配的对象初始化“，不涉及堆分配。等到第 4 章数据归位讲完，你能看出“什么时候该 create / destroy、什么时候该 init / deinit“的判断标准。</p>
+<h3 id="265-链接器层面static-和不加-static-的差别"><a class="header" href="#265-链接器层面static-和不加-static-的差别">2.6.5 链接器层面，static 和不加 static 的差别</a></h3>
+<p><code>static</code> 改变的不是编译期可见性，是链接期符号表。</p>
+<p>不加 <code>static</code> 的函数（external linkage）：编译器把函数名写进 <code>.o</code> 文件的全局符号表，链接器在合并多个 <code>.o</code> 时能看到。不同 <code>.o</code> 里的同名函数，链接器报 <code>multiple definition</code>。</p>
+<p>加 <code>static</code> 的函数（internal linkage）：编译器要么完全不写符号表（被内联或调用图剪枝），要么写成本地符号（链接器跨 <code>.o</code> 看不到）。</p>
+<pre><code>$ nm led.o
+0000000000000000 T led_create
+0000000000000098 T led_destroy
+0000000000000114 T led_on
+0000000000000180 T led_off
+00000000000001a0 t update_hardware
+00000000000001f0 t brightness_valid
+</code></pre>
+<p>大写 <code>T</code> 是 external，小写 <code>t</code> 是 file-local。这就是为什么外部 <code>update_hardware(red);</code> 链接报 <code>undefined reference</code>：链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>。</p>
+<h3 id="266-不透明指针的运行时代价"><a class="header" href="#266-不透明指针的运行时代价">2.6.6 不透明指针的运行时代价</a></h3>
+<p>零。</p>
+<p><code>red-&gt;is_on</code> 在 <code>led.c</code> 内部和 ch01 的 <code>red-&gt;is_on</code> 编译出同样的汇编：</p>
+<pre><code>LDRB  r1, [r0, #2]      ; 偏移 2 是 is_on 字段
+</code></pre>
+<p><code>led_on(red)</code> 在 main.c 里编译出 <code>BL led_on</code>（branch with link，跳转并保存返回地址）。函数调用本身有几个周期开销，但这和 ch01 是一样的（ch01 也是函数调用）。</p>
+<p>外部代码“看不见字段“是编译期机制，链接出二进制后字段还在那里、布局不变、偏移不变。Bjarne Stroustrup 那句“不用的特性零成本“在 C 上同样成立。</p>
+<h3 id="267-linux-内核-struct-file-也是一个不透明指针"><a class="header" href="#267-linux-内核-struct-file-也是一个不透明指针">2.6.7 Linux 内核 struct file 也是一个不透明指针</a></h3>
+<p>把视角拉到工业级。Linux 内核的 <code>struct file</code>（每打开一个文件就有一份）就是不透明指针的活样本。</p>
+<p><code>include/linux/fs.h</code> 里只声明 <code>struct file</code>，里面的字段（<code>f_pos</code>、<code>f_flags</code>、<code>f_inode</code> 等几十个）只对 fs 子系统内部公开。其他子系统（drivers / net / sched）拿到的是 <code>struct file *</code>，能传它、能挂回调，但不能 <code>f-&gt;f_pos = 0</code> 直接改。</p>
+<p>为什么内核要这么设计？</p>
+<p>因为 <code>struct file</code> 的字段在不同内核版本之间会变（4.x 加了几个字段，5.x 把另几个字段挪进 <code>struct file_ra_state</code>）。如果 driver 直接读字段，每升一次内核所有 driver 都要改。藏起来后 driver 走 <code>f-&gt;f_op-&gt;read(f, ...)</code> 这种接口调用，字段怎么变都不影响。</p>
+<p>这本书第 16 章会展开 <code>struct file</code> 和 <code>struct file_operations</code> 的工业级用法。这一章你只需要看到：你刚才在 <code>struct led</code> 上做的事，Linux 内核 4000 万行代码也在做，机制完全一样。</p>
+<h3 id="268-句柄生命周期--c-语言的-raii-类比"><a class="header" href="#268-句柄生命周期--c-语言的-raii-类比">2.6.8 句柄生命周期 · C 语言的 RAII 类比</a></h3>
+<p>C++ 有 RAII（Resource Acquisition Is Initialization）：对象进入作用域自动构造、离开作用域自动析构。资源不会泄漏。</p>
+<p>C 没有 RAII。<code>led_create</code> 拿到 <code>struct led *</code> 之后，谁负责 <code>led_destroy</code>？只能靠工程纪律。</p>
+<p>工业代码里管这种“谁创建谁销毁“的纪律，最常见有三套写法。</p>
+<p><strong>配对释放</strong>：哪个函数 <code>create</code>，同一个调用者 <code>destroy</code>。简单直观，但函数中间 <code>return</code> 多了容易漏。这是 C 标准库 <code>fopen / fclose</code>、<code>malloc / free</code> 的写法。</p>
+<p><strong>goto cleanup</strong>：函数中间任何一步失败，<code>goto out</code> 集中走清理路径。Linux 内核风格，几十年实践证明能压住所有 leak。形态是：</p>
+<pre><code class="language-c">struct led *led_create_two(void)
+{
+	struct led *r = NULL, *g = NULL;
+
+	r = led_create(13);
+	if (!r)
+		goto fail;
+
+	g = led_create(14);
+	if (!g)
+		goto fail_g;
+
+	return r;     /* 这里要把两个都返回，省略 */
+
+fail_g:
+	led_destroy(r);
+fail:
+	return NULL;
+}
+</code></pre>
+<p>每一个 <code>goto</code> 都把已经分配的资源对应释放。从前往后看是分配链，从后往前看是清理链，对称。</p>
+<p><strong>引用计数</strong>：对象自己带一个 <code>refcount</code>，每个使用者 <code>get</code> 一次 <code>+1</code>，用完 <code>put</code> 一次 <code>-1</code>，归零自动 destroy。Linux 内核 <code>kref_init / kref_get / kref_put</code> 是标准模板，几乎所有内核对象（<code>struct device</code>、<code>struct file</code>、<code>struct kobject</code>）都用这套。本章先不展开，第 17 章讲完 initcall 后会回到这条线。</p>
+<p>ch02 的 <code>led_create / led_destroy</code> 是配对释放风格。<code>led.c</code> 内部用 <code>malloc</code>，调用者拿 <code>struct led *</code> 句柄，结束时 <code>led_destroy</code> 负责 <code>free</code>。这是初学最干净的形态。</p>
+<h3 id="269-堆分配-vs-栈分配--按场景选"><a class="header" href="#269-堆分配-vs-栈分配--按场景选">2.6.9 堆分配 vs 栈分配 · 按场景选</a></h3>
+<p>ch01 写 <code>struct led red_led;</code>（栈分配），ch02 改成 <code>struct led *red = led_create(13);</code>（堆分配）。两种风格各有各的代价。</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>维度</th><th>栈 / 静态实例 (<code>struct led red</code>)</th><th>堆 (<code>led_create</code>)</th></tr>
+</thead>
+<tbody>
+<tr><td>字段是否可见</td><td>必须可见（编译器要算 size）</td><td>可隐藏（只暴露指针）</td></tr>
+<tr><td>分配开销</td><td>几乎零（移栈指针）</td><td>malloc 内部要找空闲块</td></tr>
+<tr><td>释放开销</td><td>自动（出作用域）</td><td>手动 free，漏一次就 leak</td></tr>
+<tr><td>实时性</td><td>确定（O(1)）</td><td>RTOS heap_4/5 有保证；newlib dlmalloc 不保证</td></tr>
+<tr><td>内存占用</td><td>函数调用结束就回收 / 整个程序生命周期占着</td><td>在 free 前一直占着</td></tr>
+<tr><td>适合场景</td><td>数量固定的全局对象（LED / 串口 / 传感器）</td><td>生命周期不固定的对象（动态接收的数据包、临时缓冲区、按需创建的会话）</td></tr>
+</tbody>
+</table>
+</div>
+<p>工业 MCU 代码里两种都常用，按对象生命周期选。同一份工程里<strong>全局少量对象</strong>通常 <code>static struct xxx instance;</code> 或顶层模块持有，<strong>生命周期不固定的对象</strong>用 RTOS 提供的 heap（FreeRTOS heap_4/5、RT-Thread <code>rt_malloc</code>）。两种都是工业级常态。</p>
+<p>ch02 里 <code>led_create + malloc</code> 是为了把“信息隐藏 + 句柄式 API“这件事讲清楚。隐式句柄风格存在于 <code>FILE *</code> / <code>pthread_t</code> / <code>rt_device_t</code> 这一类跨库边界场景。后面 ch04 数据归位会展开“实例字段公开 + 直接 <code>struct led red;</code> 静态实例“这种自家应用代码常态形态，跟 ch02 这种隐式句柄形态对照。两种是工程决策，不是非此即彼。</p>
+<h2 id="27-你现在的-led-在-stm32-上长什么样"><a class="header" href="#27-你现在的-led-在-stm32-上长什么样">2.7 你现在的 LED 在 STM32 上长什么样</a></h2>
+<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c"><code>oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c</code></a>）：</p>
+<pre><code class="language-c">#include "platform.h"
+#include "stm32f4xx_hal.h"
+
+void platform_gpio_init(uint8_t pin, uint8_t mode)
+{
+	GPIO_InitTypeDef cfg = {0};
+
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+
+	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
+	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
+	cfg.Pull  = GPIO_NOPULL;
+	cfg.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &amp;cfg);
+}
+
+void platform_gpio_write(uint8_t pin, bool value)
+{
+	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+</code></pre>
+<p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。字段还藏在 <code>led.c</code> 里，<code>main.c</code> 还是看不到 <code>pin / brightness / is_on</code>。变化的只是这层 platform 胶水。</p>
+<p>不透明指针在 ARM Cortex-M 上和 x86 上行为完全一致。它是编译期机制，编译器拒绝就拒绝，烧不到芯片上。</p>
+<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 11 章演化出 vptr 之后，会把 platform 层重构成 ops 表式，和 2.9 节工业代码对齐。</p>
+<h2 id="28-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#28-你现在的-led-在-linux-用户态长什么样">2.8 你现在的 LED 在 Linux 用户态长什么样</a></h2>
+<p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c"><code>oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c</code></a>）：</p>
+<pre><code class="language-c">void platform_gpio_init(uint8_t pin, uint8_t mode)
+{
+	int fd = open("/sys/class/gpio/export", O_WRONLY);
+	if (fd &gt;= 0) {
+		dprintf(fd, "%u", (unsigned)pin);
+		close(fd);
+	}
+
+	char path[64];
+	snprintf(path, sizeof(path),
+	         "/sys/class/gpio/gpio%u/direction", (unsigned)pin);
+	fd = open(path, O_WRONLY);
+	if (fd &gt;= 0) {
+		const char *dir = (mode == GPIO_MODE_OUTPUT) ? "out" : "in";
+		write(fd, dir, strlen(dir));
+		close(fd);
+	}
+}
+
+void platform_gpio_write(uint8_t pin, bool value)
+{
+	char path[64];
+	snprintf(path, sizeof(path),
+	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
+	int fd = open(path, O_WRONLY);
+	if (fd &gt;= 0) {
+		write(fd, value ? "1" : "0", 1);
+		close(fd);
+	}
+}
+</code></pre>
+<p>Linux 把每个 GPIO 暴露成文件 <code>/sys/class/gpio/gpio13/value</code>。写 <code>'1'</code> 拉高，写 <code>'0'</code> 拉低。这种“把硬件当文件“的设计叫 sysfs。</p>
+<p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 还是一字不改。</p>
+<p>这一节同样是函数式包装的教学简化形态，工业级用 ops 表。第 11 章之后会演化对齐。</p>
+<h2 id="29-工业代码里的-led-长什么样"><a class="header" href="#29-工业代码里的-led-长什么样">2.9 工业代码里的 led 长什么样</a></h2>
+<p>我做的工业控制板项目里，LED 这一块的 <code>.h</code> 是这样：</p>
+<pre><code class="language-c">/* led_base.h - 应用层只看这一份 */
+typedef struct led_base led_base_t;       /* 不透明前向声明 */
+
+void led_on(led_base_t *me);
+void led_off(led_base_t *me);
+</code></pre>
+<pre><code class="language-c">/* led_base.c - 字段定义和实现都关在这里 */
+struct led_base {
+	const char *name;
+	uint8_t     pin;
+	bool        is_on;
+	/* 真实工程还有几个字段, 这里省略 */
+};
+
+void led_on(led_base_t *me)
+{
+	/* ... 实际 GPIO 操作 ... */
+}
+</code></pre>
+<p>应用调用：</p>
+<pre><code class="language-c">extern led_base_t *green_led;
+extern led_base_t *red_led;
+
+led_on(green_led);
+led_off(red_led);
+</code></pre>
+<p>这和你这一章学的不透明指针骨架一模一样：把“实现细节“塞进 <code>.c</code>，<code>.h</code> 只暴露指针类型 + 操作函数。</p>
+<blockquote>
+<p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏“这一招学透就够，不用懂 ops 表。</p>
+</blockquote>
+<p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果暴露的是完整的 struct 定义，是 ch01 阶段的代码，正在等一次 ch02 重构。如果只暴露前向声明 + 操作函数，是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
+<h2 id="210-跑一遍"><a class="header" href="#210-跑一遍">2.10 跑一遍</a></h2>
+<pre><code class="language-bash">cd oop-in-c/code/02-static-hiding/pc
+make
+./demo
+</code></pre>
+<p>输出节选：</p>
+<pre><code>========================================
+  Hide the fields. Talk through the API.
+========================================
+
+--- Create two LEDs ---
+[GPIO] Pin13 init as OUTPUT
+[GPIO] Pin13 -&gt; LOW (OFF)
+  [LED] Pin13 initialized
+[GPIO] Pin14 init as OUTPUT
+[GPIO] Pin14 -&gt; LOW (OFF)
+  [LED] Pin14 initialized
+
+--- Turn both on ---
+[GPIO] Pin13 -&gt; HIGH (ON)
+  [LED] Pin13 ON
+[GPIO] Pin14 -&gt; HIGH (ON)
+  [LED] Pin14 ON
+
+--- Read state through led_get_state ---
+  red:   is_on=true brightness=0%
+  green: is_on=true brightness=0%
+
+--- Out-of-range brightness rejected by API ---
+  [LED] Error: brightness 200 out of range (0~100)
+  led_set_brightness(red, 200) returned -2 (-2 = out of range)
+
+--- Direct field access blocked at compile time ---
+  Try uncommenting `red-&gt;pin = 999;` in main.c
+  gcc will refuse to compile (struct is incomplete here).
+</code></pre>
+<p>试一下：把 main.c 里 <code>/* red-&gt;pin = 999; */</code> 这一行的注释去掉，再 <code>make</code>：</p>
+<pre><code>main.c: In function 'main':
+main.c:XX:XX: error: invalid use of undefined type 'struct led'
+   red-&gt;pin = 999;
+       ^~
+</code></pre>
+<p><code>gcc</code> 在不知道 struct 字段的情况下拒绝编译。同事这一行永远到不了你的运行时。</p>
+<h2 id="211-视频回放"><a class="header" href="#211-视频回放">2.11 视频回放</a></h2>
+<p>想听口播版的可以看 B 站这一期视频：</p>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1MzDZBzEDf/">《你同事改了一行代码·LED 全乱了｜C 语言信息隐藏：static 和头文件到底怎么用》</a></p>
+</blockquote>
+<p>视频里讲了银行类比、后厨类比、菜单类比的现场感，节奏更紧凑。书里补了视频没讲透的 6 个细节（2.6 节）和工业代码的对照（2.9 节）。</p>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>锁了字段，锁了后厨，暴露了菜单。但你的菜单上现在有 <code>led_create / led_on / led_off / led_destroy / ...</code> 七八个函数。</p>
+<p>你同事接手代码，打开 <code>led.h</code>，第一个问题是：我先调哪个？</p>
+<p>更现实的问题：项目要加一个电机模块，你新建 <code>motor.c</code>，写了 <code>init / on / off</code>。LED 模块也有 <code>init / on / off</code>。链接报错 <code>multiple definition of 'init'</code>。</p>
+<p>下一章解决。</p>
+<p>下一篇：<a href="03-手搓class.html">第 3 章 · 你用 C 手搓了一个 class</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../01-封装/01-三个LED三份代码.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../01-封装/03-手搓class.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../01-封装/01-三个LED三份代码.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../01-封装/03-手搓class.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

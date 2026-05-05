@@ -1,0 +1,887 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch17 4000 万行一招写完 · 链接自动初始化 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/04-工程威力/17-initcall.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-17-章--4000-万行一招写完--链接自动初始化"><a class="header" href="#第-17-章--4000-万行一招写完--链接自动初始化">第 17 章 · 4000 万行一招写完 · 链接自动初始化</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/"><code>oop-in-c/code/17-initcall/</code></a></p>
+<p>ch16 给你看了 Linux 内核 GPIO 子系统的骨架：ops 表 + 多态 dispatch。但有一件事 ch16 没解释，几千个驱动是怎么注册到 gpiolib 的？</p>
+<p>不是手写一长串 <code>vendor_a_probe(); vendor_b_probe(); vendor_c_probe(); ...</code> 在 <code>start_kernel</code> 里。</p>
+<p>Linux 内核的 <code>start_kernel</code> 从来不改。加一个新驱动，只写一行 <code>module_init(my_init)</code>。</p>
+<p>这一章揭穿这个魔法。</p>
+<h2 id="171-main-越写越长"><a class="header" href="#171-main-越写越长">17.1 main 越写越长</a></h2>
+<p>裸机或者教学项目里，启动期初始化是这样：</p>
+<pre><code class="language-c">int main(void)
+{
+	led_init();
+	uart_init();
+	i2c_init();
+	spi_init();
+	encoder_init();
+	motor_init();
+	temp_sensor_init();
+	/* ... 又一个新驱动 ... */
+	new_driver_init();
+
+	while (1) { /* 业务循环 */ }
+}
+</code></pre>
+<p>每加一个驱动，<code>main</code> 里加一行。文件越来越长，main 越来越胖。</p>
+<p>更糟的是，<code>main</code> 必须知道有哪些驱动。这违反一个最基本的设计原则：</p>
+<blockquote>
+<p><strong>开闭原则</strong>（Open / Closed Principle）：对扩展开放，对修改关闭。</p>
+</blockquote>
+<p>加新驱动是“扩展“，本来不应该改 <code>main</code>。但你不得不改 <code>main</code>。每改一次 <code>main</code> 都是一次回归测试机会。</p>
+<p>Linux 内核几千个驱动如果每加一个都要改一次 <code>start_kernel</code>，早就乱了。</p>
+<p><img src="../assets/ch17/slide1_main痛点.png" alt="main 痛点"></p>
+<h2 id="172-module_init-是个魔法吗"><a class="header" href="#172-module_init-是个魔法吗">17.2 module_init 是个魔法吗</a></h2>
+<p>打开 Linux 内核任何一个驱动文件 <code>drivers/leds/leds-gpio.c</code> 末尾，你会看到：</p>
+<pre><code class="language-c">static int __init gpio_led_init(void)
+{
+	return platform_driver_register(&amp;gpio_led_driver);
+}
+module_init(gpio_led_init);
+</code></pre>
+<p>就一行 <code>module_init(gpio_led_init)</code>。</p>
+<p>然后这个驱动作者<strong>不写 main</strong>。内核启动的时候，<code>gpio_led_init</code> 自己就被调到了。</p>
+<p>魔法？不是。是编译器 + 链接器 + 启动代码三方配合的机制。</p>
+<p><code>module_init(fn)</code> 这一行，做了一件事，把 <code>fn</code> 这个函数指针的地址，塞进了一个特殊的地方。</p>
+<p><img src="../assets/ch17/slide2_module_init揭秘.png" alt="module_init 揭秘"></p>
+<h2 id="173-宏展开真相"><a class="header" href="#173-宏展开真相">17.3 宏展开真相</a></h2>
+<p>把 <code>module_init</code> 这个宏展开看看。打开 Linux 内核 <code>include/linux/init.h</code>：</p>
+<p>第 316 行：<code>#define __initcall(fn) device_initcall(fn)</code>，并且第 318 行附近 <code>module_init</code> 等价于 <code>__initcall</code>。</p>
+<p>第 311 行：<code>#define device_initcall(fn) __define_initcall(fn, 6)</code></p>
+<p>第 282 行：<code>#define __define_initcall(fn, id) ___define_initcall(fn, id, .initcall##id)</code></p>
+<p>第 268 行（关键展开）：</p>
+<pre><code class="language-c">#define ____define_initcall(fn, __unused, __name, __sec)	\
+	static initcall_t __name __used 			\
+		__attribute__((__section__(__sec))) = fn;
+</code></pre>
+<p>最终展开成（简化）：</p>
+<pre><code class="language-c">static initcall_t __initcall_gpio_led_init __used
+	__attribute__((__section__(".initcall6.init"))) = gpio_led_init;
+</code></pre>
+<p>一行。</p>
+<p>这一行做的事：</p>
+<ol>
+<li><code>static initcall_t __initcall_gpio_led_init</code>：定义一个静态函数指针变量。</li>
+<li><code>= gpio_led_init</code>：让它指向 <code>gpio_led_init</code> 这个函数。</li>
+<li><code>__attribute__((__section__(".initcall6.init")))</code>：<strong>告诉编译器，把这个变量放到 <code>.initcall6.init</code> 段</strong>。</li>
+<li><code>__used</code>：告诉编译器，这个变量虽然没人显式引用，也不要优化掉。</li>
+</ol>
+<p>这个 <code>.initcall6.init</code> 段是关键。每个驱动文件写一行 <code>module_init</code>，编译后每个 <code>.o</code> 文件里都有一个函数指针变量、放在 <code>.initcall6.init</code> 段。</p>
+<p>为什么是 6？看 <code>include/linux/init.h</code> 第 296-313 行，内核分了 8 级 initcall：</p>
+<pre><code>0  pure         最早，纯逻辑初始化
+1  core         核心子系统
+2  postcore     核心子系统之后
+3  arch         架构相关
+4  subsys       子系统
+5  fs           文件系统
+6  device       设备驱动（默认级别，module_init 落在这里）
+7  late         最晚
+</code></pre>
+<p>不同级别让你控制初始化顺序。<code>module_init</code> 走第 6 级（device），适合大多数普通驱动。</p>
+<p><img src="../assets/ch17/slide3_宏展开section.png" alt="宏展开 section"></p>
+<h2 id="174-链接器收集"><a class="header" href="#174-链接器收集">17.4 链接器收集</a></h2>
+<p>编译完，几百个 <code>.o</code> 文件，每个都有自己的 <code>.initcall6.init</code> 段。</p>
+<p>接下来链接器上场。</p>
+<p>Linux 内核链接脚本 <code>include/asm-generic/vmlinux.lds.h</code> 第 908-925 行：</p>
+<pre><code class="language-c">#define INIT_CALLS_LEVEL(level)						\
+		__initcall##level##_start = .;				\
+		KEEP(*(.initcall##level##.init))			\
+		KEEP(*(.initcall##level##s.init))
+
+#define INIT_CALLS							\
+		__initcall_start = .;					\
+		KEEP(*(.initcallearly.init))				\
+		INIT_CALLS_LEVEL(0)					\
+		INIT_CALLS_LEVEL(1)					\
+		INIT_CALLS_LEVEL(2)					\
+		INIT_CALLS_LEVEL(3)					\
+		INIT_CALLS_LEVEL(4)					\
+		INIT_CALLS_LEVEL(5)					\
+		INIT_CALLS_LEVEL(rootfs)				\
+		INIT_CALLS_LEVEL(6)					\
+		INIT_CALLS_LEVEL(7)					\
+		__initcall_end = .;
+</code></pre>
+<p>字面意思：把所有 <code>.o</code> 文件里的 <code>.initcall0.init</code>、<code>.initcall1.init</code>……<code>.initcall7.init</code> 段，按级别合并到一起。<code>__initcall_start</code> 标记数组开头，<code>__initcall_end</code> 标记结尾。<code>KEEP(*(...))</code> 防止 LTO 优化把“没人显式引用“的变量裁掉。</p>
+<p>合并之后，整个内核 ROM 里有一片连续的内存，里面是几千个驱动 init 函数的指针，按 level 排好。</p>
+<p><img src="../assets/ch17/slide4_链接脚本section合并.png" alt="链接脚本 + 合并"></p>
+<h2 id="175-启动时遍历"><a class="header" href="#175-启动时遍历">17.5 启动时遍历</a></h2>
+<p>内核启动到一定阶段，会调一个函数 <code>do_initcalls</code>。打开 <code>init/main.c</code> 第 1297 行：</p>
+<pre><code class="language-c">static void __init do_initcalls(void)
+{
+	int level;
+	size_t len = saved_command_line_len + 1;
+	char *command_line;
+
+	command_line = kzalloc(len, GFP_KERNEL);
+	if (!command_line)
+		panic("%s: Failed to allocate %zu bytes\n", __func__, len);
+
+	for (level = 0; level &lt; ARRAY_SIZE(initcall_levels) - 1; level++) {
+		/* Parser modifies command_line, restore it each time */
+		strcpy(command_line, saved_command_line);
+		do_initcall_level(level, command_line);
+	}
+
+	kfree(command_line);
+}
+</code></pre>
+<p><code>initcall_levels[]</code> 在第 1252 行：</p>
+<pre><code class="language-c">static initcall_entry_t *initcall_levels[] __initdata = {
+	__initcall0_start,
+	__initcall1_start,
+	__initcall2_start,
+	__initcall3_start,
+	__initcall4_start,
+	__initcall5_start,
+	__initcall6_start,
+	__initcall7_start,
+	__initcall_end,
+};
+</code></pre>
+<p>按级别循环，每一级调 <code>do_initcall_level</code>，里面就是一个 for 循环遍历该级数组（<code>init/main.c</code> 第 1282 行）：</p>
+<pre><code class="language-c">static void __init do_initcall_level(int level, char *command_line)
+{
+	initcall_entry_t *fn;
+	/* ... parse command line ... */
+	for (fn = initcall_levels[level]; fn &lt; initcall_levels[level+1]; fn++)
+		do_one_initcall(initcall_from_entry(fn));
+}
+</code></pre>
+<p>就这么简单。</p>
+<p>调用者从头到尾不知道有哪些驱动。它只管按级别遍历这片内存，挨个调过去。</p>
+<p>加一个新驱动，你只写 <code>module_init(xxx)</code> 一行。链接器自动把你塞进数组，启动时自动调到你。</p>
+<p><code>start_kernel</code> 一行不改。</p>
+<p><img src="../assets/ch17/slide5_do_initcalls.png" alt="do_initcalls"></p>
+<h2 id="176-在-pc-上山寨一份"><a class="header" href="#176-在-pc-上山寨一份">17.6 在 PC 上山寨一份</a></h2>
+<p>配套代码 <code>pc/initcall.h</code> 把这一招砍到最小：</p>
+<pre><code class="language-c">typedef int (*initcall_t)(void);
+
+#define MODULE_INIT(fn)							\
+	static initcall_t __initcall_##fn				\
+		__attribute__((used, section("my_initcall"))) = fn
+
+extern initcall_t __start_my_initcall[];
+extern initcall_t __stop_my_initcall[];
+
+void do_initcalls(void);
+</code></pre>
+<p>只有一个级别（不分 0-7），段名叫 <code>my_initcall</code>。GCC 在 ELF/PE 平台上为合法 C 标识符段名（不以点开头）自动生成 <code>__start_&lt;sec&gt;</code> / <code>__stop_&lt;sec&gt;</code> 符号，所以这里不需要自己写链接脚本。</p>
+<p><code>do_initcalls</code> 实现极简（<code>pc/initcall.c</code>）：</p>
+<pre><code class="language-c">void do_initcalls(void)
+{
+	initcall_t *fn;
+
+	for (fn = __start_my_initcall; fn &lt; __stop_my_initcall; fn++) {
+		(*fn)();
+	}
+}
+</code></pre>
+<p>然后给 4 个驱动文件 <code>drv_led.c</code> / <code>drv_uart.c</code> / <code>drv_i2c.c</code> / <code>drv_spi.c</code> 各加一行：</p>
+<pre><code class="language-c">/* drv_led.c */
+static int led_init(void)
+{
+	printf("[led] led_init: register LED driver\n");
+	return 0;
+}
+
+MODULE_INIT(led_init);
+</code></pre>
+<p><code>main.c</code> 里只调一次 <code>do_initcalls()</code>：</p>
+<pre><code class="language-c">int main(void)
+{
+	do_initcalls();
+	return 0;
+}
+</code></pre>
+<p><code>main</code> 里没有任何 <code>led_init</code> / <code>uart_init</code> / <code>i2c_init</code> / <code>spi_init</code> 的字样。<code>main</code> 不知道有哪些驱动。</p>
+<p>跑 <code>./demo</code>：</p>
+<pre><code>[do_initcalls] sweep .my_initcall section from 0040b000 to 0040b010
+[do_initcalls] call 004015e1
+    [led]    led_init: register LED driver
+[do_initcalls] call 00401625
+    [uart]   uart_init: register UART driver
+[do_initcalls] call 00401669
+    [i2c]    i2c_init: register I2C driver
+[do_initcalls] call 004016ad
+    [spi]    spi_init: register SPI driver
+[do_initcalls] done, 4 initcalls
+</code></pre>
+<p>4 个驱动全部被调到，<code>main</code> 一字不动。</p>
+<p>加第 5 个驱动？新建 <code>drv_temp.c</code>：</p>
+<pre><code class="language-c">#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+static int temp_init(void)
+{
+	printf("[temp] temp_init\n");
+	return 0;
+}
+
+MODULE_INIT(temp_init);
+</code></pre>
+<p>加到 Makefile 的 SRCS。<code>main.c</code> 0 改动。这就是开闭原则的工业级落地。</p>
+<h2 id="177-rt-thread--zephyr--裸机一样能用"><a class="header" href="#177-rt-thread--zephyr--裸机一样能用">17.7 RT-Thread / Zephyr / 裸机一样能用</a></h2>
+<p>有的朋友会问，我用 RT-Thread、用 FreeRTOS、用 Zephyr，这一招用得了吗？</p>
+<p>用得了。机制完全一样，只是宏的名字不同。</p>
+<p><strong>RT-Thread</strong>（<code>include/rtdef.h</code>）：</p>
+<pre><code class="language-c">INIT_BOARD_EXPORT(fn)     /* 段名 .rti_fn.1 */
+INIT_DEVICE_EXPORT(fn)    /* 段名 .rti_fn.3 */
+INIT_COMPONENT_EXPORT(fn) /* 段名 .rti_fn.4 */
+INIT_ENV_EXPORT(fn)       /* 段名 .rti_fn.5 */
+INIT_APP_EXPORT(fn)       /* 段名 .rti_fn.6 */
+</code></pre>
+<p>完全一样的 <code>__attribute__((section()))</code> + 链接脚本合并 + 启动遍历。<code>rt_components_init()</code> 是它的 <code>do_initcalls</code>。</p>
+<p><strong>Zephyr</strong>：<code>SYS_INIT(fn, level, priority)</code>，level 取 PRE_KERNEL_1 / PRE_KERNEL_2 / POST_KERNEL / APPLICATION，机制同源。</p>
+<p><strong>裸机 STM32</strong>：自己定义 section + 链接脚本里加几行（详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/stm32-snippet/"><code>oop-in-c/code/17-initcall/stm32-snippet/</code></a>），main 里调一次 <code>do_initcalls()</code>。</p>
+<p>这不是 Linux 独有的魔法。这是 C 语言 + 链接器就能做到的事，任何 C 项目都能用。</p>
+<p><img src="../assets/ch17/slide6_RT-Thread对照.png" alt="RT-Thread / MCU 对照"></p>
+<h2 id="178-c-对比-c全局对象自动构造"><a class="header" href="#178-c-对比-c全局对象自动构造">17.8 C 对比 C++：全局对象自动构造</a></h2>
+<p>C++ 有一个特性：全局对象的构造函数会在 main 之前自动跑：</p>
+<pre><code class="language-cpp">class LedDriver {
+public:
+	LedDriver() {
+		register_with_kernel();   // 启动期自动跑
+	}
+};
+
+LedDriver g_led_driver;   // 全局对象，构造函数 main 之前调
+</code></pre>
+<p>你可能觉得这是黑魔法。其实 C++ 编译器做的事和你刚才学的 <code>module_init</code> <strong>一模一样</strong>：</p>
+<ol>
+<li>把每个全局对象的构造函数地址，塞进一个特殊段叫 <code>.init_array</code>（或 <code>.ctors</code>）。</li>
+<li>C 运行时启动代码（crt0）启动期遍历 <code>.init_array</code>，挨个调用。</li>
+<li>调完了才进 main。</li>
+</ol>
+<p><code>__initcall6.init</code> 段 ↔ <code>.init_array</code> 段。
+<code>module_init(fn)</code> ↔ 全局对象的构造函数。
+<code>do_initcalls()</code> ↔ crt0 的启动代码遍历。</p>
+<p>C 里你亲手写 <code>MODULE_INIT(fn)</code> + section attribute + 链接脚本，C++ 编译器自动做同一招。</p>
+<p>你以为 C++ 全局对象自动构造是黑魔法。你写过 <code>module_init</code> 你就明白：底下就是这一招。</p>
+<p><img src="../assets/ch17/slide7_CvsCpp.png" alt="C vs C++"></p>
+<h2 id="179-视频里没讲透的几个细节"><a class="header" href="#179-视频里没讲透的几个细节">17.9 视频里没讲透的几个细节</a></h2>
+<h3 id="1791-keep-防止-lto-裁掉"><a class="header" href="#1791-keep-防止-lto-裁掉">17.9.1 KEEP(*) 防止 LTO 裁掉</a></h3>
+<p>Linux 内核链接脚本里 <code>KEEP(*(.initcall6.init))</code> 这一行的 <code>KEEP</code>，是告诉链接器“哪怕没人显式引用这个段里的内容，也不要把它优化掉“。</p>
+<p>LTO（Link-Time Optimization）会做“死代码消除“，没人引用的变量直接丢。你的 <code>__initcall_xxx</code> 变量本来就没人显式引用（它是被链接器收集的），LTO 一开就把它整段干掉了。</p>
+<p><code>__used</code> attribute 在编译期保留，<code>KEEP</code> 在链接期保留。两条都不能少。</p>
+<h3 id="1792-pe--elf-平台的差异"><a class="header" href="#1792-pe--elf-平台的差异">17.9.2 PE / ELF 平台的差异</a></h3>
+<p>Linux 内核是 ELF。ELF 平台上 GCC + <code>ld</code> 自动给“以 C 标识符开头的 section“生成 <code>__start_&lt;sec&gt;</code> / <code>__stop_&lt;sec&gt;</code> 符号。</p>
+<p>PC 上 MinGW 用 PE 格式，但 GCC 端的处理一致。所以 ch17 PC 版能直接用 <code>__start_my_initcall</code> / <code>__stop_my_initcall</code>，不需要写链接脚本。</p>
+<p>注意：section 名字必须不以点开头才是合法 C 标识符（Linux 内核里用 <code>.initcall6.init</code> 走自己的链接脚本，绕过这个限制）。</p>
+<h3 id="1793-段名带点是怎么处理的"><a class="header" href="#1793-段名带点是怎么处理的">17.9.3 段名带点是怎么处理的</a></h3>
+<p>Linux 内核段名 <code>.initcall6.init</code> 带点，链接器不会自动给它生成 <code>__start__initcall6.init</code> 这种符号（C 标识符里不能有点）。所以内核自己在 vmlinux.lds.h 里手动写 <code>__initcall6_start = .;</code> 和后面的标记。</p>
+<p>如果你给 STM32 项目自己写 initcall，建议两条路二选一：</p>
+<ol>
+<li>段名用合法 C 标识符（<code>my_initcall</code> 不带点），让 GCC 自动生成边界符号。</li>
+<li>段名带点，自己在 .ld 里手写 <code>__my_initcall_start = .;</code> 标记。</li>
+</ol>
+<p>走哪条都行，习惯就好。</p>
+<h3 id="1794-级别level什么时候有用"><a class="header" href="#1794-级别level什么时候有用">17.9.4 级别（level）什么时候有用</a></h3>
+<p>简单项目就一个级别够用，复杂项目分级别。例子：</p>
+<ul>
+<li>I2C 总线驱动必须在 I2C 设备驱动之前 init（不然设备 init 时找不到总线）。给总线 level=2，设备 level=4，启动期总线先跑。</li>
+</ul>
+<p>Linux 内核的 8 级（pure / core / postcore / arch / subsys / fs / device / late）和裸机 / RTOS 项目的 7 级是同一个思路在不同复杂度的版本：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>级别（工业 7 级）</th><th>段名</th><th>跑什么</th><th>Linux 内核对应</th></tr>
+</thead>
+<tbody>
+<tr><td>BOARD</td><td><code>INIT_BOARD_EXPORT</code></td><td>板级硬件配置（GPIO 复用、时钟、电源）</td><td>core / arch</td></tr>
+<tr><td>PREV_DEVICE</td><td><code>INIT_PREV_EXPORT</code></td><td>设备前置（总线、I2C 控制器、SPI 控制器）</td><td>postcore / subsys</td></tr>
+<tr><td>DEVICE</td><td><code>INIT_DEVICE_EXPORT</code></td><td>具体设备（LED、EEPROM、传感器、电机）</td><td>device</td></tr>
+<tr><td>COMPONENT</td><td><code>INIT_COMPONENT_EXPORT</code></td><td>组件级（文件系统、网络栈）</td><td>fs / device</td></tr>
+<tr><td>ENV</td><td><code>INIT_ENV_EXPORT</code></td><td>环境变量初始化（参数加载、上次断电恢复）</td><td>late</td></tr>
+<tr><td>APP</td><td><code>INIT_APP_EXPORT</code></td><td>应用层模块（业务状态机、任务）</td><td>(用户态 init)</td></tr>
+<tr><td>SYSTEM_READY</td><td><code>INIT_SYSREADY_EXPORT</code></td><td>全部就绪后的最后通知（喂狗、点亮 ready 灯）</td><td>(用户态 init)</td></tr>
+</tbody>
+</table>
+</div>
+<p>设计原理就一句：<strong>基础设施在前，上层依赖在后</strong>。GPIO 没初始化好的时候让 LED 驱动 probe 是会崩的，所以 LED 必须晚于 GPIO；I2C 控制器没初始化好的时候让 I2C 设备驱动 probe 也会崩，所以 I2C 设备必须晚于控制器。级别的存在就是把这种“前后依赖“显式写出来，不用驱动作者去 main 里手排顺序。</p>
+<p>裸机项目可以从简单 1 级版本起步（本章 PC demo 就是一级），项目复杂度起来再加级别。RT-Thread 那 6 级（board / prev / device / component / env / app）够多数嵌入式项目用。</p>
+<h3 id="1795-同一级别内部的顺序"><a class="header" href="#1795-同一级别内部的顺序">17.9.5 同一级别内部的顺序</a></h3>
+<p>同级别内部的初始化顺序，由链接顺序决定（<code>.o</code> 文件在 <code>gcc xxx.c yyy.c zzz.c</code> 命令行里的顺序）。理论上不应该依赖这个顺序，同级别的驱动应该没有相互依赖。如果有，提级别。</p>
+<p>LTO 模式下编译器会换顺序，所以 Linux 内核 <code>include/linux/init.h</code> 里有专门的 <code>CONFIG_LTO_CLANG</code> 分支处理（第 223 行起），强制保序。</p>
+<h3 id="1796-失败处理"><a class="header" href="#1796-失败处理">17.9.6 失败处理</a></h3>
+<p>每个 initcall 函数返回 int。失败返回非 0。Linux 内核 <code>do_one_initcall</code>（<code>init/main.c</code> 第 1222 行）：</p>
+<pre><code class="language-c">int __init_or_module do_one_initcall(initcall_t fn)
+{
+	int count = preempt_count();
+	char msgbuf[64];
+	int ret;
+
+	if (initcall_blacklisted(fn))
+		return -EPERM;
+
+	do_trace_initcall_start(fn);
+	ret = fn();
+	do_trace_initcall_finish(fn, ret);
+	/* ... 抢占计数检查、IRQ 检查 ... */
+	return ret;
+}
+</code></pre>
+<p>它会抓住返回值，但不会因为一个驱动失败就停整个启动。日志里记一行 “initcall xxx returned with -ENODEV”，继续跑下一个。</p>
+<p>为什么不 panic？内核启动期 1000 多个 initcall，少一个驱动的硬件没插不应该让整机起不来，工程上的“宽容启动“思路。裸机 / RTOS 项目的 do_initcalls 可以根据需要决定：失败立刻 panic 还是只记日志继续。生产代码里大多是后者，方便边出 bug 边迭代。</p>
+<h3 id="1797-模块自卸载"><a class="header" href="#1797-模块自卸载">17.9.7 模块自卸载</a></h3>
+<p>本章只讲 <code>module_init</code>。Linux 内核还有 <code>module_exit(fn)</code>，把 <code>fn</code> 塞进 <code>.exitcall</code> 段。卸载模块时遍历这个段调过去。</p>
+<p>裸机不需要这一招（设备开机用到关机，不卸载）。RTOS 偶尔用（动态加载脚本插件之类）。</p>
+<h2 id="1710-你现在的代码在-stm32-上长什么样"><a class="header" href="#1710-你现在的代码在-stm32-上长什么样">17.10 你现在的代码在 STM32 上长什么样</a></h2>
+<p>STM32 工程比 PC 多一步：链接脚本（<code>.ld</code>）里要手动加段定义。打开 CubeMX 生成的 <code>STM32xxx_FLASH.ld</code>，在 <code>.text</code> 段后面加：</p>
+<pre><code>SECTIONS
+{
+	/* ... 已有的 .isr_vector / .text / .rodata 等 ... */
+
+	.my_initcall : ALIGN(4)
+	{
+		__start_my_initcall = .;
+		KEEP(*(my_initcall*))
+		__stop_my_initcall = .;
+	} &gt; FLASH
+}
+</code></pre>
+<p>要点：</p>
+<ul>
+<li><code>KEEP(...)</code> 防止链接器 LTO 优化把“没人显式引用“的 initcall 段裁掉。</li>
+<li><code>__start_my_initcall</code> / <code>__stop_my_initcall</code> 是手写边界符号（PC 上 GCC 自动生成，STM32 链接脚本里要手写）。</li>
+<li>段挂在 <code>&gt; FLASH</code>，函数指针表存在 ROM 里，不占 RAM。</li>
+</ul>
+<p>驱动文件写法和 PC 版完全一样：</p>
+<pre><code class="language-c">/* drv_led_stm32.c */
+#include "initcall.h"
+
+static int led_stm32_init(void)
+{
+	/* 真机上这里调 HAL_GPIO_Init 等 */
+	register_my_led_driver();
+	return 0;
+}
+MODULE_INIT(led_stm32_init);
+</code></pre>
+<p><code>main</code> 里启动期 <code>do_initcalls()</code> 调一次。每加一个新驱动就多一份 <code>.c</code> + 一行 <code>MODULE_INIT</code>，<code>main</code> 0 改动，链接器自动把所有驱动收集到那个段里。</p>
+<p>完整说明见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/stm32-snippet/README.md"><code>oop-in-c/code/17-initcall/stm32-snippet/README.md</code></a>。</p>
+<h2 id="1711-你现在的代码在-linux-上长什么样"><a class="header" href="#1711-你现在的代码在-linux-上长什么样">17.11 你现在的代码在 Linux 上长什么样</a></h2>
+<p>Linux 用户态代码（不写内核驱动）也能用同一招。glibc 的 <code>__attribute__((constructor))</code> 把函数指针塞进 <code>.init_array</code> 段，crt0 启动期遍历。等价于你的 <code>MODULE_INIT</code>：</p>
+<pre><code class="language-c">__attribute__((constructor))
+static void my_init(void)
+{
+	printf("called before main\n");
+}
+</code></pre>
+<p>效果一样，机制同源。</p>
+<h2 id="1712-工业代码里的-initcall-长什么样"><a class="header" href="#1712-工业代码里的-initcall-长什么样">17.12 工业代码里的 initcall 长什么样</a></h2>
+<p>工业控制板项目用的就是 RT-Thread 风格的 initcall：</p>
+<pre><code class="language-c">/* drivers/led/led_main.c */
+static int led_main_init(void)
+{
+	register_led_handle("error",   &amp;led_err_chip);
+	register_led_handle("status",  &amp;led_status_chip);
+	register_led_handle("network", &amp;led_net_chip);
+	return 0;
+}
+INIT_DEVICE_EXPORT(led_main_init);
+</code></pre>
+<p>每个 driver 文件末尾一行 <code>INIT_DEVICE_EXPORT</code>。<code>main</code> 里只 <code>rt_components_init()</code> 调一次，全部驱动自动挂上。</p>
+<p>5 套产品共用一份驱动代码，每套产品只是 <code>board_init.c</code> 不同，这套机制让“共享驱动 + 独立板级“成为现实。整个项目几十个驱动模块，main 只有不到 100 行。</p>
+<p>这就是开闭原则的最终工业落地。</p>
+<h2 id="1713-完整源码清单"><a class="header" href="#1713-完整源码清单">17.13 完整源码清单</a></h2>
+<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/pc/"><code>oop-in-c/code/17-initcall/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
+<h3 id="文件-1mainc33-行"><a class="header" href="#文件-1mainc33-行">文件 1：<code>main.c</code>（33 行）</a></h3>
+<p>启动入口。注意 <code>main</code> 里没有显式调用 <code>led_init</code> / <code>uart_init</code> / <code>i2c_init</code> / <code>spi_init</code>，只调一次 <code>do_initcalls()</code>。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * main.c - 启动入口
+ *
+ * 注意 main 里没有显式调用 led_init / uart_init / i2c_init / spi_init。
+ * 加一个驱动文件 drv_xxx.c 写一行 MODULE_INIT(xxx_init)，main 一字不改。
+ *
+ * 这就是 Linux 内核的开闭原则：对扩展开放，对修改关闭。
+ */
+
+#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+int main(void)
+{
+	printf("=========================================\n");
+	printf("  ch17 - linker-time auto registration\n");
+	printf("=========================================\n");
+
+	printf("\n&gt;&gt;&gt; kernel boot, run initcalls &lt;&lt;&lt;\n\n");
+
+	do_initcalls();
+
+	printf("\n&gt;&gt;&gt; all drivers ready &lt;&lt;&lt;\n");
+	printf("\n=========================================\n");
+	printf("  main never references any drv_* function\n");
+	printf("=========================================\n");
+
+	printf("\nPress Enter to exit...\n");
+	getchar();
+	return 0;
+}
+</code></pre>
+<h3 id="文件-2initcallh48-行"><a class="header" href="#文件-2initcallh48-行">文件 2：<code>initcall.h</code>（48 行）</a></h3>
+<p>机制核心。<code>MODULE_INIT(fn)</code> 宏把函数指针塞进 <code>.my_initcall</code> 段，启动期遍历。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * initcall.h - 山寨 Linux 内核 initcall 机制
+ *
+ * 核心三件套：
+ *   1. __attribute__((section(...)))：把函数指针塞进特殊段
+ *   2. 链接器 / 链接脚本把所有这种段合并到一起
+ *   3. 启动代码遍历这个段，挨个调用
+ *
+ * 真实内核版定义在 include/linux/init.h 第 268 行起：
+ *   #define ____define_initcall(fn, __unused, __name, __sec)   \
+ *       static initcall_t __name __used                        \
+ *           __attribute__((__section__(__sec))) = fn;
+ *
+ * 书里的 PC 版砍掉级别（内核分 8 级），就一个级别 ".my_initcall"。
+ */
+
+#ifndef INITCALL_H
+#define INITCALL_H
+
+typedef int (*initcall_t)(void);
+
+/*
+ * MODULE_INIT(fn)：把 fn 的地址塞进 .my_initcall 段
+ *
+ * GCC 的 section attribute 把变量放到指定段。
+ * 链接器自动收集所有 .my_initcall 段的内容到一起。
+ *
+ * __used 告诉编译器：这个变量虽然没人显式引用，也不要优化掉。
+ * 内核里的 __used 和这一招同源。
+ */
+#define MODULE_INIT(fn)							\
+	static initcall_t __initcall_##fn				\
+		__attribute__((used, section("my_initcall"))) = fn
+
+/*
+ * 启动代码用这两个标记找到段的边界。
+ * GCC 在 ELF / PE 平台上会为合法 C 标识符段名（不以点开头）自动生成
+ * __start_&lt;sec&gt; / __stop_&lt;sec&gt; 符号。Linux 内核里也用同源机制，
+ * 不过内核自己写链接脚本生成 __initcall_start / __initcall_end。
+ */
+extern initcall_t __start_my_initcall[];
+extern initcall_t __stop_my_initcall[];
+
+void do_initcalls(void);
+
+#endif /* INITCALL_H */
+</code></pre>
+<h3 id="文件-3initcallc39-行"><a class="header" href="#文件-3initcallc39-行">文件 3：<code>initcall.c</code>（39 行）</a></h3>
+<p>启动期遍历 <code>.my_initcall</code> 段，挨个调过去。这就是 Linux 内核 <code>do_initcalls</code> 砍到最小的版本。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * initcall.c - 启动期遍历 .my_initcall 段
+ *
+ * 真实内核的 do_initcalls 在 init/main.c 第 1297 行：
+ *
+ *   static void __init do_initcalls(void)
+ *   {
+ *       int level;
+ *       ...
+ *       for (level = 0; level &lt; ARRAY_SIZE(initcall_levels) - 1; level++) {
+ *           ...
+ *           do_initcall_level(level, command_line);
+ *       }
+ *   }
+ *
+ * 书里的版本砍掉级别和命令行，直接遍历从 __start 到 __stop。
+ */
+
+#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+void do_initcalls(void)
+{
+	initcall_t *fn;
+
+	printf("[do_initcalls] sweep .my_initcall section "
+	       "from %p to %p\n",
+	       (void *)__start_my_initcall, (void *)__stop_my_initcall);
+
+	for (fn = __start_my_initcall; fn &lt; __stop_my_initcall; fn++) {
+		printf("[do_initcalls] call %p\n", (void *)*fn);
+		(*fn)();
+	}
+
+	printf("[do_initcalls] done, %ld initcalls\n",
+	       (long)(__stop_my_initcall - __start_my_initcall));
+}
+</code></pre>
+<h3 id="文件-4drv_ledc21-行"><a class="header" href="#文件-4drv_ledc21-行">文件 4：<code>drv_led.c</code>（21 行）</a></h3>
+<p>LED 驱动模块。文件里没有任何对 main 或别人的函数引用，通过 <code>MODULE_INIT</code> 把自己注册到段里。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * drv_led.c - LED 驱动模块
+ *
+ * 这个文件里没有任何对 main 或别人的函数引用，它通过 MODULE_INIT
+ * 注册自己。启动期 do_initcalls 会扫到 led_init 并调到。
+ *
+ * Linux 内核的 module_init(fn) 宏，最终也展开到这个机制。
+ */
+
+#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+static int led_init(void)
+{
+	printf("    [led]    led_init: register LED driver\n");
+	return 0;
+}
+
+MODULE_INIT(led_init);
+</code></pre>
+<h3 id="文件-5drv_uartc12-行"><a class="header" href="#文件-5drv_uartc12-行">文件 5：<code>drv_uart.c</code>（12 行）</a></h3>
+<p>UART 驱动模块。和 <code>drv_led.c</code> 同构，只是函数名不同。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+static int uart_init(void)
+{
+	printf("    [uart]   uart_init: register UART driver\n");
+	return 0;
+}
+
+MODULE_INIT(uart_init);
+</code></pre>
+<h3 id="文件-6drv_i2cc12-行"><a class="header" href="#文件-6drv_i2cc12-行">文件 6：<code>drv_i2c.c</code>（12 行）</a></h3>
+<p>I2C 驱动模块。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+static int i2c_init(void)
+{
+	printf("    [i2c]    i2c_init: register I2C driver\n");
+	return 0;
+}
+
+MODULE_INIT(i2c_init);
+</code></pre>
+<h3 id="文件-7drv_spic12-行"><a class="header" href="#文件-7drv_spic12-行">文件 7：<code>drv_spi.c</code>（12 行）</a></h3>
+<p>SPI 驱动模块。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+#include "initcall.h"
+#include &lt;stdio.h&gt;
+
+static int spi_init(void)
+{
+	printf("    [spi]    spi_init: register SPI driver\n");
+	return 0;
+}
+
+MODULE_INIT(spi_init);
+</code></pre>
+<h3 id="文件-8makefile25-行"><a class="header" href="#文件-8makefile25-行">文件 8：<code>Makefile</code>（25 行）</a></h3>
+<pre><code class="language-makefile"># Makefile - ch17 initcall (PC)
+#
+# 注意：__start_my_initcall / __stop_my_initcall 这两个符号是 GNU ld 在
+# ELF 平台自动生成的（任何独立 section 都会有）。MinGW 的 PE 链接器同样支持。
+#
+# 书里额外在 drv_dummy.c 里准备一份 fallback，确保即使链接器没有给你
+# 自动生成边界符号，也能跑通。
+
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99
+TARGET  = demo
+SRCS    = main.c initcall.c drv_led.c drv_uart.c drv_i2c.c drv_spi.c
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(TARGET).exe
+</code></pre>
+<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
+<pre><code class="language-bash">cd oop-in-c/code/17-initcall/pc
+make
+./demo
+</code></pre>
+<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<pre><code>=========================================
+  ch17 - linker-time auto registration
+=========================================
+
+&gt;&gt;&gt; kernel boot, run initcalls &lt;&lt;&lt;
+
+[do_initcalls] sweep .my_initcall section from 0040b000 to 0040b010
+[do_initcalls] call 004015e1
+    [led]    led_init: register LED driver
+[do_initcalls] call 00401625
+    [uart]   uart_init: register UART driver
+[do_initcalls] call 00401669
+    [i2c]    i2c_init: register I2C driver
+[do_initcalls] call 004016ad
+    [spi]    spi_init: register SPI driver
+[do_initcalls] done, 4 initcalls
+
+&gt;&gt;&gt; all drivers ready &lt;&lt;&lt;
+
+=========================================
+  main never references any drv_* function
+=========================================
+</code></pre>
+<p><code>main.c</code> 里没有任何 <code>led_init / uart_init / i2c_init / spi_init</code> 字样。它不知道有这些驱动，但它们全部被调到了。</p>
+<p>加第 5 个驱动？新建一个 <code>drv_temp.c</code>，加到 Makefile 的 SRCS 里。<code>main</code> 0 改动。</p>
+<h2 id="1714-视频回放"><a class="header" href="#1714-视频回放">17.14 视频回放</a></h2>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1nKofBkE4V/">《C 语言·一行代码·自动注册所有模块·链接期初始化·编译器 + 链接器 + 启动代码三方配合》</a></p>
+</blockquote>
+<h2 id="一句话"><a class="header" href="#一句话">一句话</a></h2>
+<p>调用者不需要知道有哪些模块，模块自己注册。</p>
+<p>这才是真正的开闭原则，对扩展开放，对修改关闭。</p>
+<p><img src="../assets/ch17/slide8_金句.png" alt="金句"></p>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>封装、继承、多态、向上转型、向下转型、纯虚 / 选填 / 接口、Platform 抽象、Linux 内核映射、链接自动初始化，18 章一路走下来，C 里做 OOP 的全套武器你都见过了。</p>
+<p>下一章不引入新概念。它把 19 期视频走过的路在书里串一遍，让你看清楚一颗 LED 是怎么从“三份重复代码“演化到“4000 万行内核都用同一套机制“的。</p>
+<p>下一篇：<a href="18-全书地图.html">第 18 章 · 全书地图回顾 · 一颗 LED 走过的演化路径</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../04-工程威力/16-Linux不难.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../04-工程威力/18-全书地图.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../04-工程威力/16-Linux不难.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../04-工程威力/18-全书地图.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

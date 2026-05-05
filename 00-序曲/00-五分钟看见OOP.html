@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-305eaacf.js";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-d6f659d5.js"></script>
+        <script src="../toc-1bc8502d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,48 +180,53 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-0-章--5-分钟看见你的第一个-oop-led"><a class="header" href="#第-0-章--5-分钟看见你的第一个-oop-led">第 0 章 · 5 分钟看见你的第一个 OOP LED</a></h1>
+                        <h1 id="5-分钟看见你的第一个-oop-led"><a class="header" href="#5-分钟看见你的第一个-oop-led">5 分钟看见你的第一个 OOP LED</a></h1>
 <p>学一个新东西，最重要的一刻不是读懂理论，是亲眼看见它能跑。</p>
-<p>这一章不解释任何概念。我们只做一件事：让你在 5 分钟内跑通一段 C 代码，看到屏幕输出三颗 LED 被同一份函数依次点亮。</p>
+<p>费曼讲过一句话：被自己说服，才叫理解。读完一段代码觉得“哦原来是这样“，那是被作者说服。亲手编译一次、跑出和书里描述一致的输出，那才是被自己说服。</p>
+<p>这一章不解释任何概念，只做一件事：让你在 5 分钟内跑通一段 C 代码，看到屏幕输出三颗 LED 被同一份函数依次点亮。</p>
 <h2 id="准备工作"><a class="header" href="#准备工作">准备工作</a></h2>
 <p>需要的工具只有一个：GCC 编译器。</p>
-<p>Windows 装 <a href="https://www.msys2.org/">MSYS2</a> 或 <a href="https://sourceforge.net/projects/mingw/">MinGW</a>，二选一。详细步骤看 <a href="../../setup/README.html">setup/README.md</a>。</p>
-<p>macOS 终端运行 <code>xcode-select --install</code>，自带 GCC。</p>
-<p>Linux：<code>sudo apt install gcc make</code>（Debian/Ubuntu），或 <code>sudo yum install gcc make</code>（RHEL/CentOS）。</p>
-<p>完全不想装环境的，每个 EP 代码包都附带预编译好的 <code>demo.exe</code>，Windows 双击即可。</p>
+<p>Windows 用户装 MinGW 或 MSYS2 任选一个（搜官方安装包一路 next，勾选“添加到 PATH“），然后命令行敲 <code>gcc --version</code> 看到版本号即装好。</p>
+<p>Linux 用户：<code>sudo apt install gcc make</code>（Debian/Ubuntu）或 <code>sudo yum install gcc make</code>（RHEL/CentOS）。</p>
+<p>完全不想装环境也行：每个章节代码包都附带预编译好的 <code>demo.exe</code>，Windows 双击即可看到完整输出。</p>
+<p>如果你是有经验的工程师，跑不跑代码都行。这本书的写法是不实操也能完全理解每行代码的意图。</p>
 <h2 id="三步跑通"><a class="header" href="#三步跑通">三步跑通</a></h2>
 <p>第一步，克隆仓库：</p>
+<pre><code class="language-bash">git clone https://github.com/ZhaoChengBo/zhaoming-embedded.git
+cd zhaoming-embedded/oop-in-c/code/01-three-leds/pc
+</code></pre>
+<p>国内访问 GitHub 慢可以用 Gitee：</p>
 <pre><code class="language-bash">git clone https://gitee.com/zhao-chengbo/zhaoming_embedded.git
-cd zhaoming_embedded/oop-in-c/code/EP06_封装
+cd zhaoming_embedded/oop-in-c/code/01-three-leds/pc
 </code></pre>
 <p>第二步，编译：</p>
 <pre><code class="language-bash">make
 </code></pre>
 <p>或者直接用 GCC：</p>
-<pre><code class="language-bash">gcc -Wall -Wextra -I../common -o demo main.c led.c ../common/platform_pc.c
+<pre><code class="language-bash">gcc -Wall -Wextra -std=c99 -I../../common -o demo main.c led.c ../../common/platform_pc.c
 </code></pre>
 <p>编译成功，当前目录会多出一个 <code>demo</code>（Linux/Mac）或 <code>demo.exe</code>（Windows）。</p>
 <p>第三步，运行：</p>
 <pre><code class="language-bash">./demo
 </code></pre>
 <h2 id="看到了什么"><a class="header" href="#看到了什么">看到了什么</a></h2>
-<p>屏幕滚出几十行 <code>[GPIO]</code> 和 <code>[LED]</code> 输出。三颗 LED——Pin 13 红、Pin 14 绿、Pin 15 蓝——依次被初始化、点亮、熄灭、调亮度。</p>
+<p>屏幕滚出几十行 <code>[GPIO]</code> 和 <code>[LED]</code> 输出。三颗 LED（Pin 13 红、Pin 14 绿、Pin 15 蓝）依次被初始化、点亮、熄灭、调亮度。</p>
 <p>打开 <code>main.c</code>，关键的几行是：</p>
-<pre><code class="language-c">Led_t red_led;
-Led_t green_led;
-Led_t blue_led;
+<pre><code class="language-c">struct led red_led;
+struct led green_led;
+struct led blue_led;
 
-led_init(&amp;red_led,   13);
+led_init(&amp;red_led, 13);
 led_init(&amp;green_led, 14);
-led_init(&amp;blue_led,  15);
+led_init(&amp;blue_led, 15);
 
 led_on(&amp;red_led);
 led_on(&amp;green_led);
 led_on(&amp;blue_led);
 </code></pre>
-<p><code>led_on()</code> 这个函数，去 <code>led.c</code> 里看，只写了一份，不到 10 行。但它服务了三颗 LED。通过传不同的“挂号单“（<code>&amp;red_led</code> / <code>&amp;green_led</code> / <code>&amp;blue_led</code>），它能服务无限多颗。</p>
+<p><code>led_on()</code> 这个函数在 <code>led.c</code> 里只写了一份，不到 10 行。但它服务了三颗 LED。通过传不同的“挂号单“（<code>&amp;red_led</code>、<code>&amp;green_led</code>、<code>&amp;blue_led</code>），它能服务无限多颗。</p>
 <p>这就是封装。</p>
-<p>你可能从来没听过这个词，也可能听过但觉得它玄。没关系，第 1 章我们从最朴素的“工程师都会的写法“开始——三颗 LED 写三份代码——一步步发现为什么必须演化成你刚才看到的样子。</p>
+<p>你可能从来没听过这个词，也可能听过但觉得它玄。没关系。下一章从最朴素的“工程师都会的写法“开始（三颗 LED 写三份代码），一步步发现为什么必须演化成你刚才看到的样子。</p>
 <h2 id="跑不起来"><a class="header" href="#跑不起来">跑不起来</a></h2>
 <div class="table-wrapper">
 <table>
@@ -229,16 +234,19 @@ led_on(&amp;blue_led);
 <tr><th>报错</th><th>解决</th></tr>
 </thead>
 <tbody>
-<tr><td><code>gcc: command not found</code></td><td>GCC 没装或不在 PATH，看 <a href="../../setup/README.html">setup/README.md</a></td></tr>
+<tr><td><code>gcc: command not found</code></td><td>GCC 没装或不在 PATH，按“准备工作“那一节装一遍</td></tr>
 <tr><td><code>make: command not found</code></td><td>Windows 上 MinGW 装的是 <code>mingw32-make</code>，改名或建别名</td></tr>
 <tr><td><code>fatal error: stdio.h: No such file</code></td><td>GCC 装得不全，重装并选完整开发套件</td></tr>
 <tr><td>中文路径报错</td><td>把仓库克隆到纯英文路径，如 <code>D:\code\zhaoming</code></td></tr>
-<tr><td>编译过了但运行报错</td><td>Windows 试 <code>./demo.exe</code>；或加 <code>./</code> 前缀</td></tr>
+<tr><td>编译过了但运行报错</td><td>Windows 试 <code>./demo.exe</code>，或加 <code>./</code> 前缀</td></tr>
 </tbody>
 </table>
 </div>
-<p>还是不行，到 <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/issues">Gitee Issues</a> 提一个，附系统、GCC 版本、完整报错。</p>
-<p>下一篇：<a href="../01-封装/01-三个LED三份代码.html">第 1 章 · 三个 LED 你写了三份代码</a></p>
+<p>还是不行，到 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/issues">GitHub Issues</a> 或 <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/issues">Gitee Issues</a> 提一个，附系统、GCC 版本、完整报错。</p>
+<h2 id="为什么先看见再谈理论"><a class="header" href="#为什么先看见再谈理论">为什么先看见再谈理论</a></h2>
+<p>接下来 18 章你会一步步推出整个面向对象。但如果你在没看见结果之前先去读一堆抽象概念，会有一种“知道“但不“懂“的错觉。这是大多数中文技术书的通病。</p>
+<p>费曼方法的核心是：不被作者说服，要被自己说服。今天这 5 分钟你已经被自己说服一件事：这三个 LED 真的可以一份代码搞定，不是我吹的。后面 18 章只要让你心服口服地说“哦原来是这样推出来的“。</p>
+<p>下一篇：<a href="../01-封装/01-三个LED三份代码.html">第 1 章 · 三个 LED 三份代码</a></p>
 
                     </main>
 

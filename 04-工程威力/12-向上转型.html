@@ -1,0 +1,1059 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch12 一个指针指所有 LED · 向上转型 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/04-工程威力/12-向上转型.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-12-章--一个指针指所有-led--向上转型"><a class="header" href="#第-12-章--一个指针指所有-led--向上转型">第 12 章 · 一个指针指所有 LED · 向上转型</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/"><code>oop-in-c/code/12-upcasting/</code></a></p>
+<p>第 11 章末尾你看到的局面是这样：<code>struct led_base</code> 里有一个 <code>ops</code> 指针，子类把自己 <code>init</code> 的时候把 <code>&amp;xxx_ops</code> 填进去，应用层一句 <code>led_on(me)</code> 就能 dispatch 到三种不同的实现。</p>
+<p>机制学透了。但工程上还差最后一步：怎么让这套机制在一个真实项目里跑起来。</p>
+<p>这一章解决这一步。</p>
+<h2 id="120-从-ch11-到-ch12base-已定型子类开始繁多"><a class="header" href="#120-从-ch11-到-ch12base-已定型子类开始繁多">12.0 从 ch11 到 ch12：base 已定型，子类开始繁多</a></h2>
+<p>第 10 章末尾 <code>struct led_base</code> 已经定型：</p>
+<pre><code class="language-c">/* ch10 / ch11 / ch12 起一致 */
+struct led_base {
+	const struct led_ops *ops;
+	const char           *name;
+	bool                  is_on;
+};
+</code></pre>
+<p>ch12 起这一份字段不再变。变化的是子类。ch11 之前只有一种 GPIO LED 来演化 ops 表机制；这一章子类扩成三种，每种硬件资源完全不同：</p>
+<pre><code class="language-c">struct led_gpio {
+	struct led_base base;
+	uint8_t         pin;
+	bool            on_level;
+};
+
+struct led_pwm {
+	struct led_base base;
+	uint8_t         channel;
+	uint8_t         duty;
+};
+
+struct led_i2c {
+	struct led_base base;
+	uint8_t         bus;
+	uint8_t         addr;
+};
+</code></pre>
+<p>GPIO LED 有 <code>pin</code>，PWM LED 有 <code>channel + duty</code>，I2C 扩展芯片 LED 有 <code>bus + addr</code>。这正是父类放共性、硬件字段下沉到子类的标准形态。这条纪律 ch12 起整本书都遵守。</p>
+<p>如果你跑过 ch11 的代码再来跑 ch12，把字段差异记一下：父类字段没动（ops / name / is_on），子类多了起来，骨架（嵌入式继承 + ops 表）一字不变。</p>
+<h2 id="121-上一章的代码里藏着一个秘密"><a class="header" href="#121-上一章的代码里藏着一个秘密">12.1 上一章的代码里藏着一个秘密</a></h2>
+<p>上一章你写过这样的调用：</p>
+<pre><code class="language-c">struct led_gpio gpio_led;
+led_gpio_init(&amp;gpio_led, "ERR", 10, true);
+
+led_on(&amp;gpio_led.base);   /* 调过去 */
+led_off(&amp;gpio_led.base);
+</code></pre>
+<p>注意这个 <code>&amp;gpio_led.base</code>。</p>
+<p><code>led_on</code> 的参数类型是 <code>struct led_base *</code>。<code>gpio_led</code> 的类型是 <code>struct led_gpio</code>。你把一个 <code>led_gpio</code> 对象的 <code>base</code> 字段地址，当成 <code>led_base *</code> 传了进去。</p>
+<p>C 编译器一句话不说就让你过了。这个你一直在用但没仔细想过的事，今天揭穿。</p>
+<p><img src="../assets/ch12/slide1_问题展示.png" alt="上期写过的代码"></p>
+<h2 id="122-内存布局里的不变量"><a class="header" href="#122-内存布局里的不变量">12.2 内存布局里的不变量</a></h2>
+<p>第 11 章演化出了这个布局（slide 上写作 <code>LedGpio</code> / <code>LedBase</code>，本书用 Linux 内核风格的 <code>struct led_gpio</code> / <code>struct led_base</code>，含义一致）：</p>
+<pre><code class="language-c">struct led_gpio {
+	struct led_base base;       /* 父类，必须在第一个位置 */
+	uint8_t         pin;
+	bool            on_level;
+};
+</code></pre>
+<p>把它在内存里画出来：</p>
+<pre><code>+---------+---------+---------+      &lt;- &amp;gpio_led
+| ops*    | name*   | is_on   | base 部分
++---------+---------+---------+
+| pin     | on_lvl  | (pad)   | gpio 自己的部分
++---------+---------+---------+
+</code></pre>
+<p><code>base</code> 是子类的第一个字段，位于偏移 0。</p>
+<p>C 标准（C99 6.7.2.1 节）保证了一件事：<strong>结构体第一个成员的地址，等于结构体本身的地址</strong>。也就是说：</p>
+<pre><code class="language-c">&amp;gpio_led          == &amp;gpio_led.base   (作为指针值)
+sizeof(struct led_gpio) &gt; sizeof(struct led_base)  (但加大不影响起始地址)
+</code></pre>
+<p><code>&amp;gpio_led.base</code> 拿到的那个数值，就是 <code>gpio_led</code> 整个对象的起始地址。</p>
+<p><img src="../assets/ch12/slide2_内存布局回顾.png" alt="内存布局回顾"></p>
+<p>这一条不变量，是这一章所有威力的根基。</p>
+<h2 id="123-父类指针是通用句柄"><a class="header" href="#123-父类指针是通用句柄">12.3 父类指针是通用句柄</a></h2>
+<p>有了这个不变量，就有了一个事实：</p>
+<blockquote>
+<p>一个 <code>struct led_base *</code> 指针，拿到 <code>&amp;gpio_led.base</code> 之后，它实际上握着整个 <code>gpio_led</code> 对象。</p>
+</blockquote>
+<p>它不是只能看见 base 部分。它握着整个对象。需要的时候（gpio_on 内部要用 pin 字段），可以从 base 反推回去。这一步在第 13 章会展开，本章先承认它能做到。</p>
+<p>把这个事实推到极致：</p>
+<blockquote>
+<p><code>struct led_base *</code> 是任何 LED 对象的通用句柄。</p>
+</blockquote>
+<p><code>led_gpio</code>、<code>led_pwm</code>、<code>led_i2c</code> 三种子类，背后挂的子类对象不同，对外暴露的都是同一个 <code>struct led_base *</code> 类型。应用层只看到这个类型，不知道也不需要知道背后是哪一个子类。</p>
+<h2 id="124-全局句柄--板级初始化"><a class="header" href="#124-全局句柄--板级初始化">12.4 全局句柄 + 板级初始化</a></h2>
+<p>把这个事实变成项目结构。</p>
+<p>新建一个头文件 <code>leds.h</code>，里面只声明全局句柄：</p>
+<pre><code class="language-c">/* leds.h */
+#include "led.h"
+
+extern struct led_base *g_led_error;
+extern struct led_base *g_led_status;
+extern struct led_base *g_led_network;
+
+void board_init(void);
+</code></pre>
+<p>应用层只 include 这一个文件。看到的是三个 <code>struct led_base *</code>，看不到任何子类类型。</p>
+<p>具体硬件呢？锁在另一个文件 <code>board_init.c</code>：</p>
+<pre><code class="language-c">/* board_init.c */
+#include "leds.h"
+
+static struct led_gpio s_led_err;     /* 文件作用域，外部不可见 */
+static struct led_pwm  s_led_status;
+static struct led_i2c  s_led_net;
+
+struct led_base *g_led_error;          /* 句柄定义 */
+struct led_base *g_led_status;
+struct led_base *g_led_network;
+
+void board_init(void)
+{
+	led_gpio_init(&amp;s_led_err,    "ERR",  10, true);
+	led_pwm_init (&amp;s_led_status, "STAT",  1, 50);
+	led_i2c_init (&amp;s_led_net,    "NET",   0, 0x20);
+
+	g_led_error   = &amp;s_led_err.base;
+	g_led_status  = &amp;s_led_status.base;
+	g_led_network = &amp;s_led_net.base;
+}
+</code></pre>
+<p>三步：实例化子类对象、跑子类构造函数、把 <code>&amp;xxx.base</code> 赋给全局句柄。</p>
+<p>最后这三行是这一章的核心。它把 <code>s_led_err</code> 这个 <code>struct led_gpio</code> 对象，“当作” <code>struct led_base *</code> 句柄在用。<strong>子类对象当父类指针看，就是向上转型。</strong></p>
+<p><img src="../assets/ch12/slide3_全局句柄.png" alt="全局句柄 + 板级绑定"></p>
+<p><code>board_init</code> 在 <code>main</code> 里开机调一次。这一招在嵌入式叫板级初始化（Board Support Package 的核心）。每个项目一份 <code>board_init.c</code>，配置不同板子上 LED 接的是 GPIO 还是 PWM 还是 I2C 扩展芯片。</p>
+<h2 id="125-应用层零硬件字样"><a class="header" href="#125-应用层零硬件字样">12.5 应用层零硬件字样</a></h2>
+<p>来看应用层 <code>main.c</code>：</p>
+<pre><code class="language-c">#include "leds.h"
+
+static void alarm_blink(void)
+{
+	led_on(g_led_error);
+	led_off(g_led_error);
+}
+
+static void network_heartbeat(void)
+{
+	led_on(g_led_network);
+	led_off(g_led_network);
+}
+
+static void status_breathe(void)
+{
+	led_set_brightness(g_led_status, 30);
+	led_set_brightness(g_led_status, 80);
+	led_set_brightness(g_led_status,  0);
+}
+</code></pre>
+<p>打开终端：</p>
+<pre><code>grep -n "led_gpio\|led_pwm\|led_i2c" main.c       # 0 行
+grep -n "gpio_write\|gpio_init"      main.c       # 0 行
+grep -n "pwm_\|i2c_\|0x20"           main.c       # 0 行
+</code></pre>
+<p>应用层一个硬件字样都没有。它不认识 GPIO、不认识 PWM、不认识 I2C。它只用句柄。</p>
+<p><img src="../assets/ch12/slide4_应用层威力.png" alt="应用层威力"></p>
+<h2 id="126-换硬件改一行"><a class="header" href="#126-换硬件改一行">12.6 换硬件改一行</a></h2>
+<p>老板说：报警灯要能调光，从 GPIO 换成 PWM。</p>
+<p>打开 <code>board_init.c</code>，改一行。</p>
+<pre><code class="language-c">/* 改前 */
+static struct led_gpio s_led_err;
+led_gpio_init(&amp;s_led_err, "ERR", 10, true);
+g_led_error = &amp;s_led_err.base;
+
+/* 改后 */
+static struct led_pwm s_led_err;
+led_pwm_init(&amp;s_led_err, "ERR", 2, 80);
+g_led_error = &amp;s_led_err.base;
+</code></pre>
+<p>实际上是三行（实例化、init、绑定），都在同一个文件里，一处改完。</p>
+<p><code>main.c</code> 呢？打开 grep。<code>alarm_blink</code>、<code>network_heartbeat</code>、<code>status_breathe</code>，所有业务函数：0 行改动。</p>
+<p><img src="../assets/ch12/slide5_换硬件威力.png" alt="换硬件威力"></p>
+<p>这就是向上转型的工程化威力。应用层和硬件之间隔着一个 <code>struct led_base *</code> 句柄，硬件那头怎么换，句柄这头一律不知道。</p>
+<h2 id="127-这个东西叫什么"><a class="header" href="#127-这个东西叫什么">12.7 这个东西叫什么</a></h2>
+<p>你刚才做的事，软件工程里有个名字。</p>
+<p>把派生类（<code>struct led_gpio</code>）的对象，当作基类（<code>struct led_base</code>）来引用、调用、传递，这叫 <strong>向上转型</strong>（upcasting）。</p>
+<p>在 C++ 里这一步是隐式的：</p>
+<pre><code class="language-cpp">class LedBase { /* ... */ };
+class LedGpio : public LedBase { /* ... */ };
+
+LedGpio gpio_led;
+LedBase &amp;handle = gpio_led;       /* 编译器自动认 */
+LedBase *p      = &amp;gpio_led;      /* 编译器自动认 */
+</code></pre>
+<p>C++ 编译器看见 <code>LedGpio</code> 继承自 <code>LedBase</code>，不需要任何转换语法，就让基类引用 / 指针绑到派生对象上。</p>
+<p>C 里你手动写 <code>&amp;gpio_led.base</code>，做的是同一件事：拿到子类内嵌的父类那一段的地址。底层机器码完全一致，都是“把 <code>gpio_led</code> 这个对象的起始地址，按 <code>LedBase *</code> 类型解读“。</p>
+<p><img src="../assets/ch12/slide6_CvsCpp.png" alt="C 对比 C++"></p>
+<h2 id="128-视频里没讲透的几个细节"><a class="header" href="#128-视频里没讲透的几个细节">12.8 视频里没讲透的几个细节</a></h2>
+<h3 id="1281-为什么-base-必须在第一个位置"><a class="header" href="#1281-为什么-base-必须在第一个位置">12.8.1 为什么 base 必须在第一个位置</a></h3>
+<p>C99 标准 6.7.2.1 节第 13 段保证：“结构体的第一个成员的地址等于结构体本身的地址”。后面成员的地址不保证（编译器可以为对齐插 padding）。</p>
+<p>所以 <code>&amp;gpio_led == &amp;gpio_led.base</code> 这一条只在 base 是第一个成员时成立。如果有一天某个倒霉的同事把 base 移到第二个，下面这种写法就错：</p>
+<pre><code class="language-c">g_led_error = (struct led_base *)&amp;s_led_err;   /* 危险，base 必须在第一个位置 */
+</code></pre>
+<p>它把 <code>s_led_err</code> 的起始地址直接当 <code>led_base *</code> 用。base 一旦不在第一个，地址就偏了，运行时崩。</p>
+<p>本书一律不用这种强转。书里用 <code>&amp;s_led_err.base</code>，把“取出哪个成员“显式写出来。base 不管在第几个位置，都对。<strong>让编译器自己算偏移</strong>，你别去碰。</p>
+<h3 id="1282-名字-base-是约定不是关键字"><a class="header" href="#1282-名字-base-是约定不是关键字">12.8.2 名字 base 是约定，不是关键字</a></h3>
+<p>C 没有继承关键字，<code>base</code> 这个字段名是社区约定。Linux 内核里你会看到很多变体：<code>dev</code>（<code>struct device dev</code>）、<code>parent</code>、<code>super</code>。叫什么不重要，<strong>第一个字段必须是父类对象</strong>这一点是硬约束。</p>
+<pre><code class="language-c">struct usb_device {
+	int devnum;
+	/* ... */
+	struct device dev;     /* 父类，但不在第一个位置 */
+};
+</code></pre>
+<p>也合法。但访问父类时只能写 <code>&amp;usb-&gt;dev</code>，不能强转。Linux 内核里这种安排到处都是，<code>container_of</code> 这个宏就是为它而生（第 13 章）。</p>
+<h3 id="1283-句柄类型要不要-const"><a class="header" href="#1283-句柄类型要不要-const">12.8.3 句柄类型要不要 const</a></h3>
+<p><code>struct led_base *g_led_error;</code> 这一行有两个潜在改进：</p>
+<pre><code class="language-c">/* 方案 A */
+struct led_base *g_led_error;
+
+/* 方案 B */
+struct led_base * const g_led_error;   /* 不让别人重新指向 */
+</code></pre>
+<p>工程上一般写方案 A。原因有两个：</p>
+<ol>
+<li>真实项目里 <code>board_init</code> 之后偶尔需要重定向（比如热插拔、运行时切换备份硬件）。</li>
+<li>第 15 章会演化出 platform_ops 全局指针 <code>platform</code>，那一层确实是常量；句柄这一层倾向于灵活。</li>
+</ol>
+<p>如果你的项目永远不重定向，加 <code>const</code> 没毛病。</p>
+<h3 id="1284-编译器拒绝的是什么"><a class="header" href="#1284-编译器拒绝的是什么">12.8.4 编译器拒绝的是什么</a></h3>
+<p>试一下这一行：</p>
+<pre><code class="language-c">g_led_error = &amp;s_led_err;     /* 类型不匹配 */
+</code></pre>
+<p><code>&amp;s_led_err</code> 的类型是 <code>struct led_gpio *</code>，<code>g_led_error</code> 的类型是 <code>struct led_base *</code>。这两个类型在 C 里完全独立，编译器报 <code>incompatible pointer types</code>。</p>
+<p>C++ 里编译器认识继承关系，会自动把 <code>LedGpio *</code> 收窄成 <code>LedBase *</code>。C 里编译器不认识，你必须主动告诉它“我要的是 base 那一段“，写成 <code>&amp;s_led_err.base</code>。</p>
+<p>这一行 <code>.base</code> 的本质，就是把 C++ 编译器藏起来的偏移计算（对 base 来说是 0），手动写出来。看上去多此一举，实际上是 C 比 C++ 透明的地方：偏移多少、转换发生在哪一步，全在你眼皮底下。</p>
+<h3 id="1285-这一招内存里发生了什么"><a class="header" href="#1285-这一招内存里发生了什么">12.8.5 这一招内存里发生了什么</a></h3>
+<pre><code class="language-c">g_led_error = &amp;s_led_err.base;
+</code></pre>
+<p>汇编层面（ARM Cortex-M，简化）：</p>
+<pre><code>LDR  r0, =s_led_err            ; r0 = s_led_err 的地址
+ADD  r0, r0, #0                ; r0 += offsetof(struct led_gpio, base) = 0
+STR  r0, =g_led_error          ; 存到 g_led_error
+</code></pre>
+<p><code>ADD r0, #0</code> 编译器多半优化掉。整段代码就是一次 LDR 一次 STR。零开销。</p>
+<p>如果有一天 base 不在第一个位置，编译器自动把那个 <code>#0</code> 改成对应的偏移量（比如 <code>#4</code>），代码逻辑还对。这就是为什么用 <code>&amp;xxx.base</code> 而不用强转：让编译器替你算偏移，永远是对的。</p>
+<h3 id="1286-应用层--基类--子类-一次完整调用"><a class="header" href="#1286-应用层--基类--子类-一次完整调用">12.8.6 应用层 → 基类 → 子类 一次完整调用</a></h3>
+<p>把整条调用链画在一起：</p>
+<pre><code class="language-c">/* 应用层 app.c */
+led_on(g_led_error);
+</code></pre>
+<p><code>g_led_error</code> 是 <code>struct led_base *</code>，指向 <code>s_led_err</code>（<code>struct led_gpio</code>）的 <code>base</code> 字段。<code>led_on</code> 这个函数定义在 <code>led.c</code>：</p>
+<pre><code class="language-c">int led_on(struct led_base *me)
+{
+	if (!me) return -1;
+	return me-&gt;ops-&gt;on(me);
+}
+</code></pre>
+<p>它从父类指针 <code>me</code> 取 <code>ops</code>，再取 <code>ops-&gt;on</code>。<code>ops</code> 这一字段在 init 期被填成 <code>&amp;led_ops_gpio</code>，<code>led_ops_gpio.on</code> 指向 <code>gpio_on</code> 这个子类函数。</p>
+<pre><code class="language-c">/* 子类 led.c */
+static int gpio_on(struct led_base *me)
+{
+	struct led_gpio *self = (struct led_gpio *)me;
+	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
+	me-&gt;is_on = true;
+	return 0;
+}
+</code></pre>
+<p>第一步 <code>(struct led_gpio *)me</code> 强转·从 base 反推回 gpio（ch12 的简单做法·依赖 base 在第 0 字段的不变量）。下一章会用 <code>container_of</code> 替换这一步·让位置无关。<code>self-&gt;pin</code> 这一字段在 <code>struct led_gpio</code> 里·父类指针 <code>me</code> 看不见 <code>pin</code>，但子类函数里反推后看见了。</p>
+<p>整条链：app → 父类 led_on → ops 表 dispatch → 子类 gpio_on → 子类字段。<strong>应用层从头到尾只见 <code>struct led_base *</code>。</strong> 这就是向上转型在工程里的“全链路效果“。</p>
+<h3 id="1287-abi-角度看向上转型"><a class="header" href="#1287-abi-角度看向上转型">12.8.7 ABI 角度看向上转型</a></h3>
+<p>向上转型在汇编层面发生在两个时机。</p>
+<p>第一是赋值：<code>g_led_error = &amp;s_led_err.base</code>。前面 12.8.5 讲过，编译期偏移是 0，汇编一句话不说就过了。</p>
+<p>第二是调用：<code>led_on(g_led_error)</code> 把 <code>g_led_error</code> 这个 <code>struct led_base *</code> 当第一个参数。ARM AAPCS 里第一个指针参数走 <code>r0</code> 寄存器。<code>g_led_error</code> 此时指向 <code>s_led_err</code> 的起点（base 在偏移 0），所以 <code>r0 = &amp;s_led_err</code>。<code>led_on</code> 函数体里 <code>me-&gt;ops</code> 这一行就是 <code>[r0 + 0]</code>，正好是 <code>s_led_err.base.ops</code>，没有偏移错位。</p>
+<p>如果某一天 base 不在第一个位置，第一个时机的赋值会自动 add 一个非零偏移到 <code>r0</code>，第二个时机的 <code>[r0 + 0]</code> 还是对的（已经偏过去了）。整套 ABI 在子类的内存布局上是透明的，编译器替你算偏移。</p>
+<p>C++ 编译器替你做的事和 C 完全一样。<code>LedBase *p = &amp;gpio_led</code> 这一行，C++ 编译期算出 base 字段在 <code>LedGpio</code> 里的偏移，把这个偏移加到 <code>&amp;gpio_led</code> 上。底层汇编一行不差。两边唯一的差别是“偏移谁来算“，C 里你写 <code>.base</code> 字段访问、编译器算；C++ 里你只写继承关系、编译器查继承表算。机器码同源。</p>
+<h3 id="1288-这一招在-linux-内核里的样子"><a class="header" href="#1288-这一招在-linux-内核里的样子">12.8.8 这一招在 Linux 内核里的样子</a></h3>
+<p>打开 Linux 内核 <code>drivers/leds/led-class.c</code>，你会看到：</p>
+<pre><code class="language-c">struct led_classdev {
+	const char *name;
+	/* ... */
+	struct device *dev;
+	/* ... */
+};
+</code></pre>
+<p><code>led_classdev</code> 是 LED 子系统的基类。具体的 LED 驱动（比如 <code>leds-gpio.c</code> 里的 GPIO LED）会嵌入这个 <code>led_classdev</code>：</p>
+<pre><code class="language-c">struct gpio_led_data {
+	struct led_classdev cdev;          /* 基类 */
+	struct gpio_desc *gpiod;
+	/* ... */
+};
+</code></pre>
+<p>向上转型时写 <code>&amp;gpio_data-&gt;cdev</code>。整个 Linux LED 子系统就是这一招的工业级展开。第 16 章会展开 GPIO 子系统、第 17 章会展开 module_init 注册，它们都假定你已经会向上转型了。</p>
+<h2 id="129-你现在的代码在-stm32-上长什么样"><a class="header" href="#129-你现在的代码在-stm32-上长什么样">12.9 你现在的代码在 STM32 上长什么样</a></h2>
+<p>应用层 <code>main.c</code>、父类 <code>led.c</code>、板级 <code>board_init.c</code> 一字不改。<code>platform_ops_pc.c</code> 替换成 <code>platform_ops_stm32.c</code>：</p>
+<pre><code class="language-c">#include "platform_ops.h"
+#include "stm32f4xx_hal.h"
+
+static void stm32_gpio_write(uint8_t pin, bool value)
+{
+	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+			  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+/* ...省略 init / read... */
+
+static const struct platform_ops stm32_ops = {
+	.gpio_init  = stm32_gpio_init,
+	.gpio_write = stm32_gpio_write,
+	.gpio_read  = stm32_gpio_read,
+};
+
+const struct platform_ops *platform = &amp;stm32_ops;
+</code></pre>
+<p>所有上层代码（包括 <code>board_init</code> 里 PWM、I2C 那两路）一字不改。完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/stm32-snippet/"><code>oop-in-c/code/12-upcasting/stm32-snippet/</code></a>。</p>
+<p>PWM 子类在真实硬件上会用 <code>HAL_TIM_PWM_Start</code> + <code>__HAL_TIM_SET_COMPARE</code>。I2C 子类会用 <code>HAL_I2C_Master_Transmit</code>。这两路不在本章 snippet 里，附录 B 有完整工程。</p>
+<h2 id="1210-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1210-你现在的代码在-linux-用户态长什么样">12.10 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p>同样替换 <code>platform_ops_pc.c</code> 为 <code>platform_ops_linux.c</code>，sysfs 版本写文件：</p>
+<pre><code class="language-c">static void linux_gpio_write(uint8_t pin, bool value)
+{
+	char path[64];
+	snprintf(path, sizeof(path),
+		 "/sys/class/gpio/gpio%u/value", (unsigned)pin);
+	int fd = open(path, O_WRONLY);
+	if (fd &gt;= 0) {
+		write(fd, value ? "1" : "0", 1);
+		close(fd);
+	}
+}
+</code></pre>
+<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/linux-snippet/"><code>oop-in-c/code/12-upcasting/linux-snippet/</code></a>。第 16 章会从内核态展开同一招。</p>
+<h2 id="1211-工业代码里的向上转型长什么样"><a class="header" href="#1211-工业代码里的向上转型长什么样">12.11 工业代码里的向上转型长什么样</a></h2>
+<p>工业控制板项目里，板级初始化是这样：</p>
+<pre><code class="language-c">/* drivers/led/led.h（节选） */
+struct led_base;
+
+extern struct led_base *green_led;
+extern struct led_base *red_led;
+extern struct led_base *blue_led;
+
+/* board/board_init.c（节选） */
+static struct led_gpio s_green;
+static struct led_gpio s_red;
+static struct led_pwm  s_blue;
+
+struct led_base *green_led;
+struct led_base *red_led;
+struct led_base *blue_led;
+
+void board_init(void)
+{
+	led_gpio_init(&amp;s_green, "GREEN", PIN_GPIO_GREEN, true);
+	led_gpio_init(&amp;s_red,   "RED",   PIN_GPIO_RED,   true);
+	led_pwm_init (&amp;s_blue,  "BLUE",  PWM_CHAN_BLUE,  0);
+
+	green_led = &amp;s_green.base;
+	red_led   = &amp;s_red.base;
+	blue_led  = &amp;s_blue.base;
+}
+</code></pre>
+<p>应用层任何模块 <code>#include "led.h"</code> 之后，能拿到 <code>green_led</code>、<code>red_led</code>、<code>blue_led</code> 三个句柄。要点几下指示灯：</p>
+<pre><code class="language-c">led_on(green_led);
+led_off(red_led);
+</code></pre>
+<p><code>led_on()</code> 是 <code>led.c</code> 里的封装函数，内部走 <code>led-&gt;ops-&gt;on(led)</code> dispatch。应用层看不到这层细节，只调一个普通函数。应用层代码里 <code>grep led_gpio</code> / <code>grep led_pwm</code> 全部 0 行。换硬件方案、换板子型号，应用层一行不动。</p>
+<p>这就是向上转型在真实工业项目里的最终形态。</p>
+<h2 id="1212-完整源码清单"><a class="header" href="#1212-完整源码清单">12.12 完整源码清单</a></h2>
+<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/pc/"><code>oop-in-c/code/12-upcasting/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
+<p><code>common/platform.h</code> 和 <code>common/platform_pc.c</code> 跟 ch01 一字不变，本章 Makefile 通过 <code>-I../../common</code> 引用。完整代码见 ch01 末尾完整源码清单。</p>
+<h3 id="文件-1mainc57-行"><a class="header" href="#文件-1mainc57-行">文件 1：<code>main.c</code>（57 行）</a></h3>
+<p>应用层。三个业务函数 alarm_blink / network_heartbeat / status_breathe，全部只用 <code>struct led_base *</code> 句柄，grep 不到任何硬件字样。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * main.c - 应用层
+ *
+ * 注意：这个文件里没有 led_gpio、led_pwm、led_i2c 任何字样。
+ * 它只用三个 struct led_base * 句柄。
+ *
+ * grep gpio_write、grep pwm_、grep i2c_，结果都是 0。
+ * 这就是向上转型在工程上的全部威力，硬件是谁，应用层不问。
+ */
+
+#include "leds.h"
+#include &lt;stdio.h&gt;
+
+static void alarm_blink(void)
+{
+	printf("\n--- alarm_blink ---\n");
+	led_on(g_led_error);
+	led_off(g_led_error);
+}
+
+static void network_heartbeat(void)
+{
+	printf("\n--- network_heartbeat ---\n");
+	led_on(g_led_network);
+	led_off(g_led_network);
+}
+
+static void status_breathe(void)
+{
+	printf("\n--- status_breathe ---\n");
+	led_set_brightness(g_led_status, 30);
+	led_set_brightness(g_led_status, 80);
+	led_set_brightness(g_led_status,  0);
+}
+
+int main(void)
+{
+	printf("=========================================\n");
+	printf("  ch12 - upcasting\n");
+	printf("  one led_base * handle, any subclass\n");
+	printf("=========================================\n");
+
+	board_init();
+
+	alarm_blink();
+	network_heartbeat();
+	status_breathe();
+
+	printf("\n=========================================\n");
+	printf("  app layer: zero hardware reference\n");
+	printf("=========================================\n");
+
+	printf("\nPress Enter to exit...\n");
+	getchar();
+	return 0;
+}
+</code></pre>
+<h3 id="文件-2ledsh22-行"><a class="header" href="#文件-2ledsh22-行">文件 2：<code>leds.h</code>（22 行）</a></h3>
+<p>板级对外暴露的全局 LED 句柄声明。应用层只 include 这一个头文件，看到的全是 <code>struct led_base *</code>，看不到任何子类类型。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * leds.h - 板级对外暴露的全局 LED 句柄
+ *
+ * 应用层只 include 这一个文件。看到的是三个 struct led_base * 句柄，
+ * 看不到任何子类类型。硬件细节锁在 board_init.c。
+ *
+ * 换硬件的时候，应用层 0 改动。
+ */
+
+#ifndef LEDS_H
+#define LEDS_H
+
+#include "led.h"
+
+extern struct led_base *g_led_error;
+extern struct led_base *g_led_status;
+extern struct led_base *g_led_network;
+
+void board_init(void);
+
+#endif /* LEDS_H */
+</code></pre>
+<h3 id="文件-3board_initc41-行"><a class="header" href="#文件-3board_initc41-行">文件 3：<code>board_init.c</code>（41 行）</a></h3>
+<p>整个工程里唯一认识硬件的文件。三种子类对象在文件作用域定义，<code>board_init</code> 里跑各自构造函数 + 把 <code>&amp;xxx.base</code> 赋给全局父类句柄。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * board_init.c - 整个工程里唯一认识硬件的文件
+ *
+ * 应用层看到三个 struct led_base * 句柄，硬件配置全部锁在这里。
+ * 三个句柄背后挂的可以是任意子类对象，应用层不知不觉。
+ *
+ * 这一节就是向上转型的工程化落地。
+ */
+
+#include "leds.h"
+
+/* 子类对象。文件作用域，外部不可见 */
+static struct led_gpio s_led_err;
+static struct led_pwm  s_led_status;
+static struct led_i2c  s_led_net;
+
+/* 全局句柄。绑定动作在 board_init 里完成，这一行只是占位 */
+struct led_base *g_led_error;
+struct led_base *g_led_status;
+struct led_base *g_led_network;
+
+void board_init(void)
+{
+	/* 各自走自己的子类构造函数，把硬件资源传进去 */
+	led_gpio_init(&amp;s_led_err,    "ERR",  10, true);
+	led_pwm_init (&amp;s_led_status, "STAT",  1, 50);
+	led_i2c_init (&amp;s_led_net,    "NET",   0, 0x20);
+
+	/*
+	 * 关键三行：把子类对象的 base 地址，赋给父类指针句柄。
+	 * 这就是向上转型，子类对象当父类来用。
+	 *
+	 * 之所以合法，是因为 base 在子类的第 0 偏移；
+	 * 取 &amp;xxx.base 拿到的地址和取 &amp;xxx 是同一个数。
+	 */
+	g_led_error   = &amp;s_led_err.base;
+	g_led_status  = &amp;s_led_status.base;
+	g_led_network = &amp;s_led_net.base;
+}
+</code></pre>
+<h3 id="文件-4ledh72-行"><a class="header" href="#文件-4ledh72-行">文件 4：<code>led.h</code>（72 行）</a></h3>
+<p>LED 父类 + 三个子类的声明。父类 <code>struct led_base</code> 只放 ops / name / is_on 三个共性字段，子类各自把硬件资源（pin / channel / bus + addr）追加在 base 后面。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * led.h - LED 基类 + 子类抽象
+ *
+ * 本章是向上转型的高潮。
+ *
+ * 父类 struct led_base：所有 LED 共有的字段 + ops 指针。
+ * 子类 struct led_gpio / led_pwm / led_i2c：把 base 嵌在第一个字段，
+ * 后面追加自己独有的硬件资源。
+ *
+ * 关键不变量：base 永远在子类的第 0 偏移。这一条让
+ *   struct led_base *handle = &amp;gpio_led.base;
+ * 合法、安全、零开销。
+ */
+
+#ifndef LED_H
+#define LED_H
+
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+
+struct led_base;
+
+struct led_ops {
+	int (*on)(struct led_base *me);
+	int (*off)(struct led_base *me);
+	int (*set_brightness)(struct led_base *me, uint8_t brightness);
+};
+
+struct led_base {
+	const struct led_ops *ops;
+	const char           *name;
+	bool                  is_on;
+};
+
+/* 应用层入口：所有调用都走 led_base 句柄 */
+int led_on(struct led_base *me);
+int led_off(struct led_base *me);
+int led_set_brightness(struct led_base *me, uint8_t brightness);
+
+/* ------- 子类一：GPIO LED ------- */
+struct led_gpio {
+	struct led_base base;
+	uint8_t         pin;
+	bool            on_level;   /* 1 = 高电平点亮，0 = 低电平点亮 */
+};
+
+void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level);
+
+/* ------- 子类二：PWM LED ------- */
+struct led_pwm {
+	struct led_base base;
+	uint8_t         channel;
+	uint8_t         duty;
+};
+
+void led_pwm_init(struct led_pwm *me, const char *name,
+		  uint8_t channel, uint8_t duty);
+
+/* ------- 子类三：I2C 扩展芯片 LED ------- */
+struct led_i2c {
+	struct led_base base;
+	uint8_t         bus;
+	uint8_t         addr;
+};
+
+void led_i2c_init(struct led_i2c *me, const char *name,
+		  uint8_t bus, uint8_t addr);
+
+#endif /* LED_H */
+</code></pre>
+<h3 id="文件-5ledc169-行"><a class="header" href="#文件-5ledc169-行">文件 5：<code>led.c</code>（169 行）</a></h3>
+<p>父类 <code>led_on / led_off / led_set_brightness</code> 的统一接口实现 + 三种子类（GPIO / PWM / I2C）的具体函数。子类实现里第一行用 <code>(struct led_xxx *)me</code> 强转回子类（这一招在 ch13 会替换成 container_of）。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * led.c - 父类统一接口 + 三种子类实现
+ *
+ * 父类的 led_on / led_off 通过 ops 表分发到子类实现。子类实现里第一行
+ * 都是从 base 反推回自己的 struct（这一招在第 13 章会展开成 container_of）。
+ *
+ * 本章使用最简单的 "(struct led_xxx *)me" 强转回子类，前提是 base 是
+ * 子类的第一个成员。第 13 章会把这一步替换成与位置无关的 container_of。
+ *
+ * 子类调用 platform 层的 platform_gpio_write / platform_gpio_init 等
+ * 封装函数。这是工业代码里跨章节统一的接口形态：应用层和驱动层
+ * 永远只见普通函数，不直接碰 ops 字段。
+ */
+
+#include "led.h"
+#include "platform.h"
+#include &lt;stdio.h&gt;
+#include &lt;stddef.h&gt;
+
+/* ============== 父类统一接口 ============== */
+
+int led_on(struct led_base *me)
+{
+	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+		return -1;
+	return me-&gt;ops-&gt;on(me);
+}
+
+int led_off(struct led_base *me)
+{
+	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;off)
+		return -1;
+	return me-&gt;ops-&gt;off(me);
+}
+
+int led_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	if (!me || !me-&gt;ops)
+		return -1;
+	if (!me-&gt;ops-&gt;set_brightness) {
+		/* 这种 LED 不支持调光，安静返回。第 14 章会展开。 */
+		return 0;
+	}
+	return me-&gt;ops-&gt;set_brightness(me, brightness);
+}
+
+/* ============== 子类一：GPIO LED ============== */
+
+static int gpio_on(struct led_base *me)
+{
+	struct led_gpio *self = (struct led_gpio *)me;
+	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
+	me-&gt;is_on = true;
+	printf("  [%s] GPIO Pin%u ON\n", me-&gt;name, (unsigned)self-&gt;pin);
+	return 0;
+}
+
+static int gpio_off(struct led_base *me)
+{
+	struct led_gpio *self = (struct led_gpio *)me;
+	platform_gpio_write(self-&gt;pin, !self-&gt;on_level);
+	me-&gt;is_on = false;
+	printf("  [%s] GPIO Pin%u OFF\n", me-&gt;name, (unsigned)self-&gt;pin);
+	return 0;
+}
+
+/* GPIO 灯不支持调光，set_brightness 故意不填。 */
+static const struct led_ops gpio_ops = {
+	.on  = gpio_on,
+	.off = gpio_off,
+};
+
+void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level)
+{
+	me-&gt;base.ops   = &amp;gpio_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;pin        = pin;
+	me-&gt;on_level   = on_level;
+
+	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
+	platform_gpio_write(pin, !on_level);
+}
+
+/* ============== 子类二：PWM LED ============== */
+
+static int pwm_on(struct led_base *me)
+{
+	struct led_pwm *self = (struct led_pwm *)me;
+	printf("  [%s] PWM ch%u duty=%u%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
+	me-&gt;is_on = true;
+	return 0;
+}
+
+static int pwm_off(struct led_base *me)
+{
+	struct led_pwm *self = (struct led_pwm *)me;
+	printf("  [%s] PWM ch%u duty=0%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel);
+	me-&gt;is_on = false;
+	return 0;
+}
+
+static int pwm_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	struct led_pwm *self = (struct led_pwm *)me;
+	if (brightness &gt; 100)
+		brightness = 100;
+	self-&gt;duty = brightness;
+	printf("  [%s] PWM ch%u duty=%u%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)brightness);
+	me-&gt;is_on = (brightness &gt; 0);
+	return 0;
+}
+
+static const struct led_ops pwm_ops = {
+	.on             = pwm_on,
+	.off            = pwm_off,
+	.set_brightness = pwm_set_brightness,
+};
+
+void led_pwm_init(struct led_pwm *me, const char *name,
+		  uint8_t channel, uint8_t duty)
+{
+	me-&gt;base.ops   = &amp;pwm_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;channel    = channel;
+	me-&gt;duty       = duty;
+}
+
+/* ============== 子类三：I2C 扩展芯片 LED ============== */
+
+static int i2c_on(struct led_base *me)
+{
+	struct led_i2c *self = (struct led_i2c *)me;
+	printf("  [%s] I2C bus%u addr=0x%02X reg=0x01\n",
+	       me-&gt;name, (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
+	me-&gt;is_on = true;
+	return 0;
+}
+
+static int i2c_off(struct led_base *me)
+{
+	struct led_i2c *self = (struct led_i2c *)me;
+	printf("  [%s] I2C bus%u addr=0x%02X reg=0x00\n",
+	       me-&gt;name, (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
+	me-&gt;is_on = false;
+	return 0;
+}
+
+static const struct led_ops i2c_ops = {
+	.on  = i2c_on,
+	.off = i2c_off,
+};
+
+void led_i2c_init(struct led_i2c *me, const char *name,
+		  uint8_t bus, uint8_t addr)
+{
+	me-&gt;base.ops   = &amp;i2c_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;bus        = bus;
+	me-&gt;addr       = addr;
+}
+</code></pre>
+<h3 id="文件-6makefile20-行"><a class="header" href="#文件-6makefile20-行">文件 6：<code>Makefile</code>（20 行）</a></h3>
+<pre><code class="language-makefile"># Makefile - ch12 upcasting (PC)
+
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99 -I../../common
+TARGET  = demo
+
+SRCS    = main.c led.c board_init.c ../../common/platform_pc.c
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(TARGET).exe
+</code></pre>
+<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
+<pre><code class="language-bash">cd oop-in-c/code/12-upcasting/pc
+make
+./demo
+</code></pre>
+<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<pre><code>=========================================
+  ch12 - upcasting
+  one led_base * handle, any subclass
+=========================================
+[GPIO] Pin10 init as OUTPUT
+[GPIO] Pin10 -&gt; LOW (OFF)
+
+--- alarm_blink ---
+[GPIO] Pin10 -&gt; HIGH (ON)
+  [ERR] GPIO Pin10 ON
+[GPIO] Pin10 -&gt; LOW (OFF)
+  [ERR] GPIO Pin10 OFF
+
+--- network_heartbeat ---
+  [NET] I2C bus0 addr=0x20 reg=0x01
+  [NET] I2C bus0 addr=0x20 reg=0x00
+
+--- status_breathe ---
+  [STAT] PWM ch1 duty=30%
+  [STAT] PWM ch1 duty=80%
+  [STAT] PWM ch1 duty=0%
+
+=========================================
+  app layer: zero hardware reference
+=========================================
+
+Press Enter to exit...
+</code></pre>
+<h2 id="1213-跑一遍"><a class="header" href="#1213-跑一遍">12.13 跑一遍</a></h2>
+<pre><code>cd oop-in-c/code/12-upcasting/pc
+make
+./demo
+</code></pre>
+<p>输出节选：</p>
+<pre><code>=========================================
+  ch12 - upcasting
+  one led_base * handle, any subclass
+=========================================
+[GPIO] Pin10 init as OUTPUT
+[GPIO] Pin10 -&gt; LOW
+
+--- alarm_blink ---
+[GPIO] Pin10 -&gt; HIGH
+  [ERR] GPIO Pin10 ON
+[GPIO] Pin10 -&gt; LOW
+  [ERR] GPIO Pin10 OFF
+
+--- network_heartbeat ---
+  [NET] I2C bus0 addr=0x20 reg=0x01
+  [NET] I2C bus0 addr=0x20 reg=0x00
+
+--- status_breathe ---
+  [STAT] PWM ch1 duty=30%
+  [STAT] PWM ch1 duty=80%
+  [STAT] PWM ch1 duty=0%
+</code></pre>
+<p>三个业务函数，三种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
+<h2 id="1214-视频回放"><a class="header" href="#1214-视频回放">12.14 视频回放</a></h2>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1N6o4BFEvG/">《C 语言·向上转型｜一个指针指所有 LED·基类指针·设备句柄》</a></p>
+</blockquote>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>应用层只见 <code>struct led_base *</code>，挺好。但 <code>gpio_on</code> 这个函数收到的也是 <code>struct led_base *</code>，它要操作 <code>pin</code>，pin 在子类 <code>struct led_gpio</code> 里，不在 base 里。怎么从 base 反推回 gpio？</p>
+<p>下一章揭穿。Linux 内核有一个宏，优雅到你想裱起来。</p>
+<p>下一篇：<a href="13-container_of.html">第 13 章 · container_of 的地址魔法 · 向下转型</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../03-多态/11-多态完整图景.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../04-工程威力/13-container_of.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../03-多态/11-多态完整图景.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../04-工程威力/13-container_of.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

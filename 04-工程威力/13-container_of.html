@@ -1,0 +1,907 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ch13 container_of 的地址魔法 · 向下转型 - C 语言面向对象编程·嵌入式实战</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="从一颗 LED 写到 Linux 内核 4000 万行代码。讲透封装、继承、多态在工业级 C 代码里的真实样子。">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-6d5620ad.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-1bc8502d.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">C 语言面向对象编程·嵌入式实战</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/master/book/book/04-工程威力/13-container_of.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="第-13-章--container_of-的地址魔法--向下转型"><a class="header" href="#第-13-章--container_of-的地址魔法--向下转型">第 13 章 · container_of 的地址魔法 · 向下转型</a></h1>
+<p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/"><code>oop-in-c/code/13-container-of/</code></a></p>
+<p>第 12 章解决了向上转型：应用层用 <code>struct led_base *</code> 句柄，硬件是谁都不问。</p>
+<p>但反过来呢？子类的实现函数 <code>gpio_on</code> 收到的也是 <code>struct led_base *</code>。它要操作 <code>pin</code>，<code>pin</code> 在 <code>struct led_gpio</code> 里，不在 base 里。怎么从 base 反推回 gpio？</p>
+<p>这一章揭穿。</p>
+<h2 id="131-base-里没有-pin"><a class="header" href="#131-base-里没有-pin">13.1 base 里没有 pin</a></h2>
+<p>打开第 12 章的 <code>gpio_on</code>：</p>
+<pre><code class="language-c">static int gpio_on(struct led_base *me)
+{
+	struct led_gpio *self = (struct led_gpio *)me;
+	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
+	/* ... */
+}
+</code></pre>
+<p>第一行用 <code>(struct led_gpio *)me</code> 把 base 指针强转回 <code>struct led_gpio *</code>。这一行能跑，但藏着一颗雷。</p>
+<p>它的前提是：<strong>base 必须是 <code>struct led_gpio</code> 的第 0 个字段</strong>。</p>
+<pre><code class="language-c">struct led_gpio {
+	struct led_base base;       /* 偏移 0 */
+	uint8_t         pin;
+	bool            on_level;
+};
+</code></pre>
+<p>base 在偏移 0，所以 <code>(struct led_gpio *)me</code> 直接把 base 的地址当 gpio 的起始地址用，刚好对。</p>
+<p>但如果哪天有人为了对齐、为了字段分组、为了塞一个 <code>magic</code> 校验字段，把 base 挪到第二个位置：</p>
+<pre><code class="language-c">struct led_gpio {
+	uint16_t        magic;      /* 偏移 0 */
+	struct led_base base;       /* 偏移 4（含 padding） */
+	uint8_t         pin;
+	bool            on_level;
+};
+</code></pre>
+<p><code>(struct led_gpio *)me</code> 算出来的 self 指针就比 gpio 真实地址早 4 字节。<code>self-&gt;pin</code> 拿到的是 magic 字段的一部分，崩或乱码。编译器一句话不说就让你过了。</p>
+<p><img src="../assets/ch13/slide1_问题展示.png" alt="问题：base 里没有 pin"></p>
+<h2 id="132-偏移量这件事"><a class="header" href="#132-偏移量这件事">13.2 偏移量这件事</a></h2>
+<p>你需要的不是“假设 base 在第一个“，是“不管 base 在第几个，都对“。</p>
+<p>仔细看，问题里有两个已知量：</p>
+<ol>
+<li>me 的地址（base 字段在内存里的位置）</li>
+<li>base 字段在 struct led_gpio 里的偏移</li>
+</ol>
+<p>未知量：struct led_gpio 的起始地址。</p>
+<p>只要把已知 1 减去已知 2，就是未知量。</p>
+<pre><code>struct led_gpio 起始地址 = base 地址 - base 在 struct 里的偏移
+</code></pre>
+<p><img src="../assets/ch13/slide2_内存布局.png" alt="内存布局"></p>
+<p>类比生活：你走在一条路上，看见路牌写“离起点 300 米“。退 300 米，回到起点。</p>
+<h2 id="133-编译期算偏移offsetof"><a class="header" href="#133-编译期算偏移offsetof">13.3 编译期算偏移：offsetof</a></h2>
+<p>C 标准库（<code>stddef.h</code>）有一个宏专门干这件事：</p>
+<pre><code class="language-c">#include &lt;stddef.h&gt;
+
+size_t off = offsetof(struct led_gpio, base);
+</code></pre>
+<p><code>offsetof(T, m)</code> 返回成员 <code>m</code> 在结构体 <code>T</code> 里的字节偏移。</p>
+<p>它怎么知道？编译器知道每个 struct 怎么排（每个字段大小、对齐、padding 都是编译器算出来的），所以这个宏在编译期就能展开成一个常量。常见实现是：</p>
+<pre><code class="language-c">#define offsetof(T, m)    ((size_t)&amp;(((T *)0)-&gt;m))
+</code></pre>
+<p>假装地址 0 处放了一个 T，看 m 在哪个位置。从 0 数起的距离就是偏移量。整个表达式编译期算完，运行时是一个立即数。</p>
+<p><img src="../assets/ch13/slide3_强制转换.png" alt="offsetof"></p>
+<h2 id="134-把它串起来container_of"><a class="header" href="#134-把它串起来container_of">13.4 把它串起来：container_of</a></h2>
+<p>有了 offsetof，把“成员地址减偏移“这一招包成一个宏：</p>
+<pre><code class="language-c">#define container_of(ptr, type, member)             \
+	((type *)((char *)(ptr) - offsetof(type, member)))
+</code></pre>
+<p>三步：</p>
+<ol>
+<li><code>(char *)(ptr)</code>：转成字节指针，让减法按字节算（<code>int *</code> 减 1 减的是 4 字节）。</li>
+<li><code>- offsetof(type, member)</code>：减去成员在外层 struct 里的偏移，退回 struct 起点。</li>
+<li><code>(type *)</code>：把结果按外层 struct 的类型解读。</li>
+</ol>
+<p><img src="../assets/ch13/slide4_offsetof.png" alt="container_of 推导"></p>
+<p><code>container_of</code> 不在 C 标准里。它是 Linux 内核自己写的宏，用 offsetof 构造出来。完整版定义在 Linux 内核 v6.6 LTS <code>include/linux/container_of.h</code> 第 18-23 行（如何获取内核源码做参考阅读见附录 D）：</p>
+<pre><code class="language-c">#define container_of(ptr, type, member) ({                              \
+	void *__mptr = (void *)(ptr);                                   \
+	static_assert(__same_type(*(ptr), ((type *)0)-&gt;member) ||       \
+		      __same_type(*(ptr), void),                        \
+		      "pointer type mismatch in container_of()");       \
+	((type *)(__mptr - offsetof(type, member))); })
+</code></pre>
+<p>内核版用 GNU C 的 statement expression（<code>({ ... })</code>）多包了一层。这一节把它每一行展开看。</p>
+<p>第一行 <code>void *__mptr = (void *)(ptr);</code> 把传进来的 ptr 抓到一个局部 void 指针变量。两个理由：</p>
+<ol>
+<li><strong>避免重求值</strong>。如果你写 <code>container_of(get_next_base(), struct led_gpio, base)</code>，<code>get_next_base()</code> 是函数调用。最小版那个三步宏会把 <code>(ptr)</code> 展开两次（一次进 char 强转、一次进 type 强转），等于调两次 <code>get_next_base()</code>，第二次返回值可能完全不一样。statement expression 把 ptr 求值一次，存进 <code>__mptr</code>，后面的步骤都用 <code>__mptr</code> 不再碰 ptr。</li>
+<li><strong>统一指针类型</strong>。后面要做减法，<code>__mptr</code> 用 void * 类型，让 GCC 把它当字节指针算（GCC 扩展里 <code>void *</code> 算术合法），写起来比 <code>(char *)</code> 干净。</li>
+</ol>
+<p>第二行的 <code>static_assert + __same_type</code>：</p>
+<pre><code class="language-c">static_assert(__same_type(*(ptr), ((type *)0)-&gt;member) ||
+	      __same_type(*(ptr), void),
+	      "pointer type mismatch in container_of()");
+</code></pre>
+<p><code>static_assert</code> 是 C11 的关键字（C++11 也有），编译期断言。<code>__same_type</code> 是 GCC 扩展，比较两个表达式的类型是不是一致。整行字面意思：<strong>编译期检查 <code>ptr</code> 指向的类型和 <code>((type *)0)-&gt;member</code> 的类型一致</strong>。</p>
+<p>为什么必要？看个错例：</p>
+<pre><code class="language-c">struct led_gpio {
+	struct led_base base;
+	uint8_t         pin;
+};
+
+struct led_pwm {
+	struct led_base base;
+	uint8_t         channel;
+};
+
+void f(struct led_base *me)
+{
+	struct led_gpio *self = container_of(me, struct led_pwm, base);
+	/* 笔误，写成了 led_pwm */
+	self-&gt;pin = 99;   /* 但 led_pwm 没有 pin 字段 */
+}
+</code></pre>
+<p>老的最小版 container_of 这个错要等到链接报错才发现（甚至有时候不会报）。内核版的 <code>static_assert</code> 在你写 container_of 这一行就编译失败：<code>*(ptr)</code> 是 <code>struct led_base</code>，<code>((struct led_pwm *)0)-&gt;base</code> 也是 <code>struct led_base</code>，看起来相同。但如果你写的是 <code>container_of(some_int_ptr, struct led_gpio, base)</code>，<code>*(some_int_ptr)</code> 是 int，<code>((struct led_gpio *)0)-&gt;base</code> 是 struct led_base，不同，立刻报 <code>pointer type mismatch in container_of()</code>。</p>
+<p>把“传错指针“挡在编译期，是这个 static_assert 的核心价值。第二个 OR 条件 <code>__same_type(*(ptr), void)</code> 是放行 <code>void *</code> 入参（少数代码这么用）。</p>
+<p>第三行才是真正的减法：</p>
+<pre><code class="language-c">((type *)(__mptr - offsetof(type, member)));
+</code></pre>
+<p>statement expression 的“返回值“是最后一条语句的值，整个 <code>({ ... })</code> 求值结果就是这条减法表达式的结果。</p>
+<p>PC 上不依赖 GNU C 扩展的最小可用版就是 13.4 节开头那个三步宏，本书配套代码 <code>pc/container_of.h</code> 里就是这一份。逻辑等价，编译期约束少一点，PC 上跑没影响。但生产代码里我推荐用内核版，那个 static_assert 能在 commit 前帮你抓住 90% 的低级错。</p>
+<p><img src="../assets/ch13/slide5_container_of推导.png" alt="container_of"></p>
+<h2 id="135-在-gpio_on-里用一下"><a class="header" href="#135-在-gpio_on-里用一下">13.5 在 gpio_on 里用一下</a></h2>
+<p>把第 12 章的 <code>gpio_on</code> 改成 container_of 版本：</p>
+<pre><code class="language-c">#include "container_of.h"
+
+static int gpio_on(struct led_base *me)
+{
+	struct led_gpio *self = container_of(me, struct led_gpio, base);
+	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
+	me-&gt;is_on = true;
+	return 0;
+}
+</code></pre>
+<p>注意第三个参数 <code>base</code>，是成员名，不是变量名。这一行字面意思：“给我从 me 出发，找到那个把 me 当作 <code>base</code> 字段的 <code>struct led_gpio</code> 对象”。</p>
+<p>PWM、I2C 子类同套路，每个实现函数第一行都是 container_of。</p>
+<p><img src="../assets/ch13/slide6_gpio_on使用.png" alt="gpio_on 用 container_of"></p>
+<h2 id="136-现在-base-想放哪就放哪"><a class="header" href="#136-现在-base-想放哪就放哪">13.6 现在 base 想放哪就放哪</a></h2>
+<p>为了证明这一招与位置无关，配套代码故意把 GPIO 子类的 base 挪到第二个位置：</p>
+<pre><code class="language-c">struct led_gpio {
+	uint16_t        magic;
+	struct led_base base;
+	uint8_t         pin;
+	bool            on_level;
+};
+</code></pre>
+<p>跑一下 <code>./demo</code>：</p>
+<pre><code>offsetof(struct led_gpio, base) = 4
+offsetof(struct led_pwm,  base) = 0
+offsetof(struct led_i2c,  base) = 0
+[GPIO] Pin10 init as OUTPUT
+...
+--- toggle ERR ---
+[GPIO] Pin10 -&gt; HIGH
+  [ERR] GPIO Pin10 ON (magic=0xCAFE)
+[GPIO] Pin10 -&gt; LOW
+  [ERR] GPIO Pin10 OFF
+</code></pre>
+<p>GPIO 的 base 在偏移 4，但 <code>gpio_on</code> 还是正确还原了 <code>magic = 0xCAFE</code>、<code>pin = 10</code>、<code>on_level = true</code>。container_of 和位置无关。</p>
+<p>如果把 <code>container_of</code> 换回第 12 章的 <code>(struct led_gpio *)me</code>，<code>magic</code> 立刻变成乱码，<code>self</code> 的位置算错了 4 字节。</p>
+<h2 id="137-这个东西叫什么"><a class="header" href="#137-这个东西叫什么">13.7 这个东西叫什么</a></h2>
+<p>你刚才做的这件事，拿到一个父类指针，反推回原本的子类对象，计算机科学里叫 <strong>向下转型</strong>（downcasting）。</p>
+<p>C++ 的对应物是 <code>dynamic_cast</code>：</p>
+<pre><code class="language-cpp">LedBase *base = ...;
+LedGpio *gpio = dynamic_cast&lt;LedGpio *&gt;(base);
+if (gpio) {
+	gpio-&gt;pin = ...;
+}
+</code></pre>
+<p><code>dynamic_cast</code> 干两件事：</p>
+<ol>
+<li>编译期检查 <code>LedBase</code> 和 <code>LedGpio</code> 之间真有继承关系（不然报错）。</li>
+<li>运行时查 RTTI（Run-Time Type Information）表，确认 base 指针指向的是不是真的 <code>LedGpio</code> 对象，不是就返回 nullptr。</li>
+</ol>
+<p>C++ 给你一张安全网。代价是：每个含 virtual 函数的类要带上 type_info 元数据，每次 dynamic_cast 调用都要查表。</p>
+<p>container_of 没有安全网，但代价是零：</p>
+<blockquote>
+<p>container_of 一旦编译完，就是一条减法指令。零运行时开销。</p>
+</blockquote>
+<p>C 用编译期数学解决了 C++ 用运行时类型信息解决的同一个问题。</p>
+<p><img src="../assets/ch13/slide7_金句CvsCpp.png" alt="C 对比 C++"></p>
+<h2 id="138-视频里没讲透的几个细节"><a class="header" href="#138-视频里没讲透的几个细节">13.8 视频里没讲透的几个细节</a></h2>
+<h3 id="1381-编译器算偏移的过程"><a class="header" href="#1381-编译器算偏移的过程">13.8.1 编译器算偏移的过程</a></h3>
+<pre><code class="language-c">struct led_gpio {
+	uint16_t        magic;     /* 偏移 0，2 字节 */
+	struct led_base base;      /* 偏移 4 */
+	uint8_t         pin;
+	bool            on_level;
+};
+</code></pre>
+<p>为什么 base 不在偏移 2 而在偏移 4？因为 <code>struct led_base</code> 第一个成员是 <code>const struct led_ops *ops</code>，指针在 32 位机器上对齐 4 字节，所以编译器在 <code>magic</code> 后面塞 2 字节 padding，让 base 落到 4 的倍数。</p>
+<p><code>offsetof(struct led_gpio, base)</code> 在编译期算出 4，编进 container_of 宏。运行时就是一句 <code>sub r0, r0, #4</code>。</p>
+<h3 id="1382-const-属性会丢"><a class="header" href="#1382-const-属性会丢">13.8.2 const 属性会丢</a></h3>
+<p>Linux 内核版 container_of 注释里特意写了：</p>
+<blockquote>
+<p>WARNING: any const qualifier of @ptr is lost.</p>
+</blockquote>
+<pre><code class="language-c">const struct led_base *me = ...;
+struct led_gpio *self = container_of(me, struct led_gpio, base);
+self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
+</code></pre>
+<p>container_of 的实现里有一步 <code>(char *)(ptr)</code>，强转之后 const 就没了。Linux 内核 6.5 之后引入了 <code>container_of_const</code> 用 <code>_Generic</code> 保住 const，但老代码到处都在用裸的 container_of。需要严格 const-correctness 时手动检查一下。</p>
+<h3 id="1383-ptr-表达式不要有副作用"><a class="header" href="#1383-ptr-表达式不要有副作用">13.8.3 ptr 表达式不要有副作用</a></h3>
+<p>如果你写：</p>
+<pre><code class="language-c">struct led_gpio *self = container_of(get_next_base(), struct led_gpio, base);
+</code></pre>
+<p>PC 版那个最小宏是 <code>(type *)((char *)(ptr) - offsetof(...))</code>，<code>ptr</code> 只出现一次。但内核版用 statement expression，提前把 ptr 抓进 <code>__mptr</code> 局部变量再用。如果你的项目 container_of 是宏 + 多次展开 ptr 的版本，<code>get_next_base()</code> 会被调多次，行为不可预测。</p>
+<p>写 container_of 时尽量用一个已经求值好的指针变量当 ptr。这是 Linux 内核 commit 历史里反复出现的坑。</p>
+<h3 id="1384-container_of-在内核里出现多少次"><a class="header" href="#1384-container_of-在内核里出现多少次">13.8.4 container_of 在内核里出现多少次</a></h3>
+<p>整个 Linux 内核源码 <code>git grep -c container_of</code> 大概 4-5 万处。从字符设备到网络栈到块层到内存管理子系统，到处都是这一行。</p>
+<p>它撑起了 Linux 整套“基类（subsystem 的 struct）+ 子类（驱动 driver 的 struct）“模式。第 16 章会展开 GPIO 子系统，那里 <code>container_of(desc-&gt;gdev-&gt;chip, struct gpio_chip_xxx, chip)</code> 这种用法会反复出现。</p>
+<h3 id="1385-一句话给自己一个三件套"><a class="header" href="#1385-一句话给自己一个三件套">13.8.5 一句话给自己一个三件套</a></h3>
+<p>如果你刚看完 13.4 节觉得头疼，正常。我当年第一次看 container_of 也琢磨了一段时间。</p>
+<p>不需要现在就完全理解每一步。记住三件事就够：</p>
+<ol>
+<li><strong>入：成员指针 + 外层 struct 类型 + 成员名</strong>。</li>
+<li><strong>出：外层 struct 的指针</strong>。</li>
+<li><strong>代价：编译期算偏移，运行时一条减法</strong>。</li>
+</ol>
+<p>后面写代码用几次，自然就懂了。</p>
+<h2 id="139-你现在的代码在-stm32-上长什么样"><a class="header" href="#139-你现在的代码在-stm32-上长什么样">13.9 你现在的代码在 STM32 上长什么样</a></h2>
+<p>container_of 在 STM32 上是同一个宏，编译产物就是 ARM Cortex-M 的 <code>SUB Rd, Rn, #imm</code>。STM32 工程里你直接 <code>#include &lt;linux/types.h&gt;</code> 不行（那是内核头），但 STM32CubeIDE 的 <code>arm-none-eabi-gcc</code> 自带 <code>&lt;stddef.h&gt;</code>，offsetof 一直可用。把 13.4 节的三步宏放进 utility 头文件就能用。</p>
+<p>完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/stm32-snippet/"><code>oop-in-c/code/13-container-of/stm32-snippet/</code></a>。</p>
+<h2 id="1310-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1310-你现在的代码在-linux-用户态长什么样">13.10 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p>Linux 用户态可以直接借 <code>&lt;stddef.h&gt;</code> 的 offsetof。绝大多数 user-space 项目自定义自己的 container_of 宏，比如 systemd / gobject / libnl 都各写一份，逻辑都一样。在 Linux 用户态写 OOP 风格 C 代码，container_of 这一招几乎是入场券。</p>
+<p>完整 Linux 用户态 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/linux-snippet/"><code>oop-in-c/code/13-container-of/linux-snippet/</code></a>。</p>
+<h2 id="1311-工业代码里的-container_of-长什么样"><a class="header" href="#1311-工业代码里的-container_of-长什么样">13.11 工业代码里的 container_of 长什么样</a></h2>
+<p>工业控制板 driver 里：</p>
+<pre><code class="language-c">/* drivers/encoder/encoder.h */
+struct encoder_base;
+
+struct encoder_ops {
+	int (*read)(struct encoder_base *me, int32_t *count);
+	int (*reset)(struct encoder_base *me);
+};
+
+struct encoder_base {
+	const struct encoder_ops *ops;
+	const char               *name;
+};
+
+/* drivers/encoder/encoder_quad.c */
+struct encoder_quad {
+	struct encoder_base base;
+	int32_t             count;
+	uint8_t             a_pin;
+	uint8_t             b_pin;
+};
+
+static int quad_read(struct encoder_base *me, int32_t *count)
+{
+	struct encoder_quad *self = container_of(me, struct encoder_quad, base);
+	*count = self-&gt;count;
+	return 0;
+}
+</code></pre>
+<p>整个工业项目里，10 多个 driver 模块，每个子类实现函数第一行都是 container_of。这一行已经稳定到所有同事看一眼就知道意思，不需要解释。</p>
+<p>读完这一章你拿到内核源码、读到 driver 源码、读到 GObject 源码，第一行的 container_of 不会再让你头疼。</p>
+<h2 id="1312-完整源码清单"><a class="header" href="#1312-完整源码清单">13.12 完整源码清单</a></h2>
+<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/pc/"><code>oop-in-c/code/13-container-of/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
+<p><code>common/platform.h</code> 和 <code>common/platform_pc.c</code> 跟 ch01 一字不变，本章 Makefile 通过 <code>-I../../common</code> 引用。完整代码见 ch01 末尾完整源码清单。</p>
+<h3 id="文件-1mainc60-行"><a class="header" href="#文件-1mainc60-行">文件 1：<code>main.c</code>（60 行）</a></h3>
+<p>应用层。三个子类对象 <code>g_err / g_stat / g_net</code> 在 main 里声明，循环 toggle，故意把 GPIO 子类的 base 放到第二个位置，证明 container_of 与位置无关。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * main.c - container_of 演示
+ *
+ * GPIO 子类故意把 base 放到第二个位置，证明 container_of 与位置无关。
+ * 强转 (struct led_gpio *)me 在这种布局下会算错，container_of 一直对。
+ */
+
+#include "led.h"
+#include "container_of.h"
+#include &lt;stddef.h&gt;
+#include &lt;stdio.h&gt;
+
+static struct led_gpio g_err   = {0};
+static struct led_pwm  g_stat  = {0};
+static struct led_i2c  g_net   = {0};
+
+int main(void)
+{
+	printf("=========================================\n");
+	printf("  ch13 - container_of\n");
+	printf("=========================================\n");
+
+	/* 让大家看一眼偏移量。GPIO 的 base 故意不在 0 位 */
+	printf("offsetof(struct led_gpio, base) = %u\n",
+	       (unsigned)offsetof(struct led_gpio, base));
+	printf("offsetof(struct led_pwm,  base) = %u\n",
+	       (unsigned)offsetof(struct led_pwm, base));
+	printf("offsetof(struct led_i2c,  base) = %u\n",
+	       (unsigned)offsetof(struct led_i2c, base));
+
+	led_gpio_init(&amp;g_err,  "ERR",  10, true);
+	led_pwm_init (&amp;g_stat, "STAT",  1, 50);
+	led_i2c_init (&amp;g_net,  "NET",   0, 0x20);
+
+	struct led_base *handles[] = {
+		&amp;g_err.base,
+		&amp;g_stat.base,
+		&amp;g_net.base,
+	};
+
+	for (int i = 0; i &lt; 3; i++) {
+		printf("\n--- toggle %s ---\n", handles[i]-&gt;name);
+		led_on(handles[i]);
+		led_off(handles[i]);
+	}
+
+	printf("\n--- breath stat ---\n");
+	led_set_brightness(handles[1], 60);
+	led_set_brightness(handles[1], 0);
+
+	printf("\n=========================================\n");
+	printf("  base offset != 0 still works\n");
+	printf("=========================================\n");
+
+	printf("\nPress Enter to exit...\n");
+	getchar();
+	return 0;
+}
+</code></pre>
+<h3 id="文件-2container_ofh30-行"><a class="header" href="#文件-2container_ofh30-行">文件 2：<code>container_of.h</code>（30 行）</a></h3>
+<p>container_of 宏的最小可用版（PC 友好版）。三步：转字节指针、减偏移、转回外层 struct 指针。Linux 内核版多了 <code>__same_type</code> 编译期类型检查，最小版去掉这一层方便 PC 上任何 C99 编译器跑通。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * container_of.h - Linux 内核 container_of 宏的最小可用版本
+ *
+ * 完整版见 Linux 内核 include/linux/container_of.h，本文件保留同样的
+ * 三步语义、去掉 GCC 专属的类型检查（用 static_assert），便于 PC 上
+ * 用任何 C99 编译器跑通。
+ */
+
+#ifndef MY_CONTAINER_OF_H
+#define MY_CONTAINER_OF_H
+
+#include &lt;stddef.h&gt;     /* offsetof */
+
+/**
+ * container_of - 从成员指针反推外层 struct 起始地址
+ * @ptr:    指向某个成员的指针
+ * @type:   外层 struct 的类型
+ * @member: 该成员在外层 struct 里的名字
+ *
+ * 三步：
+ *   1. 把 ptr 转成字节指针（char *），让减法按字节算
+ *   2. 减去 member 在 type 里的偏移
+ *   3. 把结果转回 type *
+ */
+#define container_of(ptr, type, member)					\
+	((type *)((char *)(ptr) - offsetof(type, member)))
+
+#endif /* MY_CONTAINER_OF_H */
+</code></pre>
+<h3 id="文件-3ledh66-行"><a class="header" href="#文件-3ledh66-行">文件 3：<code>led.h</code>（66 行）</a></h3>
+<p>LED 父类 + 三个子类的声明。和 ch12 的差别：GPIO 子类前面塞了一个 <code>uint16_t magic</code> 字段，让 base 故意不在偏移 0。container_of 还能反推回去。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * led.h - led_base + 子类（ch13 版）
+ *
+ * 和 ch12 唯一的差别：子类实现里用 container_of 反推自己。
+ * base 不一定要在第一个位置，本章故意把 base 挪到中间，证明
+ * container_of 与位置无关。
+ */
+
+#ifndef LED_H
+#define LED_H
+
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+
+struct led_base;
+
+struct led_ops {
+	int (*on)(struct led_base *me);
+	int (*off)(struct led_base *me);
+	int (*set_brightness)(struct led_base *me, uint8_t brightness);
+};
+
+struct led_base {
+	const struct led_ops *ops;
+	const char           *name;
+	bool                  is_on;
+};
+
+int led_on(struct led_base *me);
+int led_off(struct led_base *me);
+int led_set_brightness(struct led_base *me, uint8_t brightness);
+
+/* GPIO 子类：base 故意不放第一个位置 */
+struct led_gpio {
+	uint16_t        magic;     /* 故意挡在前面，让 base 的偏移不为 0 */
+	struct led_base base;
+	uint8_t         pin;
+	bool            on_level;
+};
+
+void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level);
+
+/* PWM 子类 */
+struct led_pwm {
+	struct led_base base;
+	uint8_t         channel;
+	uint8_t         duty;
+};
+
+void led_pwm_init(struct led_pwm *me, const char *name,
+		  uint8_t channel, uint8_t duty);
+
+/* I2C 子类 */
+struct led_i2c {
+	struct led_base base;
+	uint8_t         bus;
+	uint8_t         addr;
+};
+
+void led_i2c_init(struct led_i2c *me, const char *name,
+		  uint8_t bus, uint8_t addr);
+
+#endif /* LED_H */
+</code></pre>
+<h3 id="文件-4ledc163-行和-ch12-比改了-6-处"><a class="header" href="#文件-4ledc163-行和-ch12-比改了-6-处">文件 4：<code>led.c</code>（163 行，和 ch12 比改了 6 处）</a></h3>
+<p>父类统一接口和 ch12 一字不变。子类实现里六处把 <code>(struct led_xxx *)me</code> 强转换成 <code>container_of(me, struct led_xxx, base)</code>。GPIO 子类 init 里多了一行 <code>me-&gt;magic = 0xCAFE</code> 用于演示。</p>
+<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
+/*
+ * led.c - 子类实现里用 container_of 反推自己
+ *
+ * 和 ch12 的差别只有一处：(struct led_xxx *)me 强转换成
+ *   container_of(me, struct led_xxx, base);
+ *
+ * GPIO 子类的 base 故意不在第一个位置，container_of 照样对。
+ */
+
+#include "led.h"
+#include "container_of.h"
+#include "platform.h"
+#include &lt;stdio.h&gt;
+
+/* ============== 父类统一接口 ============== */
+
+int led_on(struct led_base *me)
+{
+	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+		return -1;
+	return me-&gt;ops-&gt;on(me);
+}
+
+int led_off(struct led_base *me)
+{
+	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;off)
+		return -1;
+	return me-&gt;ops-&gt;off(me);
+}
+
+int led_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	if (!me || !me-&gt;ops)
+		return -1;
+	if (!me-&gt;ops-&gt;set_brightness)
+		return 0;
+	return me-&gt;ops-&gt;set_brightness(me, brightness);
+}
+
+/* ============== 子类一：GPIO LED ============== */
+
+static int gpio_on(struct led_base *me)
+{
+	struct led_gpio *self = container_of(me, struct led_gpio, base);
+	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
+	me-&gt;is_on = true;
+	printf("  [%s] GPIO Pin%u ON (magic=0x%04X)\n",
+	       me-&gt;name, (unsigned)self-&gt;pin, (unsigned)self-&gt;magic);
+	return 0;
+}
+
+static int gpio_off(struct led_base *me)
+{
+	struct led_gpio *self = container_of(me, struct led_gpio, base);
+	platform_gpio_write(self-&gt;pin, !self-&gt;on_level);
+	me-&gt;is_on = false;
+	printf("  [%s] GPIO Pin%u OFF\n", me-&gt;name, (unsigned)self-&gt;pin);
+	return 0;
+}
+
+static const struct led_ops gpio_ops = {
+	.on  = gpio_on,
+	.off = gpio_off,
+};
+
+void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level)
+{
+	me-&gt;magic       = 0xCAFE;
+	me-&gt;base.ops    = &amp;gpio_ops;
+	me-&gt;base.name   = name;
+	me-&gt;base.is_on  = false;
+	me-&gt;pin         = pin;
+	me-&gt;on_level    = on_level;
+
+	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
+	platform_gpio_write(pin, !on_level);
+}
+
+/* ============== 子类二：PWM LED ============== */
+
+static int pwm_on(struct led_base *me)
+{
+	struct led_pwm *self = container_of(me, struct led_pwm, base);
+	printf("  [%s] PWM ch%u duty=%u%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
+	me-&gt;is_on = true;
+	return 0;
+}
+
+static int pwm_off(struct led_base *me)
+{
+	struct led_pwm *self = container_of(me, struct led_pwm, base);
+	printf("  [%s] PWM ch%u duty=0%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel);
+	me-&gt;is_on = false;
+	return 0;
+}
+
+static int pwm_set_brightness(struct led_base *me, uint8_t brightness)
+{
+	struct led_pwm *self = container_of(me, struct led_pwm, base);
+	if (brightness &gt; 100)
+		brightness = 100;
+	self-&gt;duty = brightness;
+	printf("  [%s] PWM ch%u duty=%u%%\n",
+	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)brightness);
+	me-&gt;is_on = (brightness &gt; 0);
+	return 0;
+}
+
+static const struct led_ops pwm_ops = {
+	.on             = pwm_on,
+	.off            = pwm_off,
+	.set_brightness = pwm_set_brightness,
+};
+
+void led_pwm_init(struct led_pwm *me, const char *name,
+		  uint8_t channel, uint8_t duty)
+{
+	me-&gt;base.ops   = &amp;pwm_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;channel    = channel;
+	me-&gt;duty       = duty;
+}
+
+/* ============== 子类三：I2C LED ============== */
+
+static int i2c_on(struct led_base *me)
+{
+	struct led_i2c *self = container_of(me, struct led_i2c, base);
+	printf("  [%s] I2C bus%u addr=0x%02X reg=0x01\n",
+	       me-&gt;name, (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
+	me-&gt;is_on = true;
+	return 0;
+}
+
+static int i2c_off(struct led_base *me)
+{
+	struct led_i2c *self = container_of(me, struct led_i2c, base);
+	printf("  [%s] I2C bus%u addr=0x%02X reg=0x00\n",
+	       me-&gt;name, (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
+	me-&gt;is_on = false;
+	return 0;
+}
+
+static const struct led_ops i2c_ops = {
+	.on  = i2c_on,
+	.off = i2c_off,
+};
+
+void led_i2c_init(struct led_i2c *me, const char *name,
+		  uint8_t bus, uint8_t addr)
+{
+	me-&gt;base.ops   = &amp;i2c_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;bus        = bus;
+	me-&gt;addr       = addr;
+}
+</code></pre>
+<h3 id="文件-5makefile19-行"><a class="header" href="#文件-5makefile19-行">文件 5：<code>Makefile</code>（19 行）</a></h3>
+<pre><code class="language-makefile"># Makefile - ch13 container_of (PC)
+
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99 -I../../common
+TARGET  = demo
+SRCS    = main.c led.c ../../common/platform_pc.c
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(TARGET).exe
+</code></pre>
+<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
+<pre><code class="language-bash">cd oop-in-c/code/13-container-of/pc
+make
+./demo
+</code></pre>
+<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<pre><code>=========================================
+  ch13 - container_of
+=========================================
+offsetof(struct led_gpio, base) = 4
+offsetof(struct led_pwm,  base) = 0
+offsetof(struct led_i2c,  base) = 0
+[GPIO] Pin10 init as OUTPUT
+[GPIO] Pin10 -&gt; LOW (OFF)
+
+--- toggle ERR ---
+[GPIO] Pin10 -&gt; HIGH (ON)
+  [ERR] GPIO Pin10 ON (magic=0xCAFE)
+[GPIO] Pin10 -&gt; LOW (OFF)
+  [ERR] GPIO Pin10 OFF
+
+--- toggle STAT ---
+  [STAT] PWM ch1 duty=50%
+  [STAT] PWM ch1 duty=0%
+
+--- toggle NET ---
+  [NET] I2C bus0 addr=0x20 reg=0x01
+  [NET] I2C bus0 addr=0x20 reg=0x00
+
+--- breath stat ---
+  [STAT] PWM ch1 duty=60%
+  [STAT] PWM ch1 duty=0%
+
+=========================================
+  base offset != 0 still works
+=========================================
+
+Press Enter to exit...
+</code></pre>
+<h2 id="1313-跑一遍"><a class="header" href="#1313-跑一遍">13.13 跑一遍</a></h2>
+<pre><code>cd oop-in-c/code/13-container-of/pc
+make
+./demo
+</code></pre>
+<p>输出节选：</p>
+<pre><code>offsetof(struct led_gpio, base) = 4
+offsetof(struct led_pwm,  base) = 0
+offsetof(struct led_i2c,  base) = 0
+[GPIO] Pin10 init as OUTPUT
+
+--- toggle ERR ---
+[GPIO] Pin10 -&gt; HIGH
+  [ERR] GPIO Pin10 ON (magic=0xCAFE)
+</code></pre>
+<p><code>magic = 0xCAFE</code> 这一行证明 container_of 准确还原了原始 <code>struct led_gpio</code> 对象。</p>
+<h2 id="1314-视频回放"><a class="header" href="#1314-视频回放">13.14 视频回放</a></h2>
+<blockquote>
+<p><a href="https://www.bilibili.com/video/BV1LEo4B5EZu/">《C 语言·向下转型｜container_of·从成员反推 struct》</a></p>
+</blockquote>
+<h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
+<p>类型机制完整了：上转下转都能干。</p>
+<p>但还有一个洞：如果某种 LED 的 ops 表里 <code>on</code> 没填呢？应用层调 <code>led_on(handle)</code> 内部走到 <code>me-&gt;ops-&gt;on(me)</code>，NULL 被当函数地址跳过去，程序直接崩。</p>
+<p>下一章：虚函数不实现会怎样。</p>
+<p>下一篇：<a href="14-纯虚与抽象类.html">第 14 章 · 虚函数不实现会怎样 · 纯虚与抽象类</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../04-工程威力/12-向上转型.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../04-工程威力/14-纯虚与抽象类.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../04-工程威力/12-向上转型.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../04-工程威力/14-纯虚与抽象类.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
