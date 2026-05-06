@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b2878b4d.js";
+            window.path_to_searchindex_js = "../searchindex-83035d0f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -389,8 +389,8 @@ platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
 <p>工业代码的硬规则：<strong>不直接走 ops 表，所有 dispatch 走基类层包装的统一函数</strong>。<code>led_on / led_off / led_set_brightness</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
 <h3 id="1162-ops-字段的必填和选填"><a class="header" href="#1162-ops-字段的必填和选填">11.6.2 ops 字段的必填和选填</a></h3>
 <p>ops 表里有些字段是必填（每个子类都得实现），有些字段是选填（这种 LED 不支持就不填）。</p>
-<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力——一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
-<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填——GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
+<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力，一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
+<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填，GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
 <p>第 14 章会专门展开必填 vs 选填的判断标准、三种处理策略（assert 报错、空 stub、默认行为）的取舍、对应到 C++ 里的纯虚函数和虚函数。本章先把“核心能力子类必须实现，调试期 assert 抓忘填“这条记下来。</p>
 <h3 id="1163-多态的开闭原则"><a class="header" href="#1163-多态的开闭原则">11.6.3 多态的开闭原则</a></h3>
 <p>加第 100 种 LED 怎么改代码？</p>

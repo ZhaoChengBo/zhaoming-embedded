@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b2878b4d.js";
+            window.path_to_searchindex_js = "../searchindex-83035d0f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -213,6 +213,7 @@
          ...);
 </code></pre>
 <p>编译器看不出来。类型对就放行。运行起来，开灯调到了 off 函数，关灯调到了 on 函数。该亮的时候灭，该灭的时候亮。这种 bug 能查一天。</p>
+<p><img src="../assets/ch09/slide1_参数列表爆炸.png" alt="参数列表爆炸"></p>
 <h2 id="92-朴素方案靠注释和命名"><a class="header" href="#92-朴素方案靠注释和命名">9.2 朴素方案：靠注释和命名</a></h2>
 <p>最朴素的应对：变量名起严谨点，参数顺序写注释。</p>
 <pre><code class="language-c">test_led(&amp;red_led.base,
@@ -224,6 +225,7 @@
 <p>工程上可靠的解法是让编译器帮你抓错。</p>
 <h2 id="93-把多个函数指针装进一个-struct"><a class="header" href="#93-把多个函数指针装进一个-struct">9.3 把多个函数指针装进一个 struct</a></h2>
 <p>一个观察：<code>on / off / toggle</code> 是一组绑死的东西。它们一起描述了“一种 LED 的所有行为“。GPIO 风格 LED 这一组，PWM 风格 LED 那一组。</p>
+<p>注意 ops 表里只装“<strong>做法不同</strong>“的行为。<code>on</code> 一类函数 GPIO LED 是拉电平，PWM LED 是配占空比，I2C LED 是发命令，同一个动作每种实现都不一样，所以要做成函数指针让运行时绑定。<code>get_name</code>、<code>get_state</code> 这种只是读父类字段的函数不用进 ops 表，沿用 ch06 的 <code>led_get_name(&amp;xxx.base)</code> 直接读 base 数据就行。<strong>做法不同的进 ops 表，读数据的不进</strong>。这个判断准则下一章会反复用到。</p>
 <p>把一组绑死的东西打包，C 里的工具叫 struct。</p>
 <pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
 
@@ -256,7 +258,8 @@ struct led_ops {
 test_led(&amp;red_led.base, &amp;led_ops_gpio);
 </code></pre>
 <p>参数列表从 4 个塞到了 1 个。<code>test_led</code> 内部按名字访问：<code>ops-&gt;on</code> 永远是 on，<code>ops-&gt;off</code> 永远是 off，不可能传反。编译器在初始化 <code>led_ops_gpio</code> 时帮你查 <code>.on</code> 这个字段类型对不对（不对就编译报错）。</p>
-<p><img src="../assets/ch09/slide1_参数列表爆炸.png" alt="参数列表爆炸"></p>
+<p>散装的函数指针装订成一本电话簿。散装号码丢了找不到，电话簿翻开就有，一个不少。</p>
+<p><img src="../assets/ch09/slide3_LedOps_struct.png" alt="LedOps struct"></p>
 <h2 id="94-typedef-给函数指针起名字"><a class="header" href="#94-typedef-给函数指针起名字">9.4 typedef 给函数指针起名字</a></h2>
 <p>ops 表里每个字段都是一长串函数指针类型。重复几遍后用 typedef 提一下：</p>
 <pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
@@ -293,7 +296,6 @@ extern const struct led_ops led_ops_gpio;
 extern const struct led_ops led_ops_pwm;
 </code></pre>
 <p>调用方拿到 <code>&amp;led_ops_gpio</code> 就是 ops 表的地址。</p>
-<p><img src="../assets/ch09/slide3_LedOps_struct.png" alt="LedOps struct"></p>
 <h2 id="96-这个东西叫什么"><a class="header" href="#96-这个东西叫什么">9.6 这个东西叫什么</a></h2>
 <p>把一组相关的函数指针打包进一个 struct，让别人通过表名按名访问，软件工程里有个名字。</p>
 <p>它叫<strong>操作表</strong>（ops table），也叫<strong>虚函数表</strong>（vtable / virtual table）。Linux 内核源码里把这种 struct 都叫 <code>xxx_ops</code>：<code>file_operations</code>、<code>net_device_ops</code>、<code>gpio_chip</code> 里的回调集，都是 ops 表。</p>
@@ -399,8 +401,8 @@ else
 <pre><code>LDR  r3, [r0, #0]    ; r0 = ops, 取 ops 表第 0 个字段 = on 的地址 (3 cycle)
 BLX  r3              ; 间接跳转 (3 cycle)
 </code></pre>
-<p>和 ch07 的“struct 字段里的函数指针“开销一样：一次 LDR + 一次 BLX，约 28 ns @ 168 MHz。</p>
-<p>C++ virtual 函数调用就是这两条指令。Stroustrup 那句“零成本抽象“在 vcall 这里要打个小折扣（间接跳转 = 不能 inline、CPU branch predictor 命中率低），这是工程上完全可接受的代价。</p>
+<p>和上一章独立函数指针变量的调用开销一样：一次 LDR + 一次 BLX，约 28 ns @ 168 MHz。从 ops 表第 0 个字段读 on 地址走的是编译期常量偏移，没有额外的运行时计算。</p>
+<p>C++ virtual 函数调用就是这两条指令。Stroustrup 那句“零成本抽象“在 vcall 这里要打个小折扣（间接跳转编译器没法 inline，CPU branch predictor 命中率也低），但这是工程上完全可接受的代价。</p>
 <h3 id="976-为什么-ops-不写在-led_base-里"><a class="header" href="#976-为什么-ops-不写在-led_base-里">9.7.6 为什么 ops 不写在 led_base 里</a></h3>
 <p>按理说 <code>struct led_ops</code> 应该是基类的概念，所有子类共用一份接口定义。本章直接写在 led.h 里，对应“GPIO 风格 LED“和“PWM 风格 LED“两组实现。下一章 ops 才会真正放进 base。</p>
 <p>为什么分两章？因为本章先把“打包“这个动作单独讲清楚（ops 表是什么、怎么填、怎么调）。下一章再处理“ops 表跟谁绑、谁带“（放进 base 让对象自带）。一次只解决一件事，认知负荷小。</p>
@@ -469,6 +471,7 @@ make
 </blockquote>
 <p><img src="../assets/ch09/slide5_金句.png" alt="金句"></p>
 <p>视频里把这一章叫做“散装电话号码 → 电话簿“。散装函数指针绑成一组共享名字的“号码本“，按名取号永远不会取错。</p>
+<p>视频金句：<strong>结构化不是束缚，是让混乱变得可管理</strong>。散装号码会丢，电话簿不会。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>ops 表手里捏着，调用方还得<strong>主动</strong>把它传进去。每次都要：</p>
 <pre><code class="language-c">test_led(&amp;red_led, &amp;led_ops_gpio);   /* 调用方记得传 */

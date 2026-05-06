@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b2878b4d.js";
+            window.path_to_searchindex_js = "searchindex-83035d0f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -3242,291 +3242,215 @@ make
 fp = gpio_on;
 fp(15);
 </code></pre>
-<p>函数指针变量本身能用了。但每次都得<strong>你自己</strong>先拨：先把号码存进 <code>fp</code>，再拿 <code>fp</code> 拨出去。</p>
-<p>你写一个 <code>test_led</code> 工具函数，要做的事是：开 → 等 → 关，三步。这个函数应该不挑 LED：传谁进来，它都能跑完三步。</p>
-<p>但 <code>test_led</code> 不知道该调哪个 <code>on</code>、哪个 <code>off</code>。GPIO LED 要调 <code>gpio_on</code>，PWM LED 要调 <code>pwm_on</code>，I2C LED 要调 <code>i2c_on</code>。<code>test_led</code> 自己不知道。</p>
-<p>直觉一：让 <code>test_led</code> 内部判断 LED 类型，写一堆 <code>if (type == GPIO) ... else if (type == PWM) ...</code>。回到 ch07 写死的老路。</p>
-<p>直觉二：让<strong>调用方</strong>告诉 <code>test_led</code> 该拨哪个号码。<code>test_led</code> 接两个额外参数：用哪个 <code>on</code>、用哪个 <code>off</code>，剩下的它按“开 → 等 → 关“的固定流程走。</p>
-<p>这就是函数指针当参数。</p>
-<h2 id="82-函数指针当参数"><a class="header" href="#82-函数指针当参数">8.2 函数指针当参数</a></h2>
-<p><code>test_led</code> 的签名长这样：</p>
+<p>号码存好了，拨通了。但你写一个工具函数 <code>test_led</code>，里面要做“开 → 等 → 关“三步。这个函数应该不挑 LED：传谁进来都能跑完三步。</p>
+<p>按当前的代码结构，<code>test_led</code> 内部还是写死的：</p>
+<pre><code class="language-c">void test_led() {
+    gpio_on(15);     /* 写死 */
+    delay(500);
+    gpio_off(15);    /* 写死 */
+}
+</code></pre>
+<p>你在外面有号码（<code>fp = gpio_on</code>），但 <code>test_led</code> 拿不到。<code>fp</code> 是 main 里的局部变量，<code>test_led</code> 看不见。每次都得你自己拨：先把号码存进 <code>fp</code>，再拿 <code>fp</code> 拨出去。</p>
+<p><code>test_led</code> 自己想拨号，怎么办？</p>
+<p>把号码给它。</p>
+<p><img src="assets/ch08/slide1_手动拨号问题.png" alt="号码存了·但 test_led 还是写死的"></p>
+<h2 id="82-把号码传进去函数指针当参数"><a class="header" href="#82-把号码传进去函数指针当参数">8.2 把号码传进去：函数指针当参数</a></h2>
+<p>函数指针是个变量。变量能不能当参数传给函数？当然能。<code>int</code> 能传，指针能传，函数指针当然也能传。</p>
+<p>改造 <code>test_led</code> 的签名，加两个参数，分别是“开灯号码“和“关灯号码“：</p>
+<pre><code class="language-c">void test_led(void (*on)(int),    /* 开灯号码 */
+              void (*off)(int),   /* 关灯号码 */
+              int id)
+{
+    on(id);          /* 拨号: 不关心是谁 */
+    delay(500);
+    off(id);         /* 拨号: 不关心是谁 */
+}
+</code></pre>
+<p><code>test_led</code> 内部不写 <code>gpio_on</code>，不写 <code>pwm_on</code>，只管调 <code>on(id)</code> 和 <code>off(id)</code>。</p>
+<p>它不认识 <code>gpio_on</code>，也不认识 <code>pwm_on</code>。但它不需要认识。号码是谁的？调用方告诉它。<code>test_led</code> 拿到一对函数指针 + 一个 <code>id</code>，照着拨就行。</p>
+<p>第三个参数 <code>id</code> 是通用名。GPIO LED 用它当引脚号，PWM LED 用它当通道号，I2C LED 用它当设备地址。<code>test_led</code> 不关心这个数字代表什么，原封不动传给 <code>on(id)</code> 和 <code>off(id)</code>，号码自己解释。</p>
+<p><img src="assets/ch08/slide2_函数指针当参数.png" alt="把号码传进去·函数指针当参数"></p>
+<h2 id="83-三种-led-都用同一个-test_led"><a class="header" href="#83-三种-led-都用同一个-test_led">8.3 三种 LED 都用同一个 test_led</a></h2>
+<p>有了 <code>test_led(on, off, id)</code>，你可以用同一个函数测三种 LED：</p>
+<pre><code class="language-c">test_led(gpio_on, gpio_off, 15);     /* GPIO LED, id=15 引脚号 */
+test_led(pwm_on, pwm_off, 3);        /* PWM LED, id=3 通道号 */
+test_led(i2c_on, i2c_off, 0x50);     /* I2C LED, id=0x50 设备地址 */
+</code></pre>
+<p>三种 LED，同一个 <code>test_led</code>，跑出三种不同的开关行为。<code>test_led</code> 自己一行不改，行为完全由调用方传进来的两个号码决定。换一种 LED 实现，换两个号码就行。</p>
+<p>类比一下：你把号码写在纸条上，交给朋友（<code>test_led</code>），朋友照着纸条拨号就行。朋友不需要认识 <code>gpio_on</code> 是谁，拨通就行。号码对不对那是你的事。</p>
+<p><img src="assets/ch08/slide3_三种LED调用.png" alt="三种 LED·同一个 test_led"></p>
+<h2 id="84-编译时绑定-vs-运行时绑定"><a class="header" href="#84-编译时绑定-vs-运行时绑定">8.4 编译时绑定 vs 运行时绑定</a></h2>
+<p>来看这个改造前后的本质变化。</p>
+<p><strong>Before</strong>：</p>
+<pre><code class="language-c">void test_led() {
+    gpio_on(15);     /* 写死 */
+    ...
+    gpio_off(15);    /* 写死 */
+}
+</code></pre>
+<p><code>test_led</code> 函数体里写死了 <code>gpio_on</code>。编译器看到这一行，就知道要跳转到 <code>gpio_on</code> 那段机器码（通过链接器解析符号到地址）。<strong>编译时</strong>就定了“调谁“。要换？改源码，重新编译。</p>
+<p><strong>After</strong>：</p>
+<pre><code class="language-c">void test_led(void (*on)(int), void (*off)(int), int id) {
+    on(id);          /* 调谁? 看入参 */
+    ...
+    off(id);
+}
+</code></pre>
+<p><code>test_led</code> 函数体里只调 <code>on(id)</code>。<code>on</code> 这个函数指针的值，编译器不知道。要等到 <code>test_led</code> 真的被调用、调用方把某个具体函数地址传进来，才知道要跳到哪段机器码。<strong>运行时</strong>才决定“调谁“。</p>
+<p>软件工程里这两件事各有名字：</p>
+<ul>
+<li><strong>编译时绑定</strong>（early binding / static binding）：函数地址在链接期就固定</li>
+<li><strong>运行时绑定</strong>（late binding / dynamic binding）：函数地址在运行时才确定</li>
+</ul>
+<p>写代码时不决定调谁，运行的时候再决定。这就是<strong>延迟决定</strong>。越晚做决定，选择越多。</p>
+<p><img src="assets/ch08/slide4_延迟决定.png" alt="从写死到到时候再说"></p>
+<h2 id="85-这个东西叫什么"><a class="header" href="#85-这个东西叫什么">8.5 这个东西叫什么</a></h2>
+<p>C++ 里这件事一字不改：</p>
+<pre><code class="language-cpp">void test_led(void (*on)(int), void (*off)(int), int id);
+</code></pre>
+<p>声明语法、传参语法、调用语法都和 C 完全一样。这是少数 C 和 C++ 没有区别的地方。C++ 后来加了 lambda 和 <code>std::function</code>，写法更简洁，骨子里还是同一件事：把一段逻辑传给别人执行。</p>
+<p>回到刚才的延迟决定。这个机制视频里给了一句总结：<strong>函数指针的本质是延迟决定，不是现在就定死，而是到时候再说</strong>。写代码的时候不决定调谁，运行的时候再决定。</p>
+<p>软件工程里，把函数指针当参数传给另一个函数、让被调函数在内部反过来调你给它的函数，这件事还有个名字。它叫<strong>回调</strong>（callback）。本章后面 8.7 节会展开一个具体的回调场景。</p>
+<p><img src="assets/ch08/slide5_CvsCpp.png" alt="C vs C++·延迟决定"></p>
+<p><img src="assets/ch08/slide6_金句.png" alt="金句·延迟决定"></p>
+<h2 id="86-视频里没讲透的几个细节"><a class="header" href="#86-视频里没讲透的几个细节">8.6 视频里没讲透的几个细节</a></h2>
+<h3 id="861-函数指针参数的对齐和栈传递"><a class="header" href="#861-函数指针参数的对齐和栈传递">8.6.1 函数指针参数的对齐和栈传递</a></h3>
+<p>ARM EABI 调用约定：函数指针作为参数和数据指针一样大（32 位 ARM 是 4 字节，64 位是 8 字节），通过 r0-r3 寄存器传递。如果参数太多溢出到栈上，按机器字对齐压栈。</p>
+<p><code>test_led(gpio_on, gpio_off, 15)</code> 这一调（按 EABI 入参顺序）：</p>
+<ul>
+<li>r0 = <code>gpio_on</code> 的地址</li>
+<li>r1 = <code>gpio_off</code> 的地址</li>
+<li>r2 = 15</li>
+<li>函数体里 <code>on(id)</code> 编译成 <code>mov r0, r2</code> + <code>BLX r0</code>（实际上编译器会保留 r0 不动，从备份位置取）</li>
+</ul>
+<p>完全没有任何额外开销。函数指针传参 ≈ 数据指针传参，参数槽都是一个机器字。</p>
+<h3 id="862-const-函数指针-vs-函数指针-const"><a class="header" href="#862-const-函数指针-vs-函数指针-const">8.6.2 const 函数指针 vs 函数指针 const</a></h3>
+<pre><code class="language-c">void test_led(void (* const on)(int),    /* on 这个指针变量是 const */
+              void (*off)(int));
+</code></pre>
+<p><code>const</code> 加在 <code>(*</code> 后面，说明 <code>on</code> 这个变量本身不能再被赋值。也就是函数体里不允许写 <code>on = pwm_on;</code> 之类。这种写法在工业代码里少见，因为参数本来就是临时变量，函数返回就回收。</p>
+<p>更常用的 <code>const</code> 出现在结构体字段上，比如 <code>const struct led_ops *ops</code>，意思是“指向常量 ops 表的指针“，不允许通过这个指针改 ops 表的内容。这两个 <code>const</code> 的位置是 C 语法里最容易绕的地方，记住一条规则：<code>const</code> 修饰它右边的 token。</p>
+<h3 id="863-函数指针参数的-null-检查"><a class="header" href="#863-函数指针参数的-null-检查">8.6.3 函数指针参数的 NULL 检查</a></h3>
+<pre><code class="language-c">void test_led(void (*on)(int), void (*off)(int), int id)
+{
+    if (!on || !off)
+        return;
+    on(id);
+    delay(500);
+    off(id);
+}
+</code></pre>
+<p><code>on / off</code> 这两个函数指针 NULL check 必不可少。调用方传 NULL 进来，<code>on(id)</code> 就是跳到地址 0 执行：在 ARM Cortex-M 上跳到向量表起点的非代码区，结果是 HardFault；在 Linux 用户态收到 SIGSEGV，进程 core dump。</p>
+<p>工业代码硬规则：<strong>所有函数指针调用前都做 NULL check</strong>。无论函数指针来自字段、参数还是注册表。</p>
+<h3 id="864-应用层视角-vs-base-类视角"><a class="header" href="#864-应用层视角-vs-base-类视角">8.6.4 应用层视角 vs base 类视角</a></h3>
+<p>正文 8.2 / 8.3 节用的 <code>test_led(on, off, id)</code> 是<strong>应用层简化视角</strong>，第一个参数就是个 <code>int id</code>（GPIO 引脚号 / PWM 通道号 / I2C 地址）。这是视频里的教学版，让你看清“函数指针当参数“这个动作本身。</p>
+<p>本章配套代码包用的是<strong>工业版</strong>：</p>
 <pre><code class="language-c">int test_led(struct led_base *me,
              int (*on)(struct led_base *me),
              int (*off)(struct led_base *me));
 </code></pre>
-<p>第二个参数 <code>int (*on)(struct led_base *me)</code> 不是字段、不是 typedef，就是一个普通参数，类型是函数指针。</p>
-<p>函数体里：</p>
-<pre><code class="language-c">int test_led(struct led_base *me,
-             int (*on)(struct led_base *me),
-             int (*off)(struct led_base *me))
-{
-	if (!me || !on || !off)
-		return -1;
-
-	on(me);    /* 调谁? 调用方传进来的 on */
-	/* delay or hold */
-	off(me);
-	return 0;
-}
-</code></pre>
-<p><code>test_led</code> 自己不知道调谁，调用方告诉它。</p>
-<p>调用方：</p>
-<pre><code class="language-c">test_led(&amp;red_led.base, gpio_on_pull_high, gpio_off);
-test_led(&amp;blue_led.base, pwm_on_full_duty, pwm_off);
-</code></pre>
-<p>红灯走 <code>gpio_on_pull_high</code>，蓝灯走 <code>pwm_on_full_duty</code>。同一个 <code>test_led</code> 函数，传不同函数指针进去，行为完全不同。</p>
-<p><img src="assets/ch08/slide2_函数指针当参数.png" alt="函数指针当参数"></p>
-<p><code>test_led</code> 自己一行不改，行为完全由调用方传进来的两个号码决定。换一种 LED 实现，换两个号码就行。</p>
-<h2 id="83-一个具体场景给-led-注册回调"><a class="header" href="#83-一个具体场景给-led-注册回调">8.3 一个具体场景：给 LED 注册回调</a></h2>
-<p>把“函数指针当参数“用到极致的一个场景是回调注册。</p>
-<p>你的应用层想知道：每次 LED 开关时，自动做一些事。比如：</p>
+<p>第一个参数是 <code>struct led_base *me</code>，函数指针的签名也接 <code>me</code>。这样 <code>on / off</code> 实现内部能访问 base 的字段（<code>name / is_on</code>）打日志、维护状态。</p>
+<p>两种写法本质一样：都是“函数指针当参数“。只是工业版让被调函数能看到对象身份，比裸的 <code>int id</code> 表达力强一截。第 6 章引入了继承结构后，工业代码默认就用 base 指针视角。</p>
+<p>跑代码包看到的是工业版，正文教学走的是简化版。中间这层“应用层 → base 视角“的升级，本章配套代码可以一边对照一边读。</p>
+<h2 id="87-一个具体场景给-led-注册回调"><a class="header" href="#87-一个具体场景给-led-注册回调">8.7 一个具体场景：给 LED 注册回调</a></h2>
+<p>把“函数指针当参数“再往前走一步，可以做出一种工业代码里非常常见的机制：<strong>回调注册</strong>。</p>
+<p>主线场景反过来：不是应用层写一个 <code>test_led</code> 主动调函数指针，而是底层 driver 留一个“通知接口“，应用层把自己的函数地址登记进去，driver 在状态变化时<strong>自动</strong>调一下这个登记的函数。</p>
+<p>具体例子：你的应用层关心 LED 状态变化。每次 <code>led_on / led_off</code> 后想自动做一些事：</p>
 <ul>
-<li>主控板把 LED 状态发到 CAN 总线</li>
+<li>主控板把 LED 状态发到 CAN 总线给上位机</li>
 <li>调试时把 LED 状态打到 UART 日志</li>
-<li>测试夹具记录 LED 的开关次数到统计表</li>
+<li>测试夹具记录开关次数</li>
 </ul>
-<p>这些事 <code>led.c</code> 不应该知道。<code>led.c</code> 只管开关 LED。但应用层想被通知。</p>
-<p>注册一个回调：</p>
+<p><code>led.c</code> 不应该知道这些事。<code>led.c</code> 只管开关 LED。但应用层想被通知。</p>
+<p>driver 提供一个注册接口：</p>
 <pre><code class="language-c">typedef void (*led_state_cb)(struct led_base *me, bool new_state);
 
 int led_register_state_cb(struct led_base *me, led_state_cb cb);
 </code></pre>
-<p>应用层把自己的函数地址递给 <code>led_register_state_cb</code>。<code>led_base.c</code> 把它存起来。下一次 <code>led_on()</code> / <code>led_off()</code> 内部状态改完，调一下这个回调通知应用层。</p>
+<p><code>typedef</code> 给函数指针类型起短名字 <code>led_state_cb</code>，让接口签名读着舒服。typedef 的细节下一章会展开。</p>
+<p>应用层注册自己的函数：</p>
 <pre><code class="language-c">static void log_state_change(struct led_base *me, bool new_state)
 {
-	printf("LED %s became %s\n", me-&gt;name,
-	       new_state ? "ON" : "OFF");
+    printf("LED %s became %s\n", me-&gt;name,
+           new_state ? "ON" : "OFF");
 }
 
 led_register_state_cb(&amp;red_led.base, log_state_change);
 
-/* 后面任何一次 led_on/off, log_state_change 都会被自动调到 */
+/* 后面任何一次 led_on / led_off, log_state_change 都会被自动调到 */
 </code></pre>
-<p><code>led.c</code> 不知道有人在监听。它只调它存好的函数指针。监听方是谁、它要做什么，led.c 一无所知。这就是回调机制：<strong>底层模块通过预留的函数指针，把控制权临时交还给上层模块</strong>。</p>
-<p>软件工程里这叫<strong>好莱坞原则</strong>：“Don’t call us, we’ll call you.”（别打电话给我们，我们会打给你。）</p>
-<p><img src="assets/ch08/slide3_三种LED调用.png" alt="三种 LED 调用"></p>
-<h2 id="84-typedef-给函数指针起短名字"><a class="header" href="#84-typedef-给函数指针起短名字">8.4 typedef 给函数指针起短名字</a></h2>
-<p><code>int (*on)(struct led *me)</code> 这个类型每次写一遍太累。第 9 章会大量用 typedef 给函数指针起名字，本章先小试：</p>
-<pre><code class="language-c">typedef void (*led_state_cb)(struct led *me, bool new_state);
-</code></pre>
-<p>这一行的意思：定义一个类型别名 <code>led_state_cb</code>，它代表“接受 <code>struct led *me + bool new_state</code>、返回 void 的函数指针“。</p>
-<p>之后 <code>led_state_cb foo;</code> 等价于 <code>void (*foo)(struct led *me, bool new_state);</code>。但读起来短。</p>
-<p><code>led_register_state_cb</code> 的签名变成：</p>
-<pre><code class="language-c">int led_register_state_cb(struct led *me, led_state_cb cb);
-</code></pre>
-<p>整洁多了。下一章会成系统地用这个手段。</p>
-<h2 id="85-这个东西叫什么"><a class="header" href="#85-这个东西叫什么">8.5 这个东西叫什么</a></h2>
-<p>把函数指针当参数传给另一个函数，让被调函数在内部“反过来调你给它的函数“，软件工程里有个名字。</p>
-<p>它叫<strong>回调</strong>（callback），也叫<strong>策略模式</strong>（Strategy pattern）的最朴素形态。</p>
-<p>C++ 里这件事写法和 C 完全一样：</p>
-<pre><code class="language-cpp">int test_led(led_base *me,
-             int (*on)(led_base *), int (*off)(led_base *));
-</code></pre>
-<p>C++ 还提供 <code>std::function</code>、lambda 表达式作为更高级的封装：</p>
-<pre><code class="language-cpp">test_led(&amp;red_led,
-         [](led_base *me) { return me-&gt;on(); },
-         [](led_base *me) { return me-&gt;off(); });
-</code></pre>
-<p>骨头是一样的：传一段代码给别人执行。lambda 是糖衣，没换药。</p>
-<p><img src="assets/ch08/slide4_延迟决定.png" alt="延迟决定"></p>
-<h2 id="86-视频里没讲透的几个细节"><a class="header" href="#86-视频里没讲透的几个细节">8.6 视频里没讲透的几个细节</a></h2>
-<h3 id="861-编译时绑定-vs-运行时绑定"><a class="header" href="#861-编译时绑定-vs-运行时绑定">8.6.1 编译时绑定 vs 运行时绑定</a></h3>
-<p>老写法（ch01 的 <code>led_on</code> 直接调 <code>platform_gpio_write</code>）：编译器看到调用，写死跳到 <code>platform_gpio_write</code> 的地址。函数地址在 <code>.text</code> 段链接时就定了。这叫<strong>编译时绑定</strong>（early binding / static binding）。</p>
-<p>新写法（函数指针参数）：编译器只生成“间接调用：从寄存器里取地址，跳“。具体跳哪取决于运行时传进来的参数。这叫<strong>运行时绑定</strong>（late binding / dynamic binding）。</p>
-<p>OOP 三大特性里多态的本质就是运行时绑定。第 11 章你会看到，把“通过函数指针调用“系统化（每个对象绑一组函数指针，统一从对象里取），就是 vptr + vtable + dispatch 的完整多态机制。</p>
-<h3 id="862-回调地狱与避免方法"><a class="header" href="#862-回调地狱与避免方法">8.6.2 回调地狱与避免方法</a></h3>
-<p>回调用得太爽会出现回调地狱：</p>
-<pre><code class="language-c">led_register_state_cb(&amp;red_led, on_red_change);
-on_red_change() {
-	send_to_can(...);
-	on_can_send_done() {
-		log_to_flash(...);
-		on_flash_write_done() {
-			notify_main_loop(...);
-			...
-		}
-	}
-}
-</code></pre>
-<p>每一层都有回调，控制流跨多个文件来回跳，调试时栈帧追不到源头。</p>
-<p>工业代码里的处理：</p>
-<ol>
-<li><strong>一个事件一个回调</strong>，不嵌套（每个回调自己短，做一件事）</li>
-<li><strong>回调里只发消息到队列，不直接干活</strong>，主循环统一处理（解耦时序）</li>
-<li><strong>状态机化</strong>：回调触发状态迁移，状态机统一调度</li>
-</ol>
-<p>第 19 章工业代码案例会展开。</p>
-<h3 id="8621-回调可能在什么上下文里跑irq-vs-任务"><a class="header" href="#8621-回调可能在什么上下文里跑irq-vs-任务">8.6.2.1 回调可能在什么上下文里跑（IRQ vs 任务）</a></h3>
-<p>写回调时第一个要问的问题：<strong>这个回调谁来调，在什么上下文里跑</strong>。</p>
-<p>工业代码里回调的触发上下文典型有三种：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>触发源</th><th>上下文</th><th>限制</th></tr>
-</thead>
-<tbody>
-<tr><td>任务/主循环里同步触发</td><td>任务上下文</td><td>几乎没限制，能阻塞、能 printf、能调标准库</td></tr>
-<tr><td>定时器中断</td><td>IRQ 上下文</td><td>不能阻塞、不能调任何会休眠的 API、栈很小</td></tr>
-<tr><td>DMA 完成中断</td><td>IRQ 上下文</td><td>同上 + 还要警惕 cache 一致性</td></tr>
-</tbody>
-</table>
-</div>
-<p>LED 状态变化回调，如果 <code>led_on()</code> 是被任务调的，回调跟在任务里跑，没事。</p>
-<p>但如果 <code>led_on()</code> 是被 GPIO 中断调的（比如按钮按下触发 led_on），那回调就跑在 IRQ 上下文。这时候在回调里写 <code>printf</code> 很可能死锁（printf 内部用 mutex 保护 stdout，IRQ 抢 mutex 失败就一直转）。在 RTOS 上写 <code>osDelay()</code> 直接 panic。</p>
-<p>工业代码硬规则：</p>
-<ol>
-<li><strong>回调注册的文档里必须说明触发上下文</strong>。注册接口的注释写“this callback may run in IRQ context, do not block“</li>
-<li><strong>IRQ 触发的回调里只做最小的事</strong>：写一个标志位、给一个信号量、push 到 lock-free 队列。重活留给任务做</li>
-<li><strong>跨上下文同步用 atomic / 关中断</strong>：回调在 IRQ 里更新一个状态字段，任务读它要么用 atomic，要么用关中断</li>
-</ol>
-<p>Linux 内核里这个分界线特别严格：注册的 callback 函数命名末尾经常带 <code>_irq</code>、<code>_softirq</code>、<code>_threaded</code> 标签，提示触发上下文。第 19 章工业案例里你会看到主控板的 LED 状态回调一律是“IRQ 设标志位 + 主循环统一处理“两段式。</p>
-<h3 id="8622-注册期-vs-触发期的竞态"><a class="header" href="#8622-注册期-vs-触发期的竞态">8.6.2.2 注册期 vs 触发期的竞态</a></h3>
-<p>回调字段 <code>me-&gt;on_state_change</code> 存在 RAM 里的某个字段。两件事并发发生时会出问题：</p>
-<pre><code class="language-c">/* 任务 A 在某一时刻撤销回调 */
-red_led-&gt;on_state_change = NULL;
-
-/* 同一时刻 ISR 触发，准备调回调 */
-if (red_led-&gt;on_state_change)
-	red_led-&gt;on_state_change(red_led, new_state);
-</code></pre>
-<p>任务 A 在 <code>if</code> 之后、调用之前那个 ns 把字段设成 NULL，ISR 已经过了 <code>if</code> 不知道，跳到了 NULL，HardFault。</p>
-<p>这是经典的 TOCTOU（time-of-check-to-time-of-use）竞态。工业代码三种处理，按推荐顺序：</p>
-<ol>
-<li><strong>永不撤销</strong>（工业代码 90% 是这种）：启动期 INIT_DEVICE_EXPORT / INIT_ENV_EXPORT 一次性把回调字段填好，运行期再不改。读永远安全，写不存在。Linux 内核 <code>file_operations</code> 注册后基本不动，绝大多数 RTOS 驱动也是同款思路</li>
-<li><strong>回调字段做成 atomic 读写</strong>：必须支持运行期改回调时用。C11 <code>_Atomic</code> 或 GCC <code>__atomic_*</code> 内建函数。读写都是单条指令，IRQ 不会切到半路</li>
-<li><strong>整个注册接口走任务上下文 + 关中断</strong>：连 atomic 都拿不到时的暴力 fallback。简单粗暴但有 IRQ 抖动，热路径慎用</li>
-</ol>
-<p>ch08 的 demo 用第 3 种是为了演示“注册“这件事本身（PC 上没有真 ISR 上下文，谈不上竞态）。真实嵌入式工业代码绝大多数是第 1 种：启动期一次配置，运行期不动。第 19 章工业案例里就是这个形态。</p>
-<h3 id="863-回调函数的上下文user_data"><a class="header" href="#863-回调函数的上下文user_data">8.6.3 回调函数的上下文（user_data）</a></h3>
-<p>有时候回调需要“我之前注册的时候带的某个上下文“。比如：</p>
-<pre><code class="language-c">void on_change(struct led_base *me, bool new_state)
+<p><code>led.c</code> 内部 <code>led_on / led_off</code> 状态翻转完之后调一下这个登记的函数指针：</p>
+<pre><code class="language-c">int led_on(struct led_base *me)
 {
-	/* 我想知道注册时的 priority 是什么 */
+    me-&gt;is_on = true;
+    /* ... 实际硬件操作 ... */
+
+    if (me-&gt;on_state_change)             /* 登记过就调 */
+        me-&gt;on_state_change(me, true);
+    return 0;
 }
 </code></pre>
-<p>但回调签名里只有 <code>me</code> 和 <code>new_state</code>。怎么把 priority 传进来？</p>
-<p>工业写法：注册接口加一个 <code>void *user_data</code>：</p>
-<pre><code class="language-c">typedef void (*led_state_cb)(struct led_base *me, bool new_state, void *user_data);
-
-int led_register_state_cb(struct led_base *me, led_state_cb cb, void *user_data);
+<p><code>led.c</code> 不知道有人在监听。它只调它存好的函数指针。监听方是谁、它要做什么，<code>led.c</code> 一无所知。</p>
+<p>撤销也简单：注册接口接受 NULL 表示撤销。</p>
+<pre><code class="language-c">led_register_state_cb(&amp;red_led.base, NULL);
+/* 之后 led_on / led_off 内部 if (cb) 那一行不进, 回调不再触发 */
 </code></pre>
-<p>注册时把 priority 包成一个结构体，<code>user_data</code> 存它的地址。回调里把 <code>user_data</code> 强转回原结构体，读 priority。</p>
-<p>完整使用示意：</p>
-<pre><code class="language-c">/* 应用层定义自己的上下文 */
-struct can_log_ctx {
-	uint32_t can_id;
-	uint8_t  priority;
-};
-
-static void can_log(struct led_base *me, bool new_state, void *user_data)
-{
-	struct can_log_ctx *ctx = (struct can_log_ctx *)user_data;
-	can_send(ctx-&gt;can_id, ctx-&gt;priority, me-&gt;name, new_state);
-}
-
-/* 注册时挂上自己的上下文 */
-static struct can_log_ctx red_ctx = { .can_id = 0x100, .priority = 5 };
-led_register_state_cb(&amp;red_led.base, can_log, &amp;red_ctx);
-</code></pre>
-<p><code>led_base.c</code> 完全不知道 <code>can_log_ctx</code> 的存在，它只是把 <code>user_data</code> 这个 <code>void *</code> 原封不动传回回调。应用层强转回自己的类型读字段。</p>
-<p>Linux 内核里这个模式叫 <strong>opaque context pointer</strong>，<code>struct file</code> 里的 <code>void *private_data</code>、<code>pthread_create</code> 里的 <code>void *arg</code>、libuv 的 <code>uv_handle_t-&gt;data</code> 全是同一招。callback API 必须配 <code>user_data</code> 才算工业级，这是几十年血泪经验。</p>
-<p>工程上还有一个约定：注册期文档里必须说明 user_data 的生命周期。常见两种契约：</p>
-<ol>
-<li><strong>注册方负责保活</strong>：调用方保证 user_data 指向的对象在 unregister 之前一直有效。本章演示用这种，最常见</li>
-<li><strong>注册接口拷贝</strong>：注册函数内部 <code>malloc + memcpy</code> 一份，自己持有所有权。多见于异步任务系统，但有 alloc 开销</li>
-</ol>
-<p>本章为简洁不引入 user_data，第 9 章 ops 表也暂不用，第 19 章工业代码会用到。</p>
-<h3 id="864-函数指针参数的对齐和栈传递"><a class="header" href="#864-函数指针参数的对齐和栈传递">8.6.4 函数指针参数的对齐和栈传递</a></h3>
-<p>ARM EABI 调用约定：函数指针作为参数和数据指针一样大（4 字节 32 位 / 8 字节 64 位），通过 r0-r3 寄存器传递。如果参数太多溢出到栈上，按 4 字节对齐压栈。</p>
-<p><code>test_led(&amp;red_led.base, gpio_on_pull_high, gpio_off)</code> 这一调：</p>
-<ul>
-<li>r0 = &amp;red_led.base</li>
-<li>r1 = gpio_on_pull_high 的地址</li>
-<li>r2 = gpio_off 的地址</li>
-<li>函数体里 r1 / r2 直接 BLX 即可</li>
-</ul>
-<p>完全没有任何额外开销。函数指针传参 ≈ 数据指针传参。</p>
-<h3 id="865-const-函数指针-vs-函数指针-const"><a class="header" href="#865-const-函数指针-vs-函数指针-const">8.6.5 const 函数指针 vs 函数指针 const</a></h3>
-<pre><code class="language-c">int test_led(struct led *me,
-             int (* const on)(struct led *me),    /* on 是 const 指针 */
-             int (*off)(struct led *me));
-</code></pre>
-<p><code>const</code> 加在 <code>(*</code> 后面，说明 <code>on</code> 这个变量本身不能再被赋值（参数槽不能换）。这种场景在工业代码里很少用（参数本来就是临时变量），但在结构体字段里常用：</p>
-<pre><code class="language-c">struct led_base {
-	const struct led_ops *ops;   /* ops 这个指针指向的内容是 const, 不允许修改 */
-};
-</code></pre>
-<p>第 10 章 ops 字段会用到 <code>const</code>。意思是“指向常量 ops 表的指针“，<strong>不是</strong>“常量指针”。这两个 const 的位置是 C 语法里最容易绕的地方，把“const 修饰它右边的 token“这条规则记牢就不会错。</p>
-<h3 id="866-函数指针参数的-null-检查"><a class="header" href="#866-函数指针参数的-null-检查">8.6.6 函数指针参数的 NULL 检查</a></h3>
-<p><code>test_led</code> 第一行：</p>
-<pre><code class="language-c">if (!me || !on || !off)
-	return -1;
-</code></pre>
-<p><code>me</code> NULL check 是基础。<code>on / off</code> 这两个函数指针 NULL check 必不可少：调用方传 NULL 进来，<code>on(me)</code> 就是跳到地址 0 执行，HardFault。</p>
-<p>工业代码的硬规则：<strong>所有函数指针调用前都做 NULL check</strong>。无论函数指针来自字段、参数还是回调注册表。</p>
-<h3 id="867-callback-注册的反向操作"><a class="header" href="#867-callback-注册的反向操作">8.6.7 callback 注册的反向操作</a></h3>
-<p><code>led_register_state_cb(&amp;red_led, log_state_change);</code> 注册了一个回调。</p>
-<p>什么时候撤销？应用层退出前应该撤销，否则回调指向的函数地址可能在它的模块卸载后已经无效，下一次 LED 状态变化就会跳到野地址。</p>
-<p>工业代码里两种处理：</p>
-<ol>
-<li>注册接口接受 NULL 表示撤销：<code>led_register_state_cb(&amp;red_led, NULL);</code></li>
-<li>显式撤销接口：<code>led_unregister_state_cb(&amp;red_led);</code></li>
-</ol>
-<p>本章用第 1 种，演示在 <code>main.c</code> 里把 cb 设成 NULL 之后再 led_on，回调不再触发。</p>
-<h2 id="87-你现在的代码在-stm32-上长什么样"><a class="header" href="#87-你现在的代码在-stm32-上长什么样">8.7 你现在的代码在 STM32 上长什么样</a></h2>
+<p>应用层模块卸载前应当撤销自己注册过的回调，避免 driver 后续触发时跳到野地址。</p>
+<p>回调本质上还是“函数指针当参数“：参数不再是 <code>test_led</code> 的入参，而是 <code>led_register_state_cb</code> 这个注册函数的入参。一次注册，driver 把这个函数指针存进 base 字段，运行期反复调。</p>
+<h2 id="88-你现在的代码在-stm32-上长什么样"><a class="header" href="#88-你现在的代码在-stm32-上长什么样">8.8 你现在的代码在 STM32 上长什么样</a></h2>
 <p>STM32 端胶水还是 ch01 那套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/stm32-snippet/led_stm32.c"><code>oop-in-c/code/08-callback/stm32-snippet/led_stm32.c</code></a>）：</p>
 <pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
-	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+                      value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
 <p><code>led.h / led.c / main.c</code> 一字不改。</p>
 <p>一个真实场景：主控板每次开关 LED 都要把状态发到 CAN 总线给上位机看。注册一个回调：</p>
 <pre><code class="language-c">static void can_log(struct led_base *me, bool new_state)
 {
-	can_send_named(me-&gt;name, new_state ? 1 : 0);
+    can_send_named(me-&gt;name, new_state ? 1 : 0);
 }
 
 led_register_state_cb(&amp;red_led.base, can_log);
 </code></pre>
-<p>之后 <code>led_on / led_off</code> 自动把状态发到 CAN。<code>led_base.c</code> 不知道 CAN 存在，CAN 模块也不知道 LED 存在。中间靠这个 callback 字段连接。</p>
+<p>之后 <code>led_on / led_off</code> 自动把状态发到 CAN。<code>led.c</code> 不知道 CAN 存在，CAN 模块也不知道 LED 存在。中间靠这个 callback 字段连接。</p>
 <p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。第 11 章后会改成 ops 表式。</p>
-<h2 id="88-你现在的代码在-linux-用户态长什么样"><a class="header" href="#88-你现在的代码在-linux-用户态长什么样">8.8 你现在的代码在 Linux 用户态长什么样</a></h2>
+<h2 id="89-你现在的代码在-linux-用户态长什么样"><a class="header" href="#89-你现在的代码在-linux-用户态长什么样">8.9 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>Linux 端 sysfs 实现（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/linux-snippet/led_linux.c"><code>oop-in-c/code/08-callback/linux-snippet/led_linux.c</code></a>）：</p>
 <pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
 {
-	char path[64];
-	int fd;
+    char path[64];
+    int fd;
 
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
+    snprintf(path, sizeof(path),
+             "/sys/class/gpio/gpio%u/value", (unsigned)pin);
+    fd = open(path, O_WRONLY);
+    if (fd &gt;= 0) {
+        write(fd, value ? "1" : "0", 1);
+        close(fd);
+    }
 }
 </code></pre>
-<p><code>led.h / led.c / main.c</code> 一字不改。同 8.7 节，platform 层是教学简化版，第 11 章后会演化成 ops 表式。</p>
-<h2 id="89-工业代码里的回调系统"><a class="header" href="#89-工业代码里的回调系统">8.9 工业代码里的回调系统</a></h2>
-<p>工业控制板项目里，所有 driver 都有一组事件回调。这一节只贴跟“回调字段“相关的部分，工业版 <code>led_base</code> 的完整字段集（含 <code>ops</code> 指针、<code>flags</code> 等）见 ch01 1.10 节、ch10 10.11 节、ch11 11.9 节：</p>
+<p><code>led.h / led.c / main.c</code> 一字不改。同 8.8 节，platform 层是教学简化版，第 11 章后会演化成 ops 表式。</p>
+<h2 id="810-工业代码里的回调系统"><a class="header" href="#810-工业代码里的回调系统">8.10 工业代码里的回调系统</a></h2>
+<p>工业控制板项目里，所有 driver 都有一组事件回调字段。这一节只贴跟“回调字段“相关的部分，工业版 <code>led_base</code> 的完整字段集（含 <code>ops</code> 指针、<code>flags</code> 等）见 ch01 1.10 节、ch10 10.11 节、ch11 11.9 节：</p>
 <pre><code class="language-c">struct led_base {
-	/* 跟回调相关的字段 (本节焦点) */
-	const char *name;
-	bool        is_on;
-	void (*on_state_change)(struct led_base *me, bool new_state);
-	void (*on_fault)(struct led_base *me, int err_code);
-	/* ... 其他工业字段见 ch01 1.10 / ch10 10.11 / ch11 11.9 */
+    /* 跟回调相关的字段 (本节焦点) */
+    const char *name;
+    bool        is_on;
+    void (*on_state_change)(struct led_base *me, bool new_state);
+    void (*on_fault)(struct led_base *me, int err_code);
+    /* ... 其他工业字段见 ch01 1.10 / ch10 10.11 / ch11 11.9 */
 };
 </code></pre>
 <p>主控板的初始化期把这些字段填上：</p>
 <pre><code class="language-c">red_led-&gt;on_state_change = main_log_led_state;
 red_led-&gt;on_fault = main_handle_led_fault;
 </code></pre>
-<p>之后 <code>led_base.c</code> 内部所有状态改变 / 错误都通过这两个字段反向通知主控板。<code>led_base.c</code> 是设备驱动，主控板是应用层。两边谁都不直接 include 对方的头文件，靠这两个回调字段解耦。</p>
+<p>之后 <code>led.c</code> 内部所有状态改变 / 错误都通过这两个字段反向通知主控板。<code>led.c</code> 是设备驱动，主控板是应用层。两边谁都不直接 include 对方的头文件，靠这两个回调字段解耦。</p>
 <p>这种“驱动里挂回调字段“的写法，第 9 章会进一步演化：把所有可变行为打包进一张 ops 表，整个表挂到 base 字段里。</p>
-<h2 id="810-跑一遍"><a class="header" href="#810-跑一遍">8.10 跑一遍</a></h2>
+<h2 id="811-跑一遍"><a class="header" href="#811-跑一遍">8.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/08-callback/pc
 make
 ./demo
@@ -3548,18 +3472,18 @@ make
   [GPIO] Pin13 OFF
     !! callback: "red" became OFF
 </code></pre>
-<p>第一段：<code>test_led</code> 不挑 LED，传不同函数指针进去就跑出不同行为。第二段：注册回调后，led_on/off 会自动调一下回调通知应用层。</p>
+<p>第一段：<code>test_led</code> 不挑 LED，传不同函数指针进去就跑出不同行为。第二段：注册回调后，<code>led_on / led_off</code> 会自动调一下回调通知应用层。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/"><code>oop-in-c/code/08-callback/</code></a>。</p>
-<h2 id="811-视频回放"><a class="header" href="#811-视频回放">8.11 视频回放</a></h2>
+<h2 id="812-视频回放"><a class="header" href="#812-视频回放">8.12 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1ysdWBUEQA/">《C 语言·函数指针传参｜把号码给别人拨·延迟决定》</a></p>
 </blockquote>
-<p><img src="assets/ch08/slide6_金句.png" alt="金句"></p>
 <p>视频里这一期叫“把号码给别人拨“。给的号码（函数指针）让别人（test_led 或 LED 自己）按时机帮你拨号。号码不是你自己拨的，是别人代你拨的。</p>
+<p>视频金句：<strong>函数指针的本质是延迟决定，不是现在就定死，而是到时候再说</strong>。越晚做决定，选择越多。</p>
 <h2 id="下一章-7"><a class="header" href="#下一章-7">下一章</a></h2>
-<p><code>test_led(struct led *me, on, off)</code> 三个参数还行。但如果还要加 <code>set_brightness, get_state, get_name</code>、<code>toggle, blink, pulse</code>，参数列表就会长到换行。</p>
-<p>更大的问题：<code>on</code> 和 <code>off</code> 类型一模一样（都是 <code>int (*)(struct led *)</code>），调用方传反一个，编译器看不出来。开关搞反了，灯该亮的时候灭、该灭的时候亮，调一下午才发现是参数顺序反了。</p>
+<p><code>test_led(on, off, id)</code> 三个参数还行。但如果还要加 <code>set_brightness, get_state, get_name</code>、<code>toggle, blink, pulse</code>，参数列表就会长到换行。</p>
+<p>更大的问题：<code>on</code> 和 <code>off</code> 类型一模一样（都是 <code>void (*)(int)</code>），调用方传反一个，编译器看不出来。开关搞反了，灯该亮的时候灭、该灭的时候亮，调一下午才发现是参数顺序反了。</p>
 <p>把它们打包进一个 struct，加个名字索引：<code>ops-&gt;on / ops-&gt;off</code>。下一章。</p>
 <p>下一篇：<a href="#第-9-章--参数长到换行">第 9 章 · 参数长到换行</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -3596,6 +3520,7 @@ make
          ...);
 </code></pre>
 <p>编译器看不出来。类型对就放行。运行起来，开灯调到了 off 函数，关灯调到了 on 函数。该亮的时候灭，该灭的时候亮。这种 bug 能查一天。</p>
+<p><img src="assets/ch09/slide1_参数列表爆炸.png" alt="参数列表爆炸"></p>
 <h2 id="92-朴素方案靠注释和命名"><a class="header" href="#92-朴素方案靠注释和命名">9.2 朴素方案：靠注释和命名</a></h2>
 <p>最朴素的应对：变量名起严谨点，参数顺序写注释。</p>
 <pre><code class="language-c">test_led(&amp;red_led.base,
@@ -3607,6 +3532,7 @@ make
 <p>工程上可靠的解法是让编译器帮你抓错。</p>
 <h2 id="93-把多个函数指针装进一个-struct"><a class="header" href="#93-把多个函数指针装进一个-struct">9.3 把多个函数指针装进一个 struct</a></h2>
 <p>一个观察：<code>on / off / toggle</code> 是一组绑死的东西。它们一起描述了“一种 LED 的所有行为“。GPIO 风格 LED 这一组，PWM 风格 LED 那一组。</p>
+<p>注意 ops 表里只装“<strong>做法不同</strong>“的行为。<code>on</code> 一类函数 GPIO LED 是拉电平，PWM LED 是配占空比，I2C LED 是发命令，同一个动作每种实现都不一样，所以要做成函数指针让运行时绑定。<code>get_name</code>、<code>get_state</code> 这种只是读父类字段的函数不用进 ops 表，沿用 ch06 的 <code>led_get_name(&amp;xxx.base)</code> 直接读 base 数据就行。<strong>做法不同的进 ops 表，读数据的不进</strong>。这个判断准则下一章会反复用到。</p>
 <p>把一组绑死的东西打包，C 里的工具叫 struct。</p>
 <pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
 
@@ -3639,7 +3565,8 @@ struct led_ops {
 test_led(&amp;red_led.base, &amp;led_ops_gpio);
 </code></pre>
 <p>参数列表从 4 个塞到了 1 个。<code>test_led</code> 内部按名字访问：<code>ops-&gt;on</code> 永远是 on，<code>ops-&gt;off</code> 永远是 off，不可能传反。编译器在初始化 <code>led_ops_gpio</code> 时帮你查 <code>.on</code> 这个字段类型对不对（不对就编译报错）。</p>
-<p><img src="assets/ch09/slide1_参数列表爆炸.png" alt="参数列表爆炸"></p>
+<p>散装的函数指针装订成一本电话簿。散装号码丢了找不到，电话簿翻开就有，一个不少。</p>
+<p><img src="assets/ch09/slide3_LedOps_struct.png" alt="LedOps struct"></p>
 <h2 id="94-typedef-给函数指针起名字"><a class="header" href="#94-typedef-给函数指针起名字">9.4 typedef 给函数指针起名字</a></h2>
 <p>ops 表里每个字段都是一长串函数指针类型。重复几遍后用 typedef 提一下：</p>
 <pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
@@ -3676,7 +3603,6 @@ extern const struct led_ops led_ops_gpio;
 extern const struct led_ops led_ops_pwm;
 </code></pre>
 <p>调用方拿到 <code>&amp;led_ops_gpio</code> 就是 ops 表的地址。</p>
-<p><img src="assets/ch09/slide3_LedOps_struct.png" alt="LedOps struct"></p>
 <h2 id="96-这个东西叫什么"><a class="header" href="#96-这个东西叫什么">9.6 这个东西叫什么</a></h2>
 <p>把一组相关的函数指针打包进一个 struct，让别人通过表名按名访问，软件工程里有个名字。</p>
 <p>它叫<strong>操作表</strong>（ops table），也叫<strong>虚函数表</strong>（vtable / virtual table）。Linux 内核源码里把这种 struct 都叫 <code>xxx_ops</code>：<code>file_operations</code>、<code>net_device_ops</code>、<code>gpio_chip</code> 里的回调集，都是 ops 表。</p>
@@ -3782,8 +3708,8 @@ else
 <pre><code>LDR  r3, [r0, #0]    ; r0 = ops, 取 ops 表第 0 个字段 = on 的地址 (3 cycle)
 BLX  r3              ; 间接跳转 (3 cycle)
 </code></pre>
-<p>和 ch07 的“struct 字段里的函数指针“开销一样：一次 LDR + 一次 BLX，约 28 ns @ 168 MHz。</p>
-<p>C++ virtual 函数调用就是这两条指令。Stroustrup 那句“零成本抽象“在 vcall 这里要打个小折扣（间接跳转 = 不能 inline、CPU branch predictor 命中率低），这是工程上完全可接受的代价。</p>
+<p>和上一章独立函数指针变量的调用开销一样：一次 LDR + 一次 BLX，约 28 ns @ 168 MHz。从 ops 表第 0 个字段读 on 地址走的是编译期常量偏移，没有额外的运行时计算。</p>
+<p>C++ virtual 函数调用就是这两条指令。Stroustrup 那句“零成本抽象“在 vcall 这里要打个小折扣（间接跳转编译器没法 inline，CPU branch predictor 命中率也低），但这是工程上完全可接受的代价。</p>
 <h3 id="976-为什么-ops-不写在-led_base-里"><a class="header" href="#976-为什么-ops-不写在-led_base-里">9.7.6 为什么 ops 不写在 led_base 里</a></h3>
 <p>按理说 <code>struct led_ops</code> 应该是基类的概念，所有子类共用一份接口定义。本章直接写在 led.h 里，对应“GPIO 风格 LED“和“PWM 风格 LED“两组实现。下一章 ops 才会真正放进 base。</p>
 <p>为什么分两章？因为本章先把“打包“这个动作单独讲清楚（ops 表是什么、怎么填、怎么调）。下一章再处理“ops 表跟谁绑、谁带“（放进 base 让对象自带）。一次只解决一件事，认知负荷小。</p>
@@ -3852,6 +3778,7 @@ make
 </blockquote>
 <p><img src="assets/ch09/slide5_金句.png" alt="金句"></p>
 <p>视频里把这一章叫做“散装电话号码 → 电话簿“。散装函数指针绑成一组共享名字的“号码本“，按名取号永远不会取错。</p>
+<p>视频金句：<strong>结构化不是束缚，是让混乱变得可管理</strong>。散装号码会丢，电话簿不会。</p>
 <h2 id="下一章-8"><a class="header" href="#下一章-8">下一章</a></h2>
 <p>ops 表手里捏着，调用方还得<strong>主动</strong>把它传进去。每次都要：</p>
 <pre><code class="language-c">test_led(&amp;red_led, &amp;led_ops_gpio);   /* 调用方记得传 */
@@ -4397,8 +4324,8 @@ platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
 <p>工业代码的硬规则：<strong>不直接走 ops 表，所有 dispatch 走基类层包装的统一函数</strong>。<code>led_on / led_off / led_set_brightness</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
 <h3 id="1162-ops-字段的必填和选填"><a class="header" href="#1162-ops-字段的必填和选填">11.6.2 ops 字段的必填和选填</a></h3>
 <p>ops 表里有些字段是必填（每个子类都得实现），有些字段是选填（这种 LED 不支持就不填）。</p>
-<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力——一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
-<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填——GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
+<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力，一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
+<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填，GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
 <p>第 14 章会专门展开必填 vs 选填的判断标准、三种处理策略（assert 报错、空 stub、默认行为）的取舍、对应到 C++ 里的纯虚函数和虚函数。本章先把“核心能力子类必须实现，调试期 assert 抓忘填“这条记下来。</p>
 <h3 id="1163-多态的开闭原则"><a class="header" href="#1163-多态的开闭原则">11.6.3 多态的开闭原则</a></h3>
 <p>加第 100 种 LED 怎么改代码？</p>
@@ -8532,7 +8459,7 @@ snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
 <p>第 16.5 节贴的 <code>gpiod_set_raw_value_commit</code> 里有一行：</p>
 <pre><code class="language-c">trace_gpio_value(desc_to_gpio(desc), 0, value);
 </code></pre>
-<p>这是内核 ftrace 框架的钩子。打开 ftrace 之后，每一次 GPIO 写入都会被记录到 trace buffer，开发期 debug 极方便。生产构建里 trace 框架可以彻底关掉，那一行编译期消失。</p>
+<p>这是内核 ftrace 框架的 trace 埋点。打开 ftrace 之后，每一次 GPIO 写入都会被记录到 trace buffer，开发期 debug 极方便。生产构建里 trace 框架可以彻底关掉，那一行编译期消失。</p>
 <p>这是 Linux 内核常见的“埋点 + 可关闭“模式。本书 ch14 讲 assert 时提过类似思路（assert 在 release 关掉零开销）。</p>
 <h3 id="16112-export_symbol_gpl-是什么"><a class="header" href="#16112-export_symbol_gpl-是什么">16.11.2 EXPORT_SYMBOL_GPL 是什么</a></h3>
 <p><code>gpiod_set_value</code> 函数末尾这一行：</p>

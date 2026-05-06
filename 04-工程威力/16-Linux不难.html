@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b2878b4d.js";
+            window.path_to_searchindex_js = "../searchindex-83035d0f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -399,7 +399,7 @@ snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
 <p>第 16.5 节贴的 <code>gpiod_set_raw_value_commit</code> 里有一行：</p>
 <pre><code class="language-c">trace_gpio_value(desc_to_gpio(desc), 0, value);
 </code></pre>
-<p>这是内核 ftrace 框架的钩子。打开 ftrace 之后，每一次 GPIO 写入都会被记录到 trace buffer，开发期 debug 极方便。生产构建里 trace 框架可以彻底关掉，那一行编译期消失。</p>
+<p>这是内核 ftrace 框架的 trace 埋点。打开 ftrace 之后，每一次 GPIO 写入都会被记录到 trace buffer，开发期 debug 极方便。生产构建里 trace 框架可以彻底关掉，那一行编译期消失。</p>
 <p>这是 Linux 内核常见的“埋点 + 可关闭“模式。本书 ch14 讲 assert 时提过类似思路（assert 在 release 关掉零开销）。</p>
 <h3 id="16112-export_symbol_gpl-是什么"><a class="header" href="#16112-export_symbol_gpl-是什么">16.11.2 EXPORT_SYMBOL_GPL 是什么</a></h3>
 <p><code>gpiod_set_value</code> 函数末尾这一行：</p>
