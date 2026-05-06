@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
+            window.path_to_searchindex_js = "../searchindex-b2878b4d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -220,7 +220,7 @@ ch05  HAL 库源码漫游                      验证课，看真实 HAL 是同�
 </code></pre>
 <p>把所有 LED 共有的“状态层“字段（<code>name</code>、<code>is_on</code>）抽到一个共同基类，硬件字段（<code>pin</code> 等）下沉到子类。继承在 C 里就是 “把基类当字段嵌进子类”。</p>
 <h3 id="第三阶段多态篇ch07---ch11"><a class="header" href="#第三阶段多态篇ch07---ch11">第三阶段：多态篇（ch07 - ch11）</a></h3>
-<pre><code>ch07  函数指针入门：on_func 字段
+<pre><code>ch07  函数指针入门：变量存函数地址
 ch08  函数指针传参：注册 / 拆解 callback
 ch09  ops 表：struct led_ops { on / off / toggle }
 ch10  ops 放进对象：const struct led_ops *ops 字段

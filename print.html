@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4d11f18b.js";
+            window.path_to_searchindex_js = "searchindex-b2878b4d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -2970,118 +2970,108 @@ make
 <h1 id="第-7-章--写死的函数怎么换"><a class="header" href="#第-7-章--写死的函数怎么换">第 7 章 · 写死的函数怎么换</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/"><code>oop-in-c/code/07-function-pointer/</code></a></p>
 <h2 id="71-一个真实场景"><a class="header" href="#71-一个真实场景">7.1 一个真实场景</a></h2>
-<p>第 6 章你把 <code>name + is_on</code> 提到了 <code>struct led_base</code>，子类的 init 第一行调基类 init。继承的两层意义都齐了：数据共享、行为共享。</p>
-<p>但有些行为它继承不了。比如 <code>led_on</code>。</p>
-<p>红灯接 GPIO，开灯就是把引脚拉高。蓝灯接 PWM，开灯是配占空比。绿灯走 I2C 总线，开灯是发一条命令到地址 <code>0x50</code>。</p>
-<p>三种 LED 的“开灯“逻辑完全不同。你写的 <code>led_on()</code> 函数体里到底要不要写 <code>platform_gpio_write</code>？写了它，蓝灯不对；不写它，红灯不亮。</p>
-<p>朴素的想法是写三个函数 <code>led_on_gpio / led_on_pwm / led_on_i2c</code>，应用层调谁取决于自己用的是哪种 LED。这就回到了 ch01 那种“加一种 LED 抄一遍“的老路。</p>
-<p>应用层应该一直只调 <code>led_on(&amp;xxx)</code>。底下走哪一支不归它操心。</p>
-<h2 id="72-朴素方案写一个-if"><a class="header" href="#72-朴素方案写一个-if">7.2 朴素方案：写一个 if</a></h2>
-<p>最直觉的写法是给 LED 加一个 mode 字段，把所有可能的硬件参数全塞进去：</p>
-<pre><code class="language-c">struct led_universal {
-	struct led_base base;
-	uint8_t mode;       /* 0=GPIO, 1=PWM, 2=I2C */
-	uint8_t pin;        /* GPIO 用 */
-	uint8_t channel;    /* PWM 用 */
-	uint8_t i2c_addr;   /* I2C 用 */
-};
+<p>你想写一个工具函数 <code>test_led</code>，三步：开 → 等 → 关。给它一颗 LED 实例传进去，就能跑完这三步。</p>
+<p>但你发现，按当前的代码结构，这个函数你写了三遍：</p>
+<pre><code class="language-c">void test_gpio_led(int pin) {
+    gpio_on(pin);     /* 写死 */
+    delay(500);
+    gpio_off(pin);    /* 写死 */
+}
 
-int led_on(struct led_universal *me)
-{
-	if (me-&gt;mode == 0) {
-		platform_gpio_write(me-&gt;pin, true);
-	} else if (me-&gt;mode == 1) {
-		platform_pwm_set(me-&gt;channel, 100);
-	} else if (me-&gt;mode == 2) {
-		platform_i2c_write(me-&gt;i2c_addr, 0x01);
-	}
-	return 0;
+void test_pwm_led(int channel) {
+    pwm_on(channel);  /* 写死 */
+    delay(500);
+    pwm_off(channel); /* 写死 */
+}
+
+void test_i2c_led(uint8_t addr) {
+    i2c_on(addr);     /* 写死 */
+    delay(500);
+    i2c_off(addr);    /* 写死 */
 }
 </code></pre>
-<p>能跑。但有问题。</p>
-<p>加第四种 LED（比如 SPI 控制的 LED 矩阵），你要改两处：定义一个新的 mode 数字，往 <code>led_on</code> 里加一个 else if。<code>led_off</code>、<code>led_set_brightness</code> 同样要改。改的还都是 led.c 里的代码（驱动核心），出 bug 影响所有 LED。</p>
-<p>加一种 LED 改三个核心函数，这就是绑死。改一个 mode 数字定错，所有 LED 全乱。</p>
-<p>问题在哪？<code>led_on</code> 里写死了 mode 和实现的对应关系。这个对应关系不应该由 <code>led_on</code> 决定。</p>
-<h2 id="73-把调谁做成可填的字段"><a class="header" href="#73-把调谁做成可填的字段">7.3 把“调谁“做成可填的字段</a></h2>
-<p>冷静下来问一个问题：<code>led_on</code> 函数体里那一行 <code>platform_xxx_write</code> 到底是什么？</p>
-<p>它是一段代码。每段代码编译完成后，都有一个内存地址。<code>platform_gpio_write</code> 函数有它自己的地址，<code>platform_pwm_set</code> 也有自己的地址。</p>
-<p>地址是个数字，数字能存在变量里。</p>
-<p>那能不能在每种 LED 子类里加一个字段，用来存“开灯这段代码的地址“？</p>
-<pre><code class="language-c">struct led_gpio {
-	struct led_base base;
-	uint8_t pin;
-	int (*on_func)(struct led_gpio *me);   /* 存"开灯怎么做"的地址 */
-};
-
-struct led_pwm {
-	struct led_base base;
-	uint8_t channel;
-	uint8_t duty;
-	int (*on_func)(struct led_pwm *me);    /* PWM 子类自己的 */
-};
-</code></pre>
-<p><code>int (*on_func)(struct led_gpio *me)</code> 这一行的意思是：<code>on_func</code> 是个变量，它存的是一个函数的地址。这个函数接受一个 <code>struct led_gpio *</code> 参数，返回 <code>int</code>。</p>
-<p>GPIO LED 创建的时候填 <code>gpio_on_pull_high</code> 这个函数的地址。PWM LED 创建的时候填 <code>pwm_on_full_duty</code>。</p>
-<p><code>led_on()</code> 自己长这样（按子类分别写一份；ch11 会演化为统一接口）：</p>
-<pre><code class="language-c">int led_gpio_on(struct led_gpio *me)
-{
-	if (!me || !me-&gt;on_func)
-		return -1;
-	return me-&gt;on_func(me);
-}
-</code></pre>
-<p>调谁？me 自己说。<code>led_gpio_on</code> 这个函数从此一行不改。</p>
+<p>逻辑完全一样：亮、等、灭。但调的函数不同。<code>gpio_on</code> 和 <code>pwm_on</code> 名字不一样、功能一模一样，都叫“开灯“。</p>
+<p>能不能让 <code>test_led</code> 不关心具体调谁，只说“开灯“，谁来都行？</p>
+<p>问题在哪？<code>test_led</code> 里写死了函数名。<code>gpio_on</code> 写在那里，就只能调 <code>gpio_on</code>，换不了。</p>
+<p>怎么才能“不写死“？</p>
 <p><img src="assets/ch07/slide1_三份test_led.png" alt="三份 test_led"></p>
-<h2 id="74-函数也有地址"><a class="header" href="#74-函数也有地址">7.4 函数也有地址</a></h2>
-<p>变量有地址你已经习惯了。<code>int a;</code> 这个变量在内存里某个位置躺着，<code>&amp;a</code> 取它的地址。</p>
-<p>函数呢？函数编译完是一段机器码，存在程序的代码段（text section）里。一段机器码的起点也是个地址。<code>gpio_write</code> 这个函数有自己的起点地址，可能是 <code>0x08001234</code>，<code>pwm_set</code> 在另一个地址 <code>0x08002A00</code>。</p>
-<p>C 语言里，函数名出现在表达式里时，会自动退化成“这个函数的地址“（C99 标准 6.3.2.1 节第 4 段）。所以：</p>
-<pre><code class="language-c">red_led.on_func = gpio_on_pull_high;   /* 函数名不带括号, 取地址 */
-red_led.on_func(&amp;red_led);             /* 函数名加括号, 拨号执行 */
-</code></pre>
-<p>不带括号是号码（地址），加括号是拨号（执行）。和你给朋友发短信存号码、然后按通话键拨号是一样的两步。</p>
-<p><code>&amp;gpio_on_pull_high</code> 也合法（显式取地址），<code>(*red_led.on_func)(&amp;red_led)</code> 也合法（显式解引用），但 C 标准允许你两边都省略 <code>&amp;</code> 和 <code>*</code>，所以工业代码里几乎都是简洁版。</p>
+<h2 id="72-函数也有地址"><a class="header" href="#72-函数也有地址">7.2 函数也有地址</a></h2>
+<p>冷静下来问一个问题：<code>test_led</code> 里那一行 <code>gpio_on(pin)</code> 到底是什么？</p>
+<p>它最终落到 CPU 上，是一段机器码。每段代码编译完成后，都有一个内存地址。<code>gpio_on</code> 函数有它自己的地址，<code>pwm_on</code> 也有自己的地址，<code>i2c_on</code> 也有自己的地址。</p>
+<p>变量有地址你已经习惯了。<code>int a = 42;</code> 这个变量住在 RAM 某个位置，比如 <code>0x2000</code>，<code>&amp;a</code> 取它的地址。</p>
+<p>函数呢？函数编译完是一段机器码，存在程序的代码段（<code>.text</code> 段）里。一段机器码的起点也是个地址。<code>gpio_on</code> 这个函数可能从 <code>0x0800</code> 开始，<code>pwm_on</code> 从 <code>0x0900</code> 开始。在 STM32 上你能在 <code>.map</code> 文件里看到这些地址。</p>
+<p>地址是个数字。数字能存在变量里。</p>
+<p>类比一下你手机里的通讯录：你存了一个联系人“张三“，张三有个电话号码。号码本身是一串数字，你能把它存起来。</p>
+<p>函数名就像通讯录里的号码。<code>gpio_on</code> 就是它的号码。号码能不能存进变量？当然能。下一节看怎么存。</p>
 <p><img src="assets/ch07/slide2_函数也有地址.png" alt="函数也有地址"></p>
-<h2 id="75-换号码-vs-改实现"><a class="header" href="#75-换号码-vs-改实现">7.5 换号码 vs 改实现</a></h2>
-<p>旧写法（mode + if-else）：加一种 LED，改 <code>led_on / led_off / led_set_brightness</code> 三个核心函数。</p>
-<p>新写法（函数指针字段）：加一种 GPIO LED 子型号（比如有的拉高点亮、有的拉低点亮），写一个新的 <code>int gpio_on_xxx_style(struct led_gpio *me)</code>，创建实例时把它填进 on_func 字段。<code>led_gpio_on</code> 这个函数一行不改。</p>
-<pre><code class="language-c">int gpio_on_pull_low(struct led_gpio *me)   /* 低有效，新加 */
-{
-	platform_gpio_write(me-&gt;pin, false);
-	me-&gt;base.is_on = true;
-	return 0;
-}
-
-struct led_gpio matrix_led;
-led_gpio_init(&amp;matrix_led, "matrix", 8, gpio_on_pull_low);  /* 填进去就完事 */
+<h2 id="73-替换法语法"><a class="header" href="#73-替换法语法">7.3 替换法语法</a></h2>
+<p>怎么存？C 语言提供了一种变量，专门用来存函数地址的。语法两步替换就出来了。</p>
+<p>第一步，写一个普通的函数声明：</p>
+<pre><code class="language-c">void gpio_on(int pin);
 </code></pre>
-<p>驱动核心代码（<code>led_gpio_on</code> 内部）从此和“具体走哪一支“完全解耦。不管你加几种点亮电平，<code>led_gpio_on</code> 一行不改。</p>
-<p>这就是软件工程里反复念的那句话：“对扩展开放，对修改关闭。“加新功能不需要改老代码。<code>led_gpio_on</code> 是老代码，它对修改关闭；通过填一个新函数指针，行为对扩展开放。</p>
-<p><img src="assets/ch07/slide4_存号码拨号.png" alt="存号码拨号"></p>
-<h2 id="76-这个东西叫什么"><a class="header" href="#76-这个东西叫什么">7.6 这个东西叫什么</a></h2>
-<p>你刚才做的事：给 struct 加一个变量，这个变量存某个函数的地址，需要的时候通过这个变量调用函数。</p>
+<p>读法：<code>gpio_on</code> 是一个函数，接受一个 <code>int</code> 参数，没有返回值。</p>
+<p>第二步，把函数名 <code>gpio_on</code> 这个位置，换成一个变量名 <code>fp</code>，外面套一层括号 <code>(*fp)</code>：</p>
+<pre><code class="language-c">void (*fp)(int pin);
+</code></pre>
+<p>完成。<code>fp</code> 是一个变量，它能存“接受 <code>int</code>、返回 <code>void</code>“的函数地址。</p>
+<p>读法：从内向外。看到 <code>*fp</code>，<code>fp</code> 是个指针；<code>(*fp)(int pin)</code>，它是指向“接受 int 参数的“的指针；<code>void (*fp)(int pin)</code>，它是指向“返回 void、接受 int 参数的函数“的指针。</p>
+<p>参数名 <code>pin</code> 可以省略，<code>void (*fp)(int)</code> 也合法，意思一样。工业代码里 typedef 一长串函数指针类型时常省，下一章会演示。</p>
+<p>这语法确实不漂亮。1972 年 Dennis Ritchie 定的，那时候连彩色显示器都没有。后来 C99 / C11 都没改它，因为改了会破坏巨量历史代码。丑归丑，不影响它强大。</p>
+<p><img src="assets/ch07/slide3_替换法语法.png" alt="函数指针语法·替换法"></p>
+<h2 id="74-存号码--拨号"><a class="header" href="#74-存号码--拨号">7.4 存号码 + 拨号</a></h2>
+<p><code>fp</code> 变量有了，怎么用？</p>
+<p><strong>存号码</strong>。把 <code>gpio_on</code> 的地址存进 <code>fp</code>：</p>
+<pre><code class="language-c">void (*fp)(int);
+
+fp = gpio_on;     /* 注意: 函数名不带括号 */
+</code></pre>
+<p>函数名 <code>gpio_on</code> 在表达式里出现时，会自动退化成“这个函数的地址“（C99 标准 § 6.3.2.1 第 4 段）。所以 <code>fp = gpio_on</code> 等价于 <code>fp = &amp;gpio_on</code>，把那段机器码的起点地址（一个数字）写进 <code>fp</code> 这个变量。</p>
+<p>通讯录里存的是号码本身，不是直接拨出去。</p>
+<p><strong>拨号</strong>。通过 <code>fp</code> 调用：</p>
+<pre><code class="language-c">fp(15);    /* 实际调 gpio_on(15) */
+</code></pre>
+<p><code>fp</code> 加括号是调用：从 <code>fp</code> 这个变量取出地址，跳过去执行那段机器码。等价于 <code>(*fp)(15)</code>，C 标准允许省略 <code>*</code>，所以工业代码里几乎都写 <code>fp(15)</code> 这种简洁版。</p>
+<p><strong>换号码</strong>。同一个 <code>fp</code>，存进另一个号码：</p>
+<pre><code class="language-c">fp = pwm_on;
+fp(15);    /* 这次实际调 pwm_on(15) */
+</code></pre>
+<p><code>fp = pwm_on; fp(15);</code> 拨通的就是 PWM 那一支。同一个变量 <code>fp</code>，存不同号码，拨通不同的人。</p>
+<p>记住一对动作：<code>gpio_on</code>（不带括号）= 取号码，<code>gpio_on(15)</code>（带括号）= 拨号。两步动作，两个含义。</p>
+<p><img src="assets/ch07/slide4_存号码拨号.png" alt="存号码·拨号"></p>
+<h2 id="75-这个东西叫什么"><a class="header" href="#75-这个东西叫什么">7.5 这个东西叫什么</a></h2>
+<p>你刚才做的事：用一个变量存某个函数的地址，需要的时候通过这个变量调用函数。</p>
 <p>软件工程里有个名字。它叫<strong>函数指针</strong>（function pointer）。</p>
 <p>C++ 里这件事一字不改：</p>
-<pre><code class="language-cpp">class led_gpio {
-public:
-	int (*on_func_)(led_gpio *me);    /* 一模一样的函数指针字段 */
-};
+<pre><code class="language-cpp">void (*fp)(int) = gpio_on;
+fp(15);
 </code></pre>
-<p>C++ 的 lambda、<code>std::function</code>、<code>virtual</code> 函数底层都是函数指针。C++ 给你包了几层语法糖，让写法更简洁，但骨头没换。你这一章写的就是 C++ 虚函数底层做的事。</p>
-<p>第 11 章你会看到，把“对每个对象绑一组函数指针“这件事系统化，就是面向对象的多态。</p>
+<p>声明语法、赋值语法、调用语法都和 C 完全一样。这是少数 C 和 C++ 没有区别的地方。C++ 后来加了 lambda、<code>std::function</code>、<code>virtual</code> 函数作为更高级的封装，骨头还是函数指针，没换。</p>
+<p>回到指针本身。前面几章里的指针你见过 <code>int *p</code> 这种数据指针。函数指针和它有什么关系？把三种东西排在一起看：</p>
+<pre><code class="language-c">int a = 42;             /* 存一个数字 (数据本身) */
+int *p = &amp;a;            /* 存一个数字 (数据的地址) */
+void (*fp)(int) = gpio_on;   /* 存一个数字 (代码的地址) */
+</code></pre>
+<p>三者大小都一样：等于 CPU 位数。32 位 CPU 上都是 4 字节，64 位 CPU 上都是 8 字节。CPU 看到它们时只看到一个数字，不区分这个数字是“数据本身“、“数据地址”、还是“代码地址“。差别在于这个数字的意义：</p>
+<ul>
+<li><code>int a</code> 里的数字就是数据本身（42）</li>
+<li><code>int *p</code> 里的数字是某个 <code>int</code> 在内存里的地址</li>
+<li><code>void (*fp)(int)</code> 里的数字是某段机器码在内存里的起点地址</li>
+</ul>
+<p>指针就是一个变量。里面存的数字是地址，仅此而已。</p>
 <p><img src="assets/ch07/slide5_CvsCpp.png" alt="C 对比 C++"></p>
-<h2 id="77-视频里没讲透的几个细节"><a class="header" href="#77-视频里没讲透的几个细节">7.7 视频里没讲透的几个细节</a></h2>
-<h3 id="771-函数指针变量到底占几个字节"><a class="header" href="#771-函数指针变量到底占几个字节">7.7.1 函数指针变量到底占几个字节</a></h3>
-<p><code>sizeof(int (*)(struct led *))</code> 在 32 位 ARM Cortex-M 上是 4 字节，在 64 位 PC / ARM 上是 8 字节。和数据指针一样大。</p>
-<p>但有一个坑：C 标准没有保证函数指针和数据指针大小相同。C99 标准 6.3.2.3 节把 “function pointer ↔ object pointer” 强转列为未定义行为。在常见架构（ARM / x86 / RISC-V）上两者大小一致，跨架构移植代码也都这样假设。但有些 Harvard 架构（早期 8051、AVR）上代码段和数据段地址空间分开，函数指针可能比数据指针大或小。</p>
+<p><img src="assets/ch07/slide6_金句.png" alt="指针就是一个变量"></p>
+<h2 id="76-视频里没讲透的几个细节"><a class="header" href="#76-视频里没讲透的几个细节">7.6 视频里没讲透的几个细节</a></h2>
+<h3 id="761-函数指针变量到底占几个字节"><a class="header" href="#761-函数指针变量到底占几个字节">7.6.1 函数指针变量到底占几个字节</a></h3>
+<p><code>sizeof(void (*)(int))</code> 在 32 位 ARM Cortex-M 上是 4 字节，在 64 位 PC / ARM 上是 8 字节。和数据指针一样大。</p>
+<p>但有一个坑：C 标准没有保证函数指针和数据指针大小相同。C99 § 6.3.2.3 把 <code>function pointer ↔ object pointer</code> 强转列为未定义行为。在常见架构（ARM / x86 / RISC-V）上两者大小一致，跨架构移植代码也都这样假设。但有些 Harvard 架构（早期 8051、AVR）上代码段和数据段地址空间分开，函数指针可能比数据指针大或小。</p>
 <p>工业代码里如果遇到 8051 这种古董，要查 datasheet 决定怎么处理。在主流嵌入式平台（STM32、ESP32、Linux SBC）上不用纠结。</p>
-<h3 id="772-调用一次函数指针的代价直接-vs-间接"><a class="header" href="#772-调用一次函数指针的代价直接-vs-间接">7.7.2 调用一次函数指针的代价（直接 vs 间接）</a></h3>
+<h3 id="762-调用一次函数指针的代价直接-vs-间接"><a class="header" href="#762-调用一次函数指针的代价直接-vs-间接">7.6.2 调用一次函数指针的代价（直接 vs 间接）</a></h3>
 <p>直接调用一个普通函数（编译期就知道跳哪）：</p>
-<pre><code>BL  led_on_gpio_style       ; 直接跳转到链接期已知地址 (3 cycle)
+<pre><code>BL  gpio_on       ; 直接跳转到链接期已知地址 (3 cycle)
 </code></pre>
-<p>间接调用（运行时才知道跳哪，函数指针存在变量里）：</p>
-<pre><code>LDR  r3, [r4, #offset]      ; 从 me-&gt;on_func 读地址 (3 cycle, 命中 D-cache)
-BLX  r3                     ; 间接跳转 + 写 Link Register (3 cycle)
+<p>间接调用（运行时才知道跳哪，函数地址存在变量里）：</p>
+<pre><code>LDR  r3, [fp_addr]   ; 从 fp 这个变量里读出地址 (3 cycle, 命中 D-cache)
+BLX  r3              ; 间接跳转 + 写 Link Register (3 cycle)
 </code></pre>
 <p>差别两件事：</p>
 <ol>
@@ -3096,81 +3086,28 @@ BLX  r3                     ; 间接跳转 + 写 Link Register (3 cycle)
 <li><strong>超低功耗 MCU 的 hot loop</strong>：M0 没有分支预测，每次间接调用是固定开销，循环 1000 次就是 1000 倍</li>
 </ul>
 <p>C++ virtual 函数调用就是这个开销。Stroustrup 那句“零成本抽象“在虚函数这里要打个小折扣（间接跳转 + 编译器没法 inline 虚调用），但这是工程上完全可接受的代价。Linux 内核里 fast-path（中断 + softirq）大量避开虚调用走直接函数，但 slow-path（设备驱动注册、open/read/write 慢路径）几乎全是 ops 表 dispatch。这个分界线是 Linus 反复强调的。</p>
-<h3 id="7721-函数指针-vs-普通函数反汇编对比"><a class="header" href="#7721-函数指针-vs-普通函数反汇编对比">7.7.2.1 函数指针 vs 普通函数：反汇编对比</a></h3>
+<h3 id="763-函数指针-vs-普通函数反汇编对比"><a class="header" href="#763-函数指针-vs-普通函数反汇编对比">7.6.3 函数指针 vs 普通函数：反汇编对比</a></h3>
 <p>两段 C 代码：</p>
 <pre><code class="language-c">/* 直接调用 */
-int led_on_direct(struct led *me)
+void call_direct(int pin)
 {
-	return led_on_gpio_style(me);
+    gpio_on(pin);
 }
 
 /* 间接调用 */
-int led_on_indirect(struct led *me)
+void call_indirect(void (*fp)(int), int pin)
 {
-	return me-&gt;on_func(me);
+    fp(pin);
 }
 </code></pre>
 <p>godbolt 上用 <code>arm-none-eabi-gcc -O2</code> 编译，分别得到（简化）：</p>
-<pre><code>led_on_direct:
-	B   led_on_gpio_style       ; 一条 tail-call branch
-led_on_indirect:
-	LDR r3, [r0, #4]            ; r3 = me-&gt;on_func
-	BX  r3                      ; tail-call jump
+<pre><code>call_direct:
+    B   gpio_on            ; 一条 tail-call branch
+call_indirect:
+    BX  r0                 ; r0 已经是 fp, 直接 tail-call jump
 </code></pre>
-<p><code>led_on_direct</code> 在链接期就知道跳哪，编译器直接生成一条无条件跳转；<code>led_on_indirect</code> 必须先 load 才能跳。这就是“运行时绑定“在汇编层面的具体形态。</p>
-<h3 id="773-null-函数指针检查必须做"><a class="header" href="#773-null-函数指针检查必须做">7.7.3 NULL 函数指针检查必须做</a></h3>
-<pre><code class="language-c">int led_on(struct led *me)
-{
-	if (!me || !me-&gt;on_func)
-		return -1;
-	return me-&gt;on_func(me);
-}
-</code></pre>
-<p>如果 <code>me-&gt;on_func == NULL</code> 直接调用，就是“跳到地址 0 执行“。在 ARM Cortex-M 上地址 0 是向量表起点（一段非代码数据），跳过去执行的不是代码，结果不是 HardFault 就是跑飞。在 Linux 用户态收到 SIGSEGV，core dump。</p>
-<p>工业代码里所有函数指针调用前都要 NULL check。第 14 章会专门讲“函数指针没填“这件事的三种处理策略：报错、空实现、Linux 内核风格的 stub 函数。</p>
-<h3 id="774-函数指针字段在-struct-里的位置"><a class="header" href="#774-函数指针字段在-struct-里的位置">7.7.4 函数指针字段在 struct 里的位置</a></h3>
-<p><code>on_func</code> 现在放在 <code>struct led_gpio</code> 的最后。这个位置不影响功能，但影响内存布局（32 位 ARM）：</p>
-<pre><code>struct led_gpio {
-	struct led_base base;              /* offset 0, 8 bytes (name 4 + is_on 1 + pad 3) */
-	uint8_t pin;                       /* offset 8, 1 byte */
-	/* offset 9, 3 bytes padding */
-	int (*on_func)(struct led_gpio *); /* offset 12, 4 bytes */
-};                                     /* sizeof = 16 */
-</code></pre>
-<p>函数指针的对齐是机器字长（4 或 8 字节），所以前面 1 字节字段后会有 padding。如果你在 RAM 紧张的 MCU 上想压榨内存，可以把对齐大的字段往前挪：</p>
-<pre><code class="language-c">struct led_gpio {
-	int (*on_func)(struct led_gpio *); /* offset 0, 4 bytes (对齐 4) */
-	struct led_base base;              /* offset 4, 8 bytes */
-	uint8_t pin;                       /* offset 12, 1 byte */
-	/* offset 13, 3 bytes padding */
-};                                     /* sizeof = 16, 一样 */
-</code></pre>
-<p>这里 sizeof 没省。但如果再多两个 1 字节字段，调整后能省 8 字节。</p>
-<p>但代价是 base 不在第一个位置了。基类向上转型就崩。所以工业代码里 base 永远第一，函数指针在后面。这是性能和向上转型机制之间的取舍，向上转型机制赢。</p>
-<h3 id="775-为什么用-typedef-简化函数指针类型"><a class="header" href="#775-为什么用-typedef-简化函数指针类型">7.7.5 为什么用 typedef 简化函数指针类型</a></h3>
-<p><code>int (*on_func)(struct led_gpio *me)</code> 写起来有点丑。如果 struct 里有 5 个函数指针：</p>
-<pre><code class="language-c">struct led_gpio {
-	struct led_base base;
-	uint8_t pin;
-	int (*on_func)(struct led_gpio *);
-	int (*off_func)(struct led_gpio *);
-	int (*toggle_func)(struct led_gpio *);
-	int (*set_brightness_func)(struct led_gpio *, uint8_t);
-	int (*get_state_func)(struct led_gpio *);
-};
-</code></pre>
-<p>读起来累。第 9 章会引入 typedef 给函数指针起短名字：</p>
-<pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
-</code></pre>
-<p>然后 ops 表里写：</p>
-<pre><code class="language-c">struct led_ops {
-	led_action_fn on;
-	led_action_fn off;
-	led_action_fn toggle;
-};
-</code></pre>
-<p>整个一章都讲这件事，所以本章先不用 typedef。</p>
-<h3 id="776-函数指针存在哪text-段-vs-数据段"><a class="header" href="#776-函数指针存在哪text-段-vs-数据段">7.7.6 函数指针存在哪：text 段 vs 数据段</a></h3>
+<p><code>call_direct</code> 在链接期就知道跳哪，编译器直接生成一条无条件跳转；<code>call_indirect</code> 直接用入参 r0（按 ARM EABI，第一个参数走 r0）作为跳转目标。这就是“运行时绑定“在汇编层面的具体形态。</p>
+<h3 id="764-函数指针存在哪text-段-vs-数据段"><a class="header" href="#764-函数指针存在哪text-段-vs-数据段">7.6.4 函数指针存在哪：text 段 vs 数据段</a></h3>
 <p>C 程序编译后大致分这几段（ELF 可执行格式）：</p>
 <div class="table-wrapper">
 <table>
@@ -3185,14 +3122,14 @@ led_on_indirect:
 </tbody>
 </table>
 </div>
-<p><code>gpio_on_pull_high</code> 这个函数的机器码躺在 <code>.text</code> 段，地址在链接期就定了（在 STM32 上一般是 <code>0x08001234</code> 这种 Flash 地址）。</p>
-<p><code>me-&gt;on_func</code> 这个字段是 <code>struct led_gpio</code> 实例的一部分，住在 <code>.data</code> / <code>.bss</code> / 栈或堆里（取决于这个 led 怎么定义的）。</p>
-<p>把函数地址赋给字段：</p>
-<pre><code class="language-c">red_led.on_func = gpio_on_pull_high;
+<p><code>gpio_on</code> 这个函数的机器码躺在 <code>.text</code> 段，地址在链接期就定了（在 STM32 上一般是 <code>0x08001234</code> 这种 Flash 地址）。</p>
+<p><code>fp</code> 这个变量住在 <code>.data</code> / <code>.bss</code> / 栈或堆里（取决于它是怎么定义的）。</p>
+<p>把函数地址赋给变量：</p>
+<pre><code class="language-c">fp = gpio_on;
 </code></pre>
-<p>这一行等价于把 <code>.text</code> 里某段代码的起点地址（一个常量）写进 <code>.data</code> 段（如果 <code>red_led</code> 是全局变量）。运行时调用 <code>me-&gt;on_func(me)</code> 就是读字段、跳到 text 段、执行那段机器码。</p>
-<p>ARM Cortex-M 上还有一个细节：函数地址的最低位是 <strong>Thumb 位</strong>。Thumb 指令集的函数地址都加 1（最低位置 1），处理器根据这一位决定切到 ARM 还是 Thumb 模式执行。所以 <code>printf("%p", gpio_on_pull_high)</code> 你看到的可能是 <code>0x08001235</code> 而不是 <code>0x08001234</code>，最低那个 <code>5</code> 不是地址错位，是 Thumb 标志。<code>BLX</code> 指令会自动剥离这一位再跳。这是 ABI 规定，不是你的 bug。</p>
-<h3 id="777-abi函数指针调用如何传参"><a class="header" href="#777-abi函数指针调用如何传参">7.7.7 ABI：函数指针调用如何传参</a></h3>
+<p>这一行等价于把 <code>.text</code> 里某段代码的起点地址（一个常量）写进 <code>fp</code> 这个变量。运行时调用 <code>fp(15)</code> 就是读 <code>fp</code>、跳到 text 段、执行那段机器码。</p>
+<p>ARM Cortex-M 上还有一个细节：函数地址的最低位是 <strong>Thumb 位</strong>。Thumb 指令集的函数地址都加 1（最低位置 1），处理器根据这一位决定切到 ARM 还是 Thumb 模式执行。所以 <code>printf("%p", gpio_on)</code> 你看到的可能是 <code>0x08001235</code> 而不是 <code>0x08001234</code>，最低那个 <code>5</code> 不是地址错位，是 Thumb 标志。<code>BLX</code> 指令会自动剥离这一位再跳。这是 ABI 规定，不是你的 bug。</p>
+<h3 id="765-abi函数指针调用如何传参"><a class="header" href="#765-abi函数指针调用如何传参">7.6.5 ABI：函数指针调用如何传参</a></h3>
 <p>ARM EABI（Embedded Application Binary Interface）规定参数怎么传：</p>
 <div class="table-wrapper">
 <table>
@@ -3200,8 +3137,8 @@ led_on_indirect:
 <tr><th>参数槽</th><th>寄存器</th><th>备注</th></tr>
 </thead>
 <tbody>
-<tr><td>第 1 个</td><td>r0</td><td><code>me</code> 走这里</td></tr>
-<tr><td>第 2 个</td><td>r1</td><td>brightness 等</td></tr>
+<tr><td>第 1 个</td><td>r0</td><td>第一个参数走这里</td></tr>
+<tr><td>第 2 个</td><td>r1</td><td></td></tr>
 <tr><td>第 3 个</td><td>r2</td><td></td></tr>
 <tr><td>第 4 个</td><td>r3</td><td></td></tr>
 <tr><td>第 5+</td><td>栈</td><td>按字对齐</td></tr>
@@ -3209,113 +3146,107 @@ led_on_indirect:
 </tbody>
 </table>
 </div>
-<p>间接调用 <code>me-&gt;on_func(me)</code> 编译出来：</p>
-<pre><code>LDR  r3, [r0, #4]    ; r3 = me-&gt;on_func, 假设 on_func 在偏移 4
-                     ; 这一步 r0 还保持是 me, 不能动
-BLX  r3              ; 间接调用. 跳过去时 r0 仍然是 me, 等价于 on_func(me)
+<p>间接调用 <code>fp(15)</code> 编译出来：</p>
+<pre><code>MOV  r0, #15        ; 第一个参数 = 15, 进 r0
+LDR  r3, [fp_addr]  ; 从 fp 这个变量读地址进 r3
+BLX  r3             ; 间接调用. 跳过去时 r0 是 15
 </code></pre>
-<p>注意一件事：<code>r0</code> 在间接调用前就已经是 <code>me</code>（参数已经在位），只用 <code>r3</code> 读地址。所以不需要额外 <code>mov r0, r0</code>。这是 EABI 让间接调用代价小的关键设计。</p>
-<p>如果你写 <code>me-&gt;on_func(other_obj)</code>（传别的指针），编译器会先 <code>mov r0, other_obj</code> 再 BLX，多一条指令。</p>
-<h3 id="778-函数指针的丑语法为什么是这样"><a class="header" href="#778-函数指针的丑语法为什么是这样">7.7.8 函数指针的“丑语法“为什么是这样</a></h3>
-<p><code>int (*on_func)(struct led *me)</code> 这个声明的读法是：</p>
+<p>间接调用本身相比直接调用就多了一次 <code>LDR</code>，参数传递走的还是同一套 EABI。这是 EABI 让间接调用代价小的关键设计。</p>
+<h3 id="766-函数指针的丑语法为什么是这样"><a class="header" href="#766-函数指针的丑语法为什么是这样">7.6.6 函数指针的“丑语法“为什么是这样</a></h3>
+<p><code>void (*fp)(int pin)</code> 这个声明的读法是从内向外：</p>
 <ol>
-<li>看到 <code>*on_func</code>：on_func 是个指针</li>
-<li><code>(*on_func)(struct led *me)</code>：on_func 是指向“接受 struct led * 参数的“的指针</li>
-<li><code>int (*on_func)(...)</code>：on_func 是指向“返回 int、接受 struct led * 参数的函数“的指针</li>
+<li>看到 <code>*fp</code>：<code>fp</code> 是个指针</li>
+<li><code>(*fp)(int pin)</code>：<code>fp</code> 是指向“接受 int 参数的“的指针</li>
+<li><code>void (*fp)(int pin)</code>：<code>fp</code> 是指向“返回 void、接受 int 参数的函数“的指针</li>
 </ol>
-<p>读法是从内向外。这个语法 1972 年 Dennis Ritchie 定的，那时候连结构化编程都还没占主流。后来加了 typedef 给它续命。</p>
+<p>这套读法 1972 年 Dennis Ritchie 定的，那时候连结构化编程都还没占主流。后来加了 typedef 给它续命：</p>
+<pre><code class="language-c">typedef void (*gpio_action_fn)(int pin);
+gpio_action_fn fp;        /* 简洁多了 */
+</code></pre>
+<p>第 9 章会大量使用 typedef 给函数指针起短名字。本章先不用，让你看清替换法的本来面目。</p>
 <p>C99 没能改这个语法，因为改了会破坏巨量历史代码。C++11 加了 lambda + <code>auto</code> 让你能绕开它。Rust 用 <code>fn(...)</code> 类型，干净多了。</p>
-<p>C 的丑保留下来不是因为它好，是因为它来不及改。</p>
-<h2 id="78-你现在的代码在-stm32-上长什么样"><a class="header" href="#78-你现在的代码在-stm32-上长什么样">7.8 你现在的代码在 STM32 上长什么样</a></h2>
-<p>STM32 端胶水还是 ch01 那套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/stm32-snippet/led_stm32.c"><code>oop-in-c/code/07-function-pointer/stm32-snippet/led_stm32.c</code></a>）：</p>
-<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
+<p>C 的丑语法保留下来不是因为它好，是因为它来不及改。</p>
+<h2 id="77-你现在的代码在-stm32-上长什么样"><a class="header" href="#77-你现在的代码在-stm32-上长什么样">7.7 你现在的代码在 STM32 上长什么样</a></h2>
+<p>本章只演示函数指针变量这个工具本身，还没把它和具体 LED 驱动结构挂起来，所以 STM32 端没有引入新的胶水。<code>gpio_on</code> 这种函数在 STM32 上的实现还是 ch01 那一套：</p>
+<pre><code class="language-c">void gpio_on(uint8_t pin)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
-	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin), GPIO_PIN_SET);
 }
 </code></pre>
-<p><code>led.h / led.c / main.c</code> 一字不改。函数指针字段加在 <code>struct led</code> 里，所有平台胶水都看不见这件事。</p>
-<p>一个真实场景：同一颗 LED 在调试模式下用 gpio_style（按下按钮立刻亮），量产模式下用 pwm_style（按 brightness 调光）。出厂烧录时填哪个 on_func 决定行为，不需要重新编译 led.c。</p>
-<p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。第 11 章后会演化成 ops 表式。</p>
-<h2 id="79-你现在的代码在-linux-用户态长什么样"><a class="header" href="#79-你现在的代码在-linux-用户态长什么样">7.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端 sysfs 实现（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/linux-snippet/led_linux.c"><code>oop-in-c/code/07-function-pointer/linux-snippet/led_linux.c</code></a>）：</p>
-<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
+<p>应用层多了一行声明：<code>void (*fp)(uint8_t)</code>。把 <code>gpio_on</code> 存进 <code>fp</code>，再通过 <code>fp</code> 调用，跑出来的指令序列和直接调 <code>gpio_on</code> 几乎一样，多一次 LDR + 一次间接 BLX。在 STM32 这种 MCU 上完全无感。</p>
+<p>下一章把 <code>fp</code> 当作参数传给 <code>test_led</code>，开始有真实的工程含义。</p>
+<h2 id="78-你现在的代码在-linux-用户态长什么样"><a class="header" href="#78-你现在的代码在-linux-用户态长什么样">7.8 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p>Linux 端 <code>gpio_on</code> 的实现还是 ch01 那一套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/linux-snippet/led_linux.c"><code>oop-in-c/code/07-function-pointer/linux-snippet/led_linux.c</code></a>）：</p>
+<pre><code class="language-c">void gpio_on(uint8_t pin)
 {
-	char path[64];
-	int fd;
-
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
+    char path[64];
+    int fd;
+    snprintf(path, sizeof(path),
+             "/sys/class/gpio/gpio%u/value", (unsigned)pin);
+    fd = open(path, O_WRONLY);
+    if (fd &gt;= 0) {
+        write(fd, "1", 1);
+        close(fd);
+    }
 }
 </code></pre>
-<p><code>led.h / led.c / main.c</code> 一字不改。同 7.8 节，platform 层是教学简化版，第 11 章后会改成 ops 表式。</p>
-<h2 id="710-工业代码里的函数指针字段"><a class="header" href="#710-工业代码里的函数指针字段">7.10 工业代码里的函数指针字段</a></h2>
-<p>工业控制板项目里，每个驱动 struct 都有几个函数指针字段，用来给应用层注册“事件回调“。这一节只贴跟“函数指针字段“相关的部分，工业版 <code>led_base</code> 的完整字段集（含 <code>ops</code> 指针、<code>flags</code> 等）见 ch01 1.10 节、ch10 10.11 节、ch11 11.9 节：</p>
-<pre><code class="language-c">struct led_base {
-	/* 跟回调相关的字段 (本节焦点) */
-	const char *name;
-	bool        is_on;
-	void (*on_state_change)(struct led_base *me, bool new_state);
-	/* ... 其他工业字段见 ch01 1.10 / ch10 10.11 / ch11 11.9 */
-};
-</code></pre>
-<p><code>on_state_change</code> 是一个回调字段。当 LED 状态变化时（比如温度报警触发自动闪烁），驱动会调用这个回调通知应用层。应用层注册的回调可以是“打日志“、“发到上层主控”，等等。</p>
-<p>这种写法的本质就是你这一章学的：在 struct 里塞一个函数指针字段。下一章看怎么把函数指针当作参数从外面传进去（注册），把这个机制变成完整的回调系统。</p>
-<h2 id="711-跑一遍"><a class="header" href="#711-跑一遍">7.11 跑一遍</a></h2>
+<p>应用层把 <code>gpio_on</code> 存进 <code>fp</code>、通过 <code>fp</code> 调用，行为和直接调 <code>gpio_on</code> 等价。Linux 用户态的 branch predictor 比 MCU 强得多，间接调用开销几乎看不出来。</p>
+<h2 id="79-跑一遍"><a class="header" href="#79-跑一遍">7.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/07-function-pointer/pc
 make
 ./demo
 </code></pre>
 <p>输出节选：</p>
-<pre><code>--- Init red_led with pull-high on_func ---
-  [base] "red" common init done
-[GPIO] Pin13 init as OUTPUT
-  [GPIO] Pin13 init done, on_func=pull_high
+<pre><code>========================================
+  Function pointer = a variable holding code address.
+  Same fp, different number, different call.
+========================================
 
---- Init green_led with pull-low on_func ---
-  [base] "green" common init done
-  [GPIO] Pin14 init done, on_func=pull_low
+--- fp = gpio_on; fp(15); ---
+  [GPIO] pin 15 ON
 
---- led_gpio_on(&amp;red_led) -&gt; pull_high ---
-[GPIO] Pin13 -&gt; HIGH (ON)
-  [GPIO] Pin13 ON (pull_high)
+--- fp = pwm_on; fp(15); ---
+  [PWM] channel 15 ON (duty 100)
 
---- led_gpio_on(&amp;green_led) -&gt; pull_low ---
-[GPIO] Pin14 -&gt; LOW (ON, active-low)
-  [GPIO] Pin14 ON (pull_low)
+--- fp = i2c_on; fp(0x50); ---
+  [I2C] addr 0x50 ON (cmd 0x01)
 
---- swap red_led on_func at runtime to pull_low ---
-  [GPIO] Pin13 ON (pull_low)
+--- swap to off-functions ---
+  [GPIO] pin 15 OFF
+  [PWM] channel 15 OFF
+  [I2C] addr 0x50 OFF
+========================================
+  Same variable fp.
+  Three numbers, three behaviors.
+========================================
 </code></pre>
-<p><code>led_gpio_on</code> 这一行函数从头到尾没改。换 on_func 就换实现。运行时也能换（最后那段把 red_led 从 pull_high 切到 pull_low）。</p>
+<p>同一个变量 <code>fp</code>，存进不同的函数地址，拨出去通的就是不同的函数。<code>fp</code> 这个变量本身一字没改，里面存的数字变了一下，整个调用就走到了别处。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/"><code>oop-in-c/code/07-function-pointer/</code></a>。</p>
-<h2 id="712-视频回放"><a class="header" href="#712-视频回放">7.12 视频回放</a></h2>
+<h2 id="710-视频回放"><a class="header" href="#710-视频回放">7.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1AZdBBWEuj/">《C 语言：写死的函数怎么换｜函数指针·通讯录类比》</a></p>
 </blockquote>
-<p><img src="assets/ch07/slide6_金句.png" alt="金句"></p>
-<p>视频里用通讯录类比讲函数指针：函数名是号码，不带括号是取号码，加括号是拨号。书里把这个类比延伸成“红灯填一个号码（gpio_style），蓝灯填另一个号码（pwm_style）“。</p>
+<p>视频里用通讯录类比讲函数指针：函数名是号码，不带括号是取号码，加括号是拨号。</p>
 <h2 id="下一章-6"><a class="header" href="#下一章-6">下一章</a></h2>
-<p>你现在能把“调谁“塞进 struct 字段了。但有一个限制：必须先创建 struct 实例、再填 on_func，才能 led_on。如果有一个工具函数 <code>test_led(struct led *me)</code>，里面想调“开 → 等 → 关“三步，它该怎么知道用哪个 on？</p>
-<p>直觉是：让调用方告诉它。函数指针不光能塞进 struct，还能当参数传。</p>
+<p><code>fp</code> 变量你会用了。但有一个限制：<strong>每次都得你自己拨</strong>。先把号码存进 <code>fp</code>，再拿 <code>fp</code> 拨出去。</p>
+<p>如果有一个工具函数 <code>test_led</code>，里面要做“开 → 等 → 关“三步，它怎么知道用哪个 <code>on</code>？</p>
+<p>直觉是：让调用方告诉它。函数指针不光能存进变量，还能当参数传给别人。</p>
 <p>下一篇：<a href="#第-8-章--把号码给别人拨">第 8 章 · 把号码给别人拨</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="第-8-章--把号码给别人拨"><a class="header" href="#第-8-章--把号码给别人拨">第 8 章 · 把号码给别人拨</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/"><code>oop-in-c/code/08-callback/</code></a></p>
 <h2 id="81-一个真实场景"><a class="header" href="#81-一个真实场景">8.1 一个真实场景</a></h2>
-<p>第 7 章你把“调谁开灯“塞进了 <code>struct led</code> 的 on_func 字段。<code>led_on(&amp;red_led)</code> 内部走 <code>me-&gt;on_func(me)</code>，运行时决定。</p>
-<p>但有一种情况它解决不了。</p>
-<p>你写一个 <code>test_led</code> 工具函数，要做的事是：开 → 等 → 关，三步。这个函数应该不挑 LED：传谁的 LED 实例进来，它都能跑完三步。</p>
-<p>按 ch07 的写法，<code>test_led(struct led *me)</code> 内部调 <code>led_on(me); led_off(me);</code>，确实和 LED 类型解耦。但你想加一个新需求：测试时不用 me-&gt;on_func 字段里那个常驻的实现，而是临时换一个调试版的 on（比如 on 之前先打一行 log）。</p>
-<p>让 <code>test_led</code> 临时换 on，怎么换？</p>
-<p>直觉一：mutate <code>me-&gt;on_func</code>，跑完测试再换回来。一行写错就把生产代码的 on 字段污染了，下一次正常调用 led_on 就乱套。</p>
-<p>直觉二：让 <code>test_led</code> 接受一个额外的参数，告诉它“这次测试用这个 on，不用 me 字段里的“。</p>
+<p>第 7 章你学会了用一个变量存函数地址，再通过这个变量调用：</p>
+<pre><code class="language-c">void (*fp)(int);
+fp = gpio_on;
+fp(15);
+</code></pre>
+<p>函数指针变量本身能用了。但每次都得<strong>你自己</strong>先拨：先把号码存进 <code>fp</code>，再拿 <code>fp</code> 拨出去。</p>
+<p>你写一个 <code>test_led</code> 工具函数，要做的事是：开 → 等 → 关，三步。这个函数应该不挑 LED：传谁进来，它都能跑完三步。</p>
+<p>但 <code>test_led</code> 不知道该调哪个 <code>on</code>、哪个 <code>off</code>。GPIO LED 要调 <code>gpio_on</code>，PWM LED 要调 <code>pwm_on</code>，I2C LED 要调 <code>i2c_on</code>。<code>test_led</code> 自己不知道。</p>
+<p>直觉一：让 <code>test_led</code> 内部判断 LED 类型，写一堆 <code>if (type == GPIO) ... else if (type == PWM) ...</code>。回到 ch07 写死的老路。</p>
+<p>直觉二：让<strong>调用方</strong>告诉 <code>test_led</code> 该拨哪个号码。<code>test_led</code> 接两个额外参数：用哪个 <code>on</code>、用哪个 <code>off</code>，剩下的它按“开 → 等 → 关“的固定流程走。</p>
 <p>这就是函数指针当参数。</p>
 <h2 id="82-函数指针当参数"><a class="header" href="#82-函数指针当参数">8.2 函数指针当参数</a></h2>
 <p><code>test_led</code> 的签名长这样：</p>
@@ -3345,7 +3276,7 @@ test_led(&amp;blue_led.base, pwm_on_full_duty, pwm_off);
 </code></pre>
 <p>红灯走 <code>gpio_on_pull_high</code>，蓝灯走 <code>pwm_on_full_duty</code>。同一个 <code>test_led</code> 函数，传不同函数指针进去，行为完全不同。</p>
 <p><img src="assets/ch08/slide2_函数指针当参数.png" alt="函数指针当参数"></p>
-<p>子类的 on_func 字段被 <code>test_led</code> 完全旁路了。生产代码的字段不动，测试代码用自己临时传进去的 on。</p>
+<p><code>test_led</code> 自己一行不改，行为完全由调用方传进来的两个号码决定。换一种 LED 实现，换两个号码就行。</p>
 <h2 id="83-一个具体场景给-led-注册回调"><a class="header" href="#83-一个具体场景给-led-注册回调">8.3 一个具体场景：给 LED 注册回调</a></h2>
 <p>把“函数指针当参数“用到极致的一个场景是回调注册。</p>
 <p>你的应用层想知道：每次 LED 开关时，自动做一些事。比如：</p>
@@ -3507,11 +3438,11 @@ led_register_state_cb(&amp;red_led.base, can_log, &amp;red_ctx);
 <p>本章为简洁不引入 user_data，第 9 章 ops 表也暂不用，第 19 章工业代码会用到。</p>
 <h3 id="864-函数指针参数的对齐和栈传递"><a class="header" href="#864-函数指针参数的对齐和栈传递">8.6.4 函数指针参数的对齐和栈传递</a></h3>
 <p>ARM EABI 调用约定：函数指针作为参数和数据指针一样大（4 字节 32 位 / 8 字节 64 位），通过 r0-r3 寄存器传递。如果参数太多溢出到栈上，按 4 字节对齐压栈。</p>
-<p><code>test_led(&amp;red_led, led_on_gpio_style, led_off)</code> 这一调：</p>
+<p><code>test_led(&amp;red_led.base, gpio_on_pull_high, gpio_off)</code> 这一调：</p>
 <ul>
-<li>r0 = &amp;red_led</li>
-<li>r1 = led_on_gpio_style 的地址</li>
-<li>r2 = led_off 的地址</li>
+<li>r0 = &amp;red_led.base</li>
+<li>r1 = gpio_on_pull_high 的地址</li>
+<li>r2 = gpio_off 的地址</li>
 <li>函数体里 r1 / r2 直接 BLX 即可</li>
 </ul>
 <p>完全没有任何额外开销。函数指针传参 ≈ 数据指针传参。</p>
@@ -4488,8 +4419,8 @@ platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
 <tr><th>操作</th><th>大致开销</th><th>vs 直接调用</th><th>占比</th></tr>
 </thead>
 <tbody>
-<tr><td>直接函数调用 <code>BL led_on_gpio_style</code></td><td>约 18 ns（3 cycle）</td><td>baseline</td><td>0%</td></tr>
-<tr><td>间接调用一次 <code>BLX r3</code>（ch07 函数指针字段）</td><td>约 30 ns（5 cycle）</td><td>+12 ns</td><td>67% 慢</td></tr>
+<tr><td>直接函数调用 <code>BL gpio_on_pull_high</code></td><td>约 18 ns（3 cycle）</td><td>baseline</td><td>0%</td></tr>
+<tr><td>间接调用一次 <code>BLX r3</code>（ch07 函数指针变量 / ch08 函数指针参数）</td><td>约 30 ns（5 cycle）</td><td>+12 ns</td><td>67% 慢</td></tr>
 <tr><td>多态调用 <code>me-&gt;ops-&gt;on(me)</code>（两次 LDR + BX）</td><td>约 56 ns（9 cycle）</td><td>+38 ns</td><td>3 倍慢</td></tr>
 <tr><td>一次 GPIO 写 BSRR 寄存器</td><td>约 12 ns（2 cycle，硬件总线时序）</td><td>/</td><td>/</td></tr>
 <tr><td>一次 I2C 字节传输（100 kHz）</td><td>约 90 µs</td><td>/</td><td>/</td></tr>
@@ -9758,7 +9689,7 @@ ch05  HAL 库源码漫游                      验证课，看真实 HAL 是同�
 </code></pre>
 <p>把所有 LED 共有的“状态层“字段（<code>name</code>、<code>is_on</code>）抽到一个共同基类，硬件字段（<code>pin</code> 等）下沉到子类。继承在 C 里就是 “把基类当字段嵌进子类”。</p>
 <h3 id="第三阶段多态篇ch07---ch11"><a class="header" href="#第三阶段多态篇ch07---ch11">第三阶段：多态篇（ch07 - ch11）</a></h3>
-<pre><code>ch07  函数指针入门：on_func 字段
+<pre><code>ch07  函数指针入门：变量存函数地址
 ch08  函数指针传参：注册 / 拆解 callback
 ch09  ops 表：struct led_ops { on / off / toggle }
 ch10  ops 放进对象：const struct led_ops *ops 字段
@@ -13057,7 +12988,7 @@ sudo ./build/firmware
 <tr><td>ch04</td><td><code>04-data-classification/</code></td><td>数据三级归位（实例字段 / 模块 static / 只读 const），按场景选静态 / 池 / 动态分配</td></tr>
 <tr><td>ch05</td><td><code>05-hal-mapping/</code></td><td>不引入新概念，打开 ST HAL 源码漫游 BSRR 寄存器</td></tr>
 <tr><td>ch06</td><td><code>06-inherit-pain/</code></td><td>继承痛点，引入 <code>struct led_base</code> 提取共有字段 pin</td></tr>
-<tr><td>ch07</td><td><code>07-function-pointer/</code></td><td>函数指针入门，<code>int (*on_func)(struct led *)</code> 字段</td></tr>
+<tr><td>ch07</td><td><code>07-function-pointer/</code></td><td>函数指针入门，独立变量 <code>void (*fp)(int)</code> 演示存号码 + 拨号</td></tr>
 <tr><td>ch08</td><td><code>08-callback/</code></td><td>函数指针传参，注册 / 拆解 callback</td></tr>
 <tr><td>ch09</td><td><code>09-ops-table/</code></td><td>ops 操作表雏形，<code>struct led_ops { on, off, toggle }</code></td></tr>
 <tr><td>ch10</td><td><code>10-vptr/</code></td><td>ops 放进对象，<code>const struct led_ops *ops</code> 字段</td></tr>

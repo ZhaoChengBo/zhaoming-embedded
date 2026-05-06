@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
+            window.path_to_searchindex_js = "../searchindex-b2878b4d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -183,13 +183,16 @@
                         <h1 id="第-8-章--把号码给别人拨"><a class="header" href="#第-8-章--把号码给别人拨">第 8 章 · 把号码给别人拨</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/"><code>oop-in-c/code/08-callback/</code></a></p>
 <h2 id="81-一个真实场景"><a class="header" href="#81-一个真实场景">8.1 一个真实场景</a></h2>
-<p>第 7 章你把“调谁开灯“塞进了 <code>struct led</code> 的 on_func 字段。<code>led_on(&amp;red_led)</code> 内部走 <code>me-&gt;on_func(me)</code>，运行时决定。</p>
-<p>但有一种情况它解决不了。</p>
-<p>你写一个 <code>test_led</code> 工具函数，要做的事是：开 → 等 → 关，三步。这个函数应该不挑 LED：传谁的 LED 实例进来，它都能跑完三步。</p>
-<p>按 ch07 的写法，<code>test_led(struct led *me)</code> 内部调 <code>led_on(me); led_off(me);</code>，确实和 LED 类型解耦。但你想加一个新需求：测试时不用 me-&gt;on_func 字段里那个常驻的实现，而是临时换一个调试版的 on（比如 on 之前先打一行 log）。</p>
-<p>让 <code>test_led</code> 临时换 on，怎么换？</p>
-<p>直觉一：mutate <code>me-&gt;on_func</code>，跑完测试再换回来。一行写错就把生产代码的 on 字段污染了，下一次正常调用 led_on 就乱套。</p>
-<p>直觉二：让 <code>test_led</code> 接受一个额外的参数，告诉它“这次测试用这个 on，不用 me 字段里的“。</p>
+<p>第 7 章你学会了用一个变量存函数地址，再通过这个变量调用：</p>
+<pre><code class="language-c">void (*fp)(int);
+fp = gpio_on;
+fp(15);
+</code></pre>
+<p>函数指针变量本身能用了。但每次都得<strong>你自己</strong>先拨：先把号码存进 <code>fp</code>，再拿 <code>fp</code> 拨出去。</p>
+<p>你写一个 <code>test_led</code> 工具函数，要做的事是：开 → 等 → 关，三步。这个函数应该不挑 LED：传谁进来，它都能跑完三步。</p>
+<p>但 <code>test_led</code> 不知道该调哪个 <code>on</code>、哪个 <code>off</code>。GPIO LED 要调 <code>gpio_on</code>，PWM LED 要调 <code>pwm_on</code>，I2C LED 要调 <code>i2c_on</code>。<code>test_led</code> 自己不知道。</p>
+<p>直觉一：让 <code>test_led</code> 内部判断 LED 类型，写一堆 <code>if (type == GPIO) ... else if (type == PWM) ...</code>。回到 ch07 写死的老路。</p>
+<p>直觉二：让<strong>调用方</strong>告诉 <code>test_led</code> 该拨哪个号码。<code>test_led</code> 接两个额外参数：用哪个 <code>on</code>、用哪个 <code>off</code>，剩下的它按“开 → 等 → 关“的固定流程走。</p>
 <p>这就是函数指针当参数。</p>
 <h2 id="82-函数指针当参数"><a class="header" href="#82-函数指针当参数">8.2 函数指针当参数</a></h2>
 <p><code>test_led</code> 的签名长这样：</p>
@@ -219,7 +222,7 @@ test_led(&amp;blue_led.base, pwm_on_full_duty, pwm_off);
 </code></pre>
 <p>红灯走 <code>gpio_on_pull_high</code>，蓝灯走 <code>pwm_on_full_duty</code>。同一个 <code>test_led</code> 函数，传不同函数指针进去，行为完全不同。</p>
 <p><img src="../assets/ch08/slide2_函数指针当参数.png" alt="函数指针当参数"></p>
-<p>子类的 on_func 字段被 <code>test_led</code> 完全旁路了。生产代码的字段不动，测试代码用自己临时传进去的 on。</p>
+<p><code>test_led</code> 自己一行不改，行为完全由调用方传进来的两个号码决定。换一种 LED 实现，换两个号码就行。</p>
 <h2 id="83-一个具体场景给-led-注册回调"><a class="header" href="#83-一个具体场景给-led-注册回调">8.3 一个具体场景：给 LED 注册回调</a></h2>
 <p>把“函数指针当参数“用到极致的一个场景是回调注册。</p>
 <p>你的应用层想知道：每次 LED 开关时，自动做一些事。比如：</p>
@@ -381,11 +384,11 @@ led_register_state_cb(&amp;red_led.base, can_log, &amp;red_ctx);
 <p>本章为简洁不引入 user_data，第 9 章 ops 表也暂不用，第 19 章工业代码会用到。</p>
 <h3 id="864-函数指针参数的对齐和栈传递"><a class="header" href="#864-函数指针参数的对齐和栈传递">8.6.4 函数指针参数的对齐和栈传递</a></h3>
 <p>ARM EABI 调用约定：函数指针作为参数和数据指针一样大（4 字节 32 位 / 8 字节 64 位），通过 r0-r3 寄存器传递。如果参数太多溢出到栈上，按 4 字节对齐压栈。</p>
-<p><code>test_led(&amp;red_led, led_on_gpio_style, led_off)</code> 这一调：</p>
+<p><code>test_led(&amp;red_led.base, gpio_on_pull_high, gpio_off)</code> 这一调：</p>
 <ul>
-<li>r0 = &amp;red_led</li>
-<li>r1 = led_on_gpio_style 的地址</li>
-<li>r2 = led_off 的地址</li>
+<li>r0 = &amp;red_led.base</li>
+<li>r1 = gpio_on_pull_high 的地址</li>
+<li>r2 = gpio_off 的地址</li>
 <li>函数体里 r1 / r2 直接 BLX 即可</li>
 </ul>
 <p>完全没有任何额外开销。函数指针传参 ≈ 数据指针传参。</p>

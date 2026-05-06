@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
+            window.path_to_searchindex_js = "../searchindex-b2878b4d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -411,8 +411,8 @@ platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
 <tr><th>操作</th><th>大致开销</th><th>vs 直接调用</th><th>占比</th></tr>
 </thead>
 <tbody>
-<tr><td>直接函数调用 <code>BL led_on_gpio_style</code></td><td>约 18 ns（3 cycle）</td><td>baseline</td><td>0%</td></tr>
-<tr><td>间接调用一次 <code>BLX r3</code>（ch07 函数指针字段）</td><td>约 30 ns（5 cycle）</td><td>+12 ns</td><td>67% 慢</td></tr>
+<tr><td>直接函数调用 <code>BL gpio_on_pull_high</code></td><td>约 18 ns（3 cycle）</td><td>baseline</td><td>0%</td></tr>
+<tr><td>间接调用一次 <code>BLX r3</code>（ch07 函数指针变量 / ch08 函数指针参数）</td><td>约 30 ns（5 cycle）</td><td>+12 ns</td><td>67% 慢</td></tr>
 <tr><td>多态调用 <code>me-&gt;ops-&gt;on(me)</code>（两次 LDR + BX）</td><td>约 56 ns（9 cycle）</td><td>+38 ns</td><td>3 倍慢</td></tr>
 <tr><td>一次 GPIO 写 BSRR 寄存器</td><td>约 12 ns（2 cycle，硬件总线时序）</td><td>/</td><td>/</td></tr>
 <tr><td>一次 I2C 字节传输（100 kHz）</td><td>约 90 µs</td><td>/</td><td>/</td></tr>
