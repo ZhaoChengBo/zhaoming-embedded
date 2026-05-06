@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -181,15 +181,14 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="5-分钟看见你的第一个-oop-led"><a class="header" href="#5-分钟看见你的第一个-oop-led">5 分钟看见你的第一个 OOP LED</a></h1>
-<p>学一个新东西，最重要的一刻不是读懂理论，是亲眼看见它能跑。</p>
-<p>费曼讲过一句话：被自己说服，才叫理解。读完一段代码觉得“哦原来是这样“，那是被作者说服。亲手编译一次、跑出和书里描述一致的输出，那才是被自己说服。</p>
+<p>读理论之前，先把代码跑起来。</p>
+<p>费曼讲过一句话：被自己说服，才叫理解。这本书的写法是每行代码都讲到不开 IDE 也能 follow，但如果你愿意花 5 分钟跑一次，“哦原来是这样“会变成“原来真的是这样”，印象深一倍。</p>
 <p>这一章不解释任何概念，只做一件事：让你在 5 分钟内跑通一段 C 代码，看到屏幕输出三颗 LED 被同一份函数依次点亮。</p>
 <h2 id="准备工作"><a class="header" href="#准备工作">准备工作</a></h2>
 <p>需要的工具只有一个：GCC 编译器。</p>
 <p>Windows 用户装 MinGW 或 MSYS2 任选一个（搜官方安装包一路 next，勾选“添加到 PATH“），然后命令行敲 <code>gcc --version</code> 看到版本号即装好。</p>
 <p>Linux 用户：<code>sudo apt install gcc make</code>（Debian/Ubuntu）或 <code>sudo yum install gcc make</code>（RHEL/CentOS）。</p>
 <p>完全不想装环境也行：每个章节代码包都附带预编译好的 <code>demo.exe</code>，Windows 双击即可看到完整输出。</p>
-<p>如果你是有经验的工程师，跑不跑代码都行。这本书的写法是不实操也能完全理解每行代码的意图。</p>
 <h2 id="三步跑通"><a class="header" href="#三步跑通">三步跑通</a></h2>
 <p>第一步，克隆仓库：</p>
 <pre><code class="language-bash">git clone https://github.com/ZhaoChengBo/zhaoming-embedded.git
@@ -244,8 +243,8 @@ led_on(&amp;blue_led);
 </div>
 <p>还是不行，到 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/issues">GitHub Issues</a> 或 <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/issues">Gitee Issues</a> 提一个，附系统、GCC 版本、完整报错。</p>
 <h2 id="为什么先看见再谈理论"><a class="header" href="#为什么先看见再谈理论">为什么先看见再谈理论</a></h2>
-<p>接下来 ch01-ch20 共 20 章（OOP 主体 18 章 + 工业实战 2 章）+ 4 附录，你会一步步推出整个面向对象。但如果你在没看见结果之前先去读一堆抽象概念，会有一种“知道“但不“懂“的错觉。这是大多数中文技术书的通病。</p>
-<p>费曼方法的核心是：不被作者说服，要被自己说服。今天这 5 分钟你已经被自己说服一件事：这三个 LED 真的可以一份代码搞定，不是我吹的。后面 18 章 OOP 主体 + 工业实战 2 章只要让你心服口服地说“哦原来是这样推出来的“。</p>
+<p>接下来 ch01-ch20 共 20 章（OOP 主体 18 章 + 工业实战 2 章）+ 4 附录，你会一步步推出整个面向对象。先把这本书最终要让你写出的形态摆在面前，后面每一步演化你都有锚点对照。</p>
+<p>三颗 LED 一份代码这件事不是我吹的。这本书 18 章 OOP 主体 + 工业实战 2 章要做的，就是让你心服口服地说“哦原来是这样推出来的“。</p>
 <p>下一篇：<a href="../01-封装/01-三个LED三份代码.html">第 1 章 · 三个 LED 三份代码</a></p>
 
                     </main>

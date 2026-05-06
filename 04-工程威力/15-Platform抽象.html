@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -756,7 +756,7 @@ Platform 层 platform_*.c      物理操作
 </code></pre>
 <p>5 层。每一层只调下一层。这就是工业代码里“业务和硬件解耦得彻底“的做法。</p>
 <p>中间件不是凭空多出来的“过度设计“。它的判据是：<strong>当业务语义和硬件操作不是一对一映射的时候</strong>，中间件就值得引入。“报警 → 三盏灯协同（红灯主报、绿灯熄灭、蜂鸣器响 1 秒）“是一对多映射，写在 app 里 app 就有了硬件知识，写在 led.c 里 led.c 就有了业务知识，都不对。中间件吸收这个错配。</p>
-<p>ch15 的配套代码没有中间件层（教学简化），ch19 的工业实战章会展开一个完整的 indicator 中间件案例。</p>
+<p>ch15 的配套代码没有中间件层（教学简化）。ch19 的工业实战章会列出主控板用到的几个中间件库（环形缓冲、shell、日志、按键），看一眼工业代码里这一层是什么形态。</p>
 <h3 id="151010-platform_ops-的字段规模"><a class="header" href="#151010-platform_ops-的字段规模">15.10.10 platform_ops 的字段规模</a></h3>
 <p>本章 platform_ops 只有 4 个字段（init / write / read / name）。真实工业项目里规模大很多：</p>
 <pre><code class="language-c">struct platform_ops {
@@ -792,7 +792,7 @@ Platform 层 platform_*.c      物理操作
 };
 </code></pre>
 <p>20-30 个字段。每家芯片提供一份完整实现。</p>
-<p>字段太多了拆不拆？看你项目。SOLID 接口隔离原则会建议拆成 <code>gpio_ops / i2c_ops / spi_ops / ...</code> 多个小表。Linux 内核走的就是这条路（没有一个大 platform_ops，而是一堆 subsystem 各自的 ops 表）。本书 ch16 会展开 Linux 的多个 ops 表。</p>
+<p>字段太多了拆不拆？看你项目。SOLID 接口隔离原则会建议拆成 <code>gpio_ops / i2c_ops / spi_ops / ...</code> 多个小表。Linux 内核走的就是这条路（没有一个大 platform_ops，而是一堆 subsystem 各自的 ops 表）。本书 ch16 会展开 Linux 的两组典型 ops 表（<code>gpio_chip</code> / <code>file_operations</code>）。</p>
 <h2 id="1511-你现在的代码在-stm32-上长什么样"><a class="header" href="#1511-你现在的代码在-stm32-上长什么样">15.11 你现在的代码在 STM32 上长什么样</a></h2>
 <p><code>stm32-snippet/platform_ops_stm32.c</code> 是真实硬件版的 <code>platform_ops</code> 实例：</p>
 <pre><code class="language-c">static void stm32_gpio_write(uint8_t pin, bool value)

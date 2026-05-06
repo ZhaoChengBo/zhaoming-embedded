@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -285,7 +285,7 @@ void platform_gpio_write(uint8_t pin, bool value);
 void platform_gpio_deinit(uint8_t pin);
 bool platform_gpio_read(uint8_t pin);
 </code></pre>
-<p>每章的 STM32 / Linux snippet 都告诉你这是教学简化版。真正工业级 platform 抽象用 ops 表。第 11 章演化出 vptr 之后，就把这个承诺兑现。</p>
+<p>每章的 STM32 / Linux snippet 都告诉你这是教学简化版。真正工业级 platform 抽象用 ops 表。本章演化出 vptr 之后，就把这个承诺兑现。</p>
 <p>兑现的方式有讲究：<strong>对外</strong>这 4 个函数签名一字不动，<strong>对内</strong>从直接实现演化成 ops dispatch。驱动层、应用层永远只看到这 4 个签名，看不到下面的 ops 表。</p>
 <p>观察这一招在概念上和 ch10 的 <code>struct led_base</code> 一字不差：</p>
 <div class="table-wrapper">

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -186,7 +186,7 @@
 <p>你的 <code>.c</code> 文件开头有几个全局变量？</p>
 <p>数一数。</p>
 <p>今天它们一个都活不了。</p>
-<p>第 1 章到第 3 章做了不少事。挂号单（struct）、me 指针、字段藏起来、命名前缀、init/deinit 生命周期。但翻开你的 <code>led.c</code> 看头几行，可能还在躺着这种东西：</p>
+<p>第 1 章到第 3 章做了不少事。挂号单（struct）、me 指针、字段标 <code>/* private */</code> + 工具函数加 <code>static</code>、命名前缀、init/deinit 生命周期。但翻开你的 <code>led.c</code> 看头几行，可能还在躺着这种东西：</p>
 <pre><code class="language-c">/* led_bad.c · 反面教材 */
 #include "led.h"
 
@@ -237,7 +237,7 @@ bad_led_on();       /* 想点亮红灯 */
 <pre><code class="language-c">static unsigned int s_init_count;   /* 模块累计 init 次数 */
 static int          s_debug_flag;   /* 模块调试开关 */
 </code></pre>
-<p><code>static</code> 这个修饰词让编译器把这两个变量的符号写成 file-local（第 2 章 2.6.5 节讲过链接器视角）。别的文件 <code>extern</code> 都找不到。</p>
+<p><code>static</code> 这个修饰词让编译器把这两个变量的符号写成 file-local（第 2 章 2.6.2 节讲过链接器视角）。别的文件 <code>extern</code> 都找不到。</p>
 <p>外部想知道 <code>s_init_count</code>？走函数：</p>
 <pre><code class="language-c">unsigned int led_get_init_count(void)
 {
@@ -306,7 +306,7 @@ static void debug_print(const char *msg);
 <p>刚才你做的事，把全局变量按“实例 / 模块 / 常量“三类归位，这个动作软件工程里叫数据所有权（data ownership）或者数据归位。</p>
 <p>每一份数据都得有主人。实例数据的主人是 struct 字段（跟着 me 走），模块共享数据的主人是 <code>static</code> 变量（关在文件里），常量的主人是 <code>static const</code>（编译期固定）。</p>
 <p>数据没有主人，bug 就是主人。</p>
-<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。把数据按所有权归位，是机制层面的防御。第 2 章把字段藏起来防外部乱写、第 4 章把全局变量按所有权归位防内部乱写，两条加起来是数据层面的“封装“完整版。</p>
+<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。把数据按所有权归位，是机制层面的防御。第 2 章把字段标 <code>/* private */</code> + 内部工具加 <code>static</code> 防外部乱写、第 4 章把全局变量按所有权归位防内部乱写，两条加起来是数据层面的“封装“完整版。</p>
 <p><img src="../assets/ch04/slide7_数据归位表.png" alt="数据归位表"></p>
 <h2 id="47-视频里没讲透的几个细节"><a class="header" href="#47-视频里没讲透的几个细节">4.7 视频里没讲透的几个细节</a></h2>
 <h3 id="471-实例数据-vs-模块共享数据怎么分"><a class="header" href="#471-实例数据-vs-模块共享数据怎么分">4.7.1 实例数据 vs 模块共享数据，怎么分</a></h3>
@@ -346,7 +346,7 @@ struct led *me = led_acquire(13);   /* 从池里拿一个空槽 */
 ...
 led_release(me);                    /* 用完还回去 */
 </code></pre>
-<p>数量上限固定但具体哪些槽用、什么时候用不固定时用对象池。Linux 内核的 <code>kmem_cache</code> / slab 分配器是同一个思路的工业级形态（第 17 章展开）。本章配套代码用这种写法是为了把“模块共享数据 + 实例数据“凑齐演示。</p>
+<p>数量上限固定但具体哪些槽用、什么时候用不固定时用对象池。Linux 内核的 <code>kmem_cache</code> / slab 分配器是同一个思路的工业级形态。本章配套代码用这种写法是为了把“模块共享数据 + 实例数据“凑齐演示。</p>
 <p><strong>写法 C · 动态分配</strong></p>
 <pre><code class="language-c">struct led *me = malloc(sizeof(*me));
 if (!me)
@@ -380,7 +380,7 @@ if (!red) {
 	return -ENOMEM;
 }
 </code></pre>
-<p>工业代码里这种 NULL 检查是强制的，几乎没有“分配失败就忽略“的情况。第 17 章讲 Linux 内核的 <code>kmalloc</code> 也是同样的纪律。</p>
+<p>工业代码里这种 NULL 检查是强制的，几乎没有“分配失败就忽略“的情况。Linux 内核 <code>kmalloc</code> 一样：每次分配后立刻判空，是内核驱动 review 的硬指标。</p>
 <h3 id="474-static-第三义--函数内部的-static-局部变量"><a class="header" href="#474-static-第三义--函数内部的-static-局部变量">4.7.4 static 第三义 · 函数内部的 static 局部变量</a></h3>
 <p><code>static</code> 这个词在 C 里有三种含义：</p>
 <div class="table-wrapper">
@@ -456,7 +456,7 @@ stack   函数调用栈（运行时增长）
 <p>工业纪律的关键不是“不用 malloc“，是<strong>生命周期管理</strong>。判定标准：</p>
 <ol>
 <li><strong>每个 alloc 有配对的 free 路径</strong>。函数中间任何 <code>return</code> 都不能漏过 free</li>
-<li><strong>异常退出走 <code>goto cleanup</code></strong>。Linux 内核风格，几十年实践能压住所有 leak。形态在 ch02 2.6.8 节贴过</li>
+<li><strong>异常退出走 <code>goto cleanup</code></strong>。Linux 内核风格，几十年实践能压住所有 leak</li>
 <li><strong>共享所有权用引用计数</strong>。Linux <code>kref_init / kref_get / kref_put</code> 是标准模板</li>
 <li><strong>选 RTOS 提供的 heap 而不是 newlib <code>dlmalloc</code></strong>。前者有合并机制 + 审计接口，后者反复分配释放后容易碎片放大</li>
 <li><strong>关键路径的 WCET 要测</strong>。<code>pvPortMalloc</code> 在 heap_4 上是 O(N)（N 是 free list 长度），实时任务里用对象池或者预分配避开</li>
@@ -471,7 +471,7 @@ stack   函数调用栈（运行时增长）
 <p><strong>动态内存不是危险品，缺乏生命周期纪律才是</strong>。AI 工具（Coverity / Codacy / Claude Code 这一类）现在能自动审计 alloc / free 的配对路径和异常退出分支，工程上比手工 review 可靠得多。</p>
 <h3 id="477-stm32h7-内存地图举例"><a class="header" href="#477-stm32h7-内存地图举例">4.7.7 STM32H7 内存地图举例</a></h3>
 <p>抽象的 <code>.text / .rodata / .data / .bss / heap / stack</code> 在真实 MCU 上是哪几片物理 SRAM？</p>
-<p>以 STM32H7 系列（Cortex-M7，是 Simon 工业控制板项目用的同一代核）为例。这颗芯片的内存布局：</p>
+<p>以 STM32H7 系列（Cortex-M7，是工业控制板常用的代核）为例。这颗芯片的内存布局：</p>
 <pre><code>0x0800 0000 - 0x081F FFFF   2 MB  Flash         (.text, .rodata, .data 初值)
 0x2000 0000 - 0x2001 FFFF   128KB DTCM          (Cortex-M7 紧耦合数据·CubeMX 默认 stack 在这)
 0x2400 0000 - 0x2407 FFFF   512KB AXI SRAM      (主 RAM, .bss / .data / heap)
@@ -495,13 +495,13 @@ stack   函数调用栈（运行时增长）
 <p>是。</p>
 <p>要分清楚两种“全局“：</p>
 <p><strong>裸数据型全局变量</strong>：例如 <code>int g_temp_value;</code>、<code>char g_buffer[64];</code>、<code>int g_status;</code>。这种要避免。任何模块都能直接读写，谁改了谁没改追不到，并发场景下竞态拉满。这是 ch01-ch03 一直在反对的“敞开的挂号单“。</p>
-<p><strong>接口型全局指针句柄</strong>：例如 <code>extern struct led_base *green_led;</code>、<code>extern struct uart *console;</code>、<code>extern struct rtc_dev *system_rtc;</code>。这种是合理的。指针指向的对象关在驱动的 <code>.c</code> 文件里（参考 ch01 1.10 节的不透明指针），应用层只能通过 <code>led_on(green_led)</code> 这种封装函数操作它，拿不到“裸字段读写“的能力。这是对一个<strong>单例对象的句柄绑定</strong>，不是裸数据共享。</p>
-<p>工业代码里 <code>extern xxx_base_t *xxx_dev;</code> 这种声明是大量存在的，每个外设设备实例（LED、按键、UART、RTC、温度传感器）通常都对应一两个全局句柄。这就是“设备树思路“在 C 里的落地：全局可见的设备名 + 不透明的设备实例。第 19 章工业实战会展开。</p>
+<p><strong>接口型全局指针句柄</strong>：例如 <code>extern struct led_base *green_led;</code>、<code>extern struct uart *console;</code>、<code>extern struct rtc_dev *system_rtc;</code>。这种是合理的。指针指向的对象 static 分配在驱动的 <code>.c</code> 文件里（同 ch01 1.10.1 节的指针句柄持有），应用层通过 <code>led_on(green_led)</code> 这种封装函数操作它，按工业纪律不直接读写字段。这是把一个<strong>单例对象用指针句柄暴露给应用层</strong>，不是裸数据共享。</p>
+<p>工业代码里 <code>extern xxx_base_t *xxx_dev;</code> 这种声明是大量存在的，每个外设设备实例（LED、按键、UART、RTC、温度传感器）通常都对应一两个全局句柄。这就是“设备树思路“在 C 里的落地：全局可见的设备名 + 应用层不直接访问字段的设备实例。第 19 章工业实战会展开。</p>
 <p>另一种合理的全局是 initcall 段（第 17 章详讲）：一组函数指针放在 <code>.bss</code> 的特殊段里，启动时按顺序调用。这不是数据共享，是机制实现。</p>
 <p>需要警惕的两个使用方式：</p>
 <ol>
 <li><strong>全局指针句柄之间的互相依赖</strong>：A 模块的初始化引用了 B 模块的句柄，但 B 还没 init。这是 ch17 initcall 7 级排序要解决的问题。</li>
-<li><strong>应用层通过句柄访问对象字段</strong>：写 <code>green_led-&gt;pin = 5</code> 这种应该编译报错（不透明指针保护），写 <code>g_temp = 100</code> 这种应该 code review 打回。</li>
+<li><strong>应用层通过句柄访问对象字段</strong>：写 <code>green_led-&gt;pin = 5</code> 和写 <code>g_temp = 100</code> 一样，code review 看到就要打回。应用层只走 <code>led_on / led_off</code> 这种封装接口，不直接读写驱动 struct 的字段。</li>
 </ol>
 <h2 id="48-你现在的代码在-stm32-上长什么样"><a class="header" href="#48-你现在的代码在-stm32-上长什么样">4.8 你现在的代码在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/04-data-classification/stm32-snippet/led_stm32.c"><code>oop-in-c/code/04-data-classification/stm32-snippet/led_stm32.c</code></a>）：</p>
@@ -644,7 +644,7 @@ make
 <p><a href="https://www.bilibili.com/video/BV1pAD9BmEu8/">《C 语言：你的全局变量·该死了｜C 语言封装篇终章·数据归位》</a></p>
 </blockquote>
 <p>视频里讲了白板类比（全局变量被路过的人擦掉）、部门文件夹类比（static 文件私有），节奏更紧凑。书里补了视频没讲透的 6 个细节（4.7 节）和工业代码的对照（4.10 节）。</p>
-<p>封装篇到这里：第 1 章 struct + me、第 2 章 static + 不透明指针、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。所有零件凑齐了。</p>
+<p>封装篇到这里：第 1 章 struct + me、第 2 章 static + <code>/* private */</code> 纪律、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。所有零件凑齐了。</p>
 <p><img src="../assets/ch04/slide9_CvsCpp.png" alt="C 对 C++"></p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>但我说了不算。下一章打开 STM32 HAL 库的源码，看看 ST 工程师在做同样的事。<code>HAL_GPIO_Init</code>、<code>HAL_GPIO_WritePin</code>、<code>GPIOA / GPIOB / GPIOC</code>，几千个 HAL 函数就一个套路。</p>

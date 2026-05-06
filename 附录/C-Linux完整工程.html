@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -188,7 +188,7 @@
 <p>目标硬件：<strong>树莓派 4B</strong>（ARM64 Cortex-A72，4 核 1.5 GHz，4 GB RAM，跑 Raspberry Pi OS / Ubuntu）。这是国内最容易拿到的 ARM SBC，淘宝几百块。</p>
 <p>不同 SBC 跑这个工程都是 5% 改动量。香橙派、飞腾派、瑞芯微 RK3588、全志 H6 / H616 等任何一颗，照着 <code>app/platform/arch/board/pin_libgpiod.c</code> 改 <code>GPIO_CHIP_DEV</code> 一行就能跑。</p>
 <p>工程功能：板上 4 颗 LED 流水灯（GPIO17 / GPIO27 / GPIO22 / GPIO23 BCM 编号，对应树莓派 4B 物理引脚 11 / 13 / 15 / 16）。硬件接法：每颗 LED 长脚串 220Ω 限流电阻接 GPIO 引脚，短脚接 GND。</p>
-<p>跑通全书所有 OOP 抽象，对应章节同附录 B § B.1。</p>
+<p>跑通全书所有 OOP 抽象，对应章节同附录 B 的 B.1 节。</p>
 <h2 id="c2-工程结构"><a class="header" href="#c2-工程结构">C.2 工程结构</a></h2>
 <pre><code>industrial/linux_full/
 ├── README.md

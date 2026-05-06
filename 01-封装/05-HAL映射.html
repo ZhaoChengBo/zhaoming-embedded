@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -184,7 +184,7 @@
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/"><code>oop-in-c/code/05-hal-mapping/</code></a></p>
 <h2 id="51-你天天用-hal_gpio_init"><a class="header" href="#51-你天天用-hal_gpio_init">5.1 你天天用 HAL_GPIO_Init</a></h2>
 <p>你知道它为什么叫这个名字吗？</p>
-<p>封装四章学完了：第 1 章 struct + me、第 2 章 static + 不透明指针、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。</p>
+<p>封装四章学完了：第 1 章 struct + me、第 2 章 static + <code>/* private */</code> 纪律、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。</p>
 <p>但学的东西“是不是真的工业标准“，光我说不算。打开 STM32 HAL 库源码，亲眼验证。</p>
 <p>这一章不教新概念。它是验证课。要做的事：把 HAL 库的设计逐项映射回前 4 章学过的东西。学完你会发现，你这一个月学的，就是几千个工业函数背后的同一套机制。</p>
 <h2 id="52-gpio_typedef-就是-struct"><a class="header" href="#52-gpio_typedef-就是-struct">5.2 GPIO_TypeDef 就是 struct</a></h2>

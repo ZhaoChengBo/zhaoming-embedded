@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -279,6 +279,7 @@ make
 <p>开始阅读：<a href="#前言">前言</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="前言"><a class="header" href="#前言">前言</a></h1>
+<p>体例约定：本书“第 N 部分“指五大主题分块（一-五，汉字数字），“第 N 章“指 1-20 编号章节（阿拉伯数字），“chXX“是同一章节的英文 ID，三者不混用。</p>
 <p>在我待过的项目里，常常看到这样的代码：</p>
 <p>三颗 LED 写三份几乎一模一样的函数。加一个新传感器，复制 5 个文件、改 30 个 <code>#define</code>。换一颗芯片像搬家，应用层全部重写，因为驱动层根本不是“驱动层“，是一堆“硬件操作的散装代码“。</p>
 <p>不是这些工程师不努力。是没人系统教过 C 代码该怎么组织。</p>
@@ -348,7 +349,7 @@ make
 <li><strong>费曼学习法配 AI</strong>：读完一节，把你理解的东西用自己的话讲给 AI 听，让它指出哪里不对、哪里不准确。讲不出来的部分就是你没真懂的部分。这套方法 Richard Feynman 教书时反复用，AI 让它从一对一变成随时可用。</li>
 <li><strong>AI 当陪练，不当百科</strong>：问“这段代码为什么这样写“比问“什么是多态“信噪比高得多。具体场景的问题 AI 最擅长，开放式定义题它容易给你一段套话。</li>
 </ul>
-<p>我作为作者必须说明：这本书有写得不够透、甚至写错的地方，我自己重读时还在改。AI 同样会犯错，特别是嵌入式、内核、硬件这些训练数据相对稀疏的领域。把书和 AI 一起当工具用，互相校验，比单信任任何一方都稳。</p>
+<p>我作为作者必须说明：这本书有写得不够透、甚至写错的地方，我自己重读时还在改。AI 同样会犯错，特别是嵌入式、内核、硬件这些容错率极低的领域。把书和 AI 一起当工具用，互相校验，比单信任任何一方都稳。</p>
 <p>最后一句话留给在职的你：现在不少卖课的把“答疑“当核心服务卖，但作为工程师，你的核心竞争力是自己解决问题的能力。十年前嵌入式工程师靠老工程师传帮带，现在你有 AI 工具，等于多了一个 24 小时在线的同事。这一代把 AI 用透的工程师，会比上一代有显著的产出优势。</p>
 <h2 id="怎么动手"><a class="header" href="#怎么动手">怎么动手</a></h2>
 <p><strong>有经验的工程师可以完全不跑代码</strong>。书里每段代码每行的意图都讲透了，不开 IDE 也能完全理解。扫读一遍就走的话也对得起这本书。</p>
@@ -367,15 +368,14 @@ make
 <p>下一篇：<a href="#5-分钟看见你的第一个-oop-led">5 分钟看见你的第一个 OOP LED</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="5-分钟看见你的第一个-oop-led"><a class="header" href="#5-分钟看见你的第一个-oop-led">5 分钟看见你的第一个 OOP LED</a></h1>
-<p>学一个新东西，最重要的一刻不是读懂理论，是亲眼看见它能跑。</p>
-<p>费曼讲过一句话：被自己说服，才叫理解。读完一段代码觉得“哦原来是这样“，那是被作者说服。亲手编译一次、跑出和书里描述一致的输出，那才是被自己说服。</p>
+<p>读理论之前，先把代码跑起来。</p>
+<p>费曼讲过一句话：被自己说服，才叫理解。这本书的写法是每行代码都讲到不开 IDE 也能 follow，但如果你愿意花 5 分钟跑一次，“哦原来是这样“会变成“原来真的是这样”，印象深一倍。</p>
 <p>这一章不解释任何概念，只做一件事：让你在 5 分钟内跑通一段 C 代码，看到屏幕输出三颗 LED 被同一份函数依次点亮。</p>
 <h2 id="准备工作"><a class="header" href="#准备工作">准备工作</a></h2>
 <p>需要的工具只有一个：GCC 编译器。</p>
 <p>Windows 用户装 MinGW 或 MSYS2 任选一个（搜官方安装包一路 next，勾选“添加到 PATH“），然后命令行敲 <code>gcc --version</code> 看到版本号即装好。</p>
 <p>Linux 用户：<code>sudo apt install gcc make</code>（Debian/Ubuntu）或 <code>sudo yum install gcc make</code>（RHEL/CentOS）。</p>
 <p>完全不想装环境也行：每个章节代码包都附带预编译好的 <code>demo.exe</code>，Windows 双击即可看到完整输出。</p>
-<p>如果你是有经验的工程师，跑不跑代码都行。这本书的写法是不实操也能完全理解每行代码的意图。</p>
 <h2 id="三步跑通"><a class="header" href="#三步跑通">三步跑通</a></h2>
 <p>第一步，克隆仓库：</p>
 <pre><code class="language-bash">git clone https://github.com/ZhaoChengBo/zhaoming-embedded.git
@@ -430,8 +430,8 @@ led_on(&amp;blue_led);
 </div>
 <p>还是不行，到 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/issues">GitHub Issues</a> 或 <a href="https://gitee.com/zhao-chengbo/zhaoming_embedded/issues">Gitee Issues</a> 提一个，附系统、GCC 版本、完整报错。</p>
 <h2 id="为什么先看见再谈理论"><a class="header" href="#为什么先看见再谈理论">为什么先看见再谈理论</a></h2>
-<p>接下来 ch01-ch20 共 20 章（OOP 主体 18 章 + 工业实战 2 章）+ 4 附录，你会一步步推出整个面向对象。但如果你在没看见结果之前先去读一堆抽象概念，会有一种“知道“但不“懂“的错觉。这是大多数中文技术书的通病。</p>
-<p>费曼方法的核心是：不被作者说服，要被自己说服。今天这 5 分钟你已经被自己说服一件事：这三个 LED 真的可以一份代码搞定，不是我吹的。后面 18 章 OOP 主体 + 工业实战 2 章只要让你心服口服地说“哦原来是这样推出来的“。</p>
+<p>接下来 ch01-ch20 共 20 章（OOP 主体 18 章 + 工业实战 2 章）+ 4 附录，你会一步步推出整个面向对象。先把这本书最终要让你写出的形态摆在面前，后面每一步演化你都有锚点对照。</p>
+<p>三颗 LED 一份代码这件事不是我吹的。这本书 18 章 OOP 主体 + 工业实战 2 章要做的，就是让你心服口服地说“哦原来是这样推出来的“。</p>
 <p>下一篇：<a href="#第-1-章--三个-led-三份代码">第 1 章 · 三个 LED 三份代码</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="第-1-章--三个-led-三份代码"><a class="header" href="#第-1-章--三个-led-三份代码">第 1 章 · 三个 LED 三份代码</a></h1>
@@ -660,11 +660,9 @@ led_on(&amp;red_led);
 
 int led_on(Led_t *me);
 </code></pre>
-<p>书里不这样写。Linus 在 Linux 内核编码风格文档里专门讲过 typedef struct 是反模式，原文大意：</p>
-<blockquote>
-<p>typedef 是用来藏类型的。如果你藏了“这是一个结构体“这件事，读代码的人就不知道能不能在它上面用 <code>&amp;</code>、<code>-&gt;</code>、<code>.</code>，也不知道它能不能直接传给 <code>sizeof</code>。</p>
-</blockquote>
-<p><code>Led_t</code> 这个名字告诉你“这是个 LED 类型“，但不告诉你“它是结构体“。<code>struct led</code> 这个名字两件事都告诉你了。Linux 内核 4000 万行 C 代码绝大多数 struct 都不 typedef，包括 <code>struct file</code>、<code>struct device</code>、<code>struct gpio_chip</code>。读这本书你以后看内核源码不会觉得陌生。</p>
+<p>书里不这样写。Linus 在 Linux 内核编码风格文档里专门反对 typedef struct，原因不是写起来麻烦，而是 typedef 把“这是一个结构体“这件事藏了起来。</p>
+<p>看到 <code>int a</code> 你立刻知道是 4 字节标量，按值传无所谓。看到 <code>Led_t a</code> 你不知道它是 4 字节还是 200 字节。<code>void foo(Led_t a)</code> 这种按值传函数，栈上可能默默复制 200 字节，性能黑洞看不见。<code>Led_t a = b;</code> 也一样：是简单赋值还是 struct 整块复制？struct 里有锁、回调、状态机的时候，复制语义出错很难查。<code>struct led a</code> 三个字符就把这些风险摆在面前，每个写 C 的工程师对 <code>struct</code> 这俩字都本能小心。</p>
+<p>Linux 内核 4000 万行 C 代码绝大多数 struct 都不 typedef，包括 <code>struct file</code>、<code>struct device</code>、<code>struct gpio_chip</code>。读这本书你以后看内核源码不会觉得陌生。</p>
 <p>唯一例外：函数指针类型适合 typedef（不然 <code>int (*)(struct led *)</code> 写起来太丑），第 9 章 ops 表会用到。</p>
 <h3 id="174-me-pin-这一句汇编层面发生了什么"><a class="header" href="#174-me-pin-这一句汇编层面发生了什么">1.7.4 me-&gt;pin 这一句汇编层面发生了什么</a></h3>
 <p>你写的 C 代码是这样：</p>
@@ -707,7 +705,7 @@ LDRB  r1, [r4, #2]      ; 取偏移 2 的字节, r1 = is_on
 	/* 2 bytes padding */
 };                          /* sizeof = 8 */
 </code></pre>
-<p>这一点你现在不用记，知道 padding 这件事存在就行。第 4 章讲数据归位时会回到这个话题。</p>
+<p>这一点你现在不用记，知道 padding 这件事存在就行。真要紧凑布局可以用 <code>__attribute__((packed))</code> 或 <code>#pragma pack</code>，本书不展开。</p>
 <h3 id="176-platform_gpio_write-调到底最终是写哪个寄存器"><a class="header" href="#176-platform_gpio_write-调到底最终是写哪个寄存器">1.7.6 platform_gpio_write 调到底，最终是写哪个寄存器</a></h3>
 <p><code>platform_gpio_write(13, true)</code> 在 PC 模拟版里就是 <code>printf</code> 打一行。在 STM32 上是另一回事。</p>
 <p>STM32 每个 GPIO 端口有一个 BSRR（Bit Set / Reset Register）。这是一个 32 位寄存器，地址是固定的（GPIOA 的 BSRR 地址在 STM32H7 上是 <code>0x58020018</code>）。寄存器格式：</p>
@@ -721,7 +719,7 @@ LDRB  r1, [r4, #2]      ; 取偏移 2 的字节, r1 = is_on
 </code></pre>
 <p>一次 32 位 store，把 GPIOA 的 PA13 拉高。BSRR 设计成“写 1 才生效，写 0 无影响“是为了让多任务、多中断同时操作不同引脚时不打架（atomic）。中断半路改一个引脚，主循环改另一个引脚，互不影响。</p>
 <p><code>volatile</code> 关键字是必须的。它告诉编译器：这个地址的内容随时会变（硬件改的），不要缓存到寄存器里。否则编译器优化后可能“我刚才不是写过 0x58020018 了吗，再读还是同一个值，不用真的 load“，结果你以为写了，实际没写。</p>
-<p>这个领域叫 MMIO（Memory-Mapped I/O）：把硬件寄存器映射到 CPU 的地址空间，用普通的内存读写指令操作硬件。第 5 章讲 HAL 映射时会展开。</p>
+<p>这个领域叫 MMIO（Memory-Mapped I/O）：把硬件寄存器映射到 CPU 的地址空间，用普通的内存读写指令操作硬件。ch05 打开 HAL 库源码漫游时你能看到这种映射的真实形态。</p>
 <h2 id="18-你现在的-led-在-stm32-上长什么样"><a class="header" href="#18-你现在的-led-在-stm32-上长什么样">1.8 你现在的 LED 在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/stm32-snippet/led_stm32.c"><code>oop-in-c/code/01-three-leds/stm32-snippet/led_stm32.c</code></a>）：</p>
 <pre><code class="language-c">#include "led.h"
@@ -799,18 +797,13 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
 <p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
-<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念——ops 表、虚函数表指针、不透明指针、前向声明、基类层 dispatch——每一个都是后面 ch09 / ch10 / ch11 / ch13 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 § 1.1 继续从最朴素的状态走起，等读完 ch13 再回来重读这一节，那时候每一行都会自动通透。</p>
-<p>我做的工业控制板项目里，LED 这一块分三个文件：</p>
-<pre><code class="language-c">/* drivers/led/led.h · 公开头文件，应用层 #include 这个 */
+<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
+<p>我做的工业控制板项目里，LED 这一块分两层：基类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。基类那两份长这样：</p>
+<pre><code class="language-c">/* drivers/led/led_base.h · 基类公共头·子类和应用层都 #include */
 
-struct led_base;        /* 前向声明，1.10.1 节解释 */
+#include &lt;stdbool.h&gt;
 
-/* 应用层用的 API */
-int led_on(struct led_base *led);
-int led_off(struct led_base *led);
-int led_toggle(struct led_base *led);
-</code></pre>
-<pre><code class="language-c">/* drivers/led/led_base.c · 基类实现，所有 LED 子类共用 */
+struct led_base;        /* 先声明类型存在，下面 led_ops 要用到它 */
 
 struct led_ops {
 	int (*on)(struct led_base *me);
@@ -824,37 +817,55 @@ struct led_base {
 	bool is_on;                  /* 当前开关状态 */
 };
 
+/* 应用层用的 API：只调下面这三个，看不到也不去碰上面字段 */
+int led_on(struct led_base *led);
+int led_off(struct led_base *led);
+int led_toggle(struct led_base *led);
+
 /* 注：base 里没有 pin / pwm_chan / i2c_addr 这种硬件特定字段。
  * pin 在 led_gpio 子类里、pwm_chan 在 led_pwm 子类里、i2c_addr 在 led_i2c 子类里。
  * 不同硬件方式的 LED 共享 base 接口，硬件细节关在各自子类。
  * 第 6 章讲为什么这样分，第 12 章讲子类怎么向上转型回 base。
  */
+</code></pre>
+<pre><code class="language-c">/* drivers/led/led_base.c · 基类实现：把对外接口转发到子类 ops 表 */
 
-/* led_on 是封装层：应用层调它，内部 dispatch 到具体子类的 on */
+#include "led_base.h"
+
 int led_on(struct led_base *led)
 {
+	int ret;
 	if (!led || !led-&gt;ops || !led-&gt;ops-&gt;on)
 		return -1;
-	led-&gt;is_on = true;
-	return led-&gt;ops-&gt;on(led);
+	ret = led-&gt;ops-&gt;on(led);
+	if (ret == 0)
+		led-&gt;is_on = true;
+	return ret;
 }
 
 int led_off(struct led_base *led)
 {
+	int ret;
 	if (!led || !led-&gt;ops || !led-&gt;ops-&gt;off)
 		return -1;
-	led-&gt;is_on = false;
-	return led-&gt;ops-&gt;off(led);
+	ret = led-&gt;ops-&gt;off(led);
+	if (ret == 0)
+		led-&gt;is_on = false;
+	return ret;
 }
 
 int led_toggle(struct led_base *led)
 {
+	int ret;
 	if (!led || !led-&gt;ops || !led-&gt;ops-&gt;toggle)
 		return -1;
-	led-&gt;is_on = !led-&gt;is_on;
-	return led-&gt;ops-&gt;toggle(led);
+	ret = led-&gt;ops-&gt;toggle(led);
+	if (ret == 0)
+		led-&gt;is_on = !led-&gt;is_on;
+	return ret;
 }
 </code></pre>
+<p><code>is_on</code> 这种状态字段在 dispatch 成功之后再更新，硬件操作失败时上层状态不会被改脏。工业代码里有的项目省掉 <code>is_on</code>、让硬件层每次自查，有的把它放在基类里给上层 query 用，看项目设计。</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h · 公开句柄，应用层用它 */
 
 extern struct led_base *green_led;
@@ -866,12 +877,16 @@ led_off(red_led);
 led_toggle(green_led);
 </code></pre>
 <p>应用层看到的就是普通函数调用 <code>led_on(green_led)</code>。它根本不知道下面有 ops 表、有 dispatch、有具体子类（GPIO LED / PWM LED / I²C LED 等）。这种“应用层只见接口、看不见实现“的写法叫封装层，工业代码里所有驱动都做这件事。</p>
-<h3 id="1101-前向声明让头文件只暴露指针不暴露字段"><a class="header" href="#1101-前向声明让头文件只暴露指针不暴露字段">1.10.1 前向声明：让头文件只暴露指针，不暴露字段</a></h3>
-<p><code>led.h</code> 第二行 <code>struct led_base;</code> 这一句叫前向声明 (forward declaration)。它告诉编译器：“有这么个类型 <code>struct led_base</code>，但字段先不展开。”</p>
-<p>接下来 <code>led.h</code> 里所有用到 <code>struct led_base</code> 的地方都是指针：<code>int led_on(struct led_base *led);</code>。指针的 <code>sizeof</code> 在所有平台都是固定的（32 位机器 4 字节，64 位机器 8 字节），编译器不需要知道它指向的类型有什么字段就能算出指针变量占多少字节。所以前向声明 + 指针，是完全合法的 C 代码，gcc / clang / armcc 都接受。</p>
-<p>字段定义放在 <code>led_base.c</code> 里。应用层 <code>#include "led.h"</code> 后，编译器只看到“<code>struct led_base</code> 是某个不完整类型“，<strong>永远查不到 <code>ops</code> / <code>name</code> / <code>is_on</code> 字段的位置</strong>。这意味着应用层就算想写 <code>green_led-&gt;is_on = true</code> 也写不出来：编译器直接报错 <code>dereferencing pointer to incomplete type</code>。状态变更必须走 <code>led_on(green_led)</code> 这种封装函数，没法绕过去。</p>
-<p>这种“<code>.h</code> 只暴露指针 + <code>.c</code> 藏字段定义“的写法叫不完整类型 (incomplete type) + 不透明指针 (opaque pointer)。Linux 内核大量用这一招：你能看到 <code>struct file *</code>，但 <code>struct file</code> 的字段定义藏在 <code>fs/internal.h</code> 里，普通驱动看不到；<code>struct device</code> 同理。Zephyr 的设备模型一样。这是工业级 C 库的标准做法，把“接口稳定“和“实现自由“严格分开：<code>.c</code> 里加字段、改字段顺序、重排布局，<code>.h</code> 一行不动，应用层不用重新编译。</p>
-<p>代价是应用层不能定义 <code>struct led_base</code> 实例（编译器不知道 sizeof），所以工业代码里实例都在驱动 <code>.c</code> 里 static 分配，应用层只拿到 <code>extern struct led_base *green_led;</code> 这种句柄。</p>
+<h3 id="1101-字段公开但应用层不去碰纪律式封装"><a class="header" href="#1101-字段公开但应用层不去碰纪律式封装">1.10.1 字段公开但应用层不去碰：纪律式封装</a></h3>
+<p><code>struct led_base</code> 的字段定义就在 <code>led_base.h</code> 头文件里，应用层 <code>#include "led_base.h"</code> 之后，技术上写 <code>green_led-&gt;is_on = true</code> 编译能过。<strong>工业代码里的“封装“，主要靠纪律，不是靠编译器强制</strong>。</p>
+<p>为什么不把字段藏到 <code>.c</code> 里、让编译器拒绝外部访问？因为后面 ch06 起要讲继承：每种具体 LED（GPIO / PWM / I²C）都是一个<strong>子类</strong>，子类要把 <code>struct led_base base;</code> 作为自己的第一个字段嵌进来。子类源文件得知道 <code>struct led_base</code> 的完整字段（要算 sizeof、要对偏移），所以 base 的字段定义必须放在头文件里、给子类可见。<strong>字段藏 <code>.c</code> 和继承机制层互斥</strong>：一选了藏，子类就编译过不去。</p>
+<p>那应用层为什么不会乱碰？两层纪律一起作用：</p>
+<ul>
+<li><strong>接口纪律</strong>：每个驱动的 <code>.h</code> 顶上写清楚“只调下面这几个函数“，code review 看到外部代码写 <code>green_led-&gt;is_on = true</code> 直接打回</li>
+<li><strong>指针句柄持有</strong>：base 实例本身在驱动 <code>.c</code> 文件里 static 分配，应用层只拿 <code>extern struct led_base *green_led;</code> 这种指针句柄，从来不在自己代码里 <code>struct led_base x;</code> 直接定义实例。能拿到的只是别人给的指针，状态变更走 <code>led_on(green_led)</code> 是最自然的选择，绕过去反而费劲。ch04 4.7.8 节会单独讨论这种全局指针句柄合不合理</li>
+</ul>
+<p>Linux 内核也是这套纪律。<code>struct device</code> 几十个字段全部公开在 <code>include/linux/device.h</code> 里，谁的代码写 <code>dev-&gt;kobj.parent = NULL</code> 之类直接绕过 driver core，会被维护者一句话打回。Greg Kroah-Hartman 在内核驱动文档和邮件列表里多次强调这件事，靠的是<strong>编码约定 + review 文化</strong>，不是编译器。Zephyr RTOS、GObject 同一套路。这是 OOP-in-C 继承场景里几乎唯一可行的工业选择。</p>
+<p>ch02 会把这套纪律的两件工具讲透：<code>static</code> 锁内部工具函数（链接期硬锁）+ <code>/* private */</code> 字段注释（命名纪律 + code review 软锁）。同时会单独提一种更严格的隔离——字段彻底藏进 <code>.c</code>，编译器直接拒绝外部访问，叫不透明指针。它的真实用武之地是<strong>跨二进制库边界</strong>（libc 的 <code>FILE *</code>、POSIX 的 <code>pthread_t</code>、<code>sqlite3 *</code>、<code>CURL *</code>），应用代码和库实现物理分离·这些场景下应用代码不需要继承库类型。一旦涉及继承（这本书后续 18 章主线），就不能用那套写法。</p>
 <h3 id="1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.10.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
 <p>你注意到三件事：</p>
 <ol>
@@ -884,8 +899,8 @@ led_toggle(green_led);
 <h3 id="1103-一眼看懂工业代码的眼光"><a class="header" href="#1103-一眼看懂工业代码的眼光">1.10.3 一眼看懂工业代码的眼光</a></h3>
 <p>这就是这本书要让你形成的眼光。拿到一份陌生的工业代码：</p>
 <ul>
-<li>看到 <code>struct xxx_base;</code> 前向声明，知道这是不完整类型 + 不透明指针</li>
-<li>看到 <code>xxx_base { const struct xxx_ops *ops; ... };</code>，知道这是 ops 表 / 虚函数表</li>
+<li>看到 <code>xxx_base.h</code> 里 <code>struct xxx_base { const struct xxx_ops *ops; ... };</code>，知道这是父类 + ops 表 / 虚函数表</li>
+<li>看到 <code>xxx_base.h</code> 顶上一行注释“应用层只调下面 API，不要直接访问字段“，知道这是纪律式封装</li>
 <li>看到 <code>xxx_on(handle)</code> 内部走 <code>handle-&gt;ops-&gt;on(handle)</code>，知道这是 dispatch</li>
 <li>看到 <code>extern xxx_base *yyy;</code>，知道是别人创建好的句柄</li>
 </ul>
@@ -950,9 +965,9 @@ red_led.pin = 999;
 </code></pre>
 <p>他不是恶意的。他可能在做硬件适配实验，可能手抖打错变量名，可能临时调试忘了撤回。但效果是确定的：你的红灯被驱动到一个不存在的引脚，从此不亮。</p>
 <p>你打开微信想质问他，想了想，默默把聊天框关了。你心想：我的代码明明没问题啊。</p>
-<p>对，你的代码确实没问题。问题是别人能碰你的代码。你的 struct 是敞开的，任何人从任何地方都能 <code>red_led.pin = ...</code> 把它改坏。</p>
+<p>对，你的代码确实没问题。问题是：你的 struct 字段在 <code>led.h</code> 里完全敞开，任何 <code>#include</code> 它的 <code>.c</code> 文件都能 <code>red_led.pin = 999</code> 把它改坏。还有一类问题：你内部的辅助函数（更新硬件状态、检查参数合不合法）也对外完全可见，同事在另一个文件里调用它，绕过你的 <code>led_on / led_off</code>，硬件状态会和 struct 里的状态对不上。</p>
 <p><img src="assets/ch02/slide1_问题代码.png" alt="你的数据是敞开的"></p>
-<p>银行不会把客户的钱放在路边让大家自取。柜台是有的，密码是有的，流程是有的。你的 struct 就是钱，函数就是柜台，现在缺一把锁。</p>
+<p>银行不会把客户的钱放在路边让大家自取。柜台是有的，密码是有的，流程是有的。你的 struct 是钱，函数是柜台，现在缺一把锁。</p>
 <h2 id="22-第一把锁--static"><a class="header" href="#22-第一把锁--static">2.2 第一把锁 · static</a></h2>
 <p>C 语言给你一把锁，叫 <code>static</code>。</p>
 <p>去过饭店。前台是给客人用的（点菜、付钱、吃饭），后厨是给厨师用的（备料、炒菜）。客人进后厨只会添乱。所以后厨的门是锁的。</p>
@@ -973,48 +988,89 @@ static bool brightness_valid(uint8_t brightness)
 }
 </code></pre>
 <p>前面加 <code>static</code>，这两个函数对 <code>main.c</code> 不存在。<code>main.c</code> 里写 <code>update_hardware(red);</code> 链接器直接报错。后厨锁上了。</p>
-<h2 id="23-第二把锁--头文件--菜单"><a class="header" href="#23-第二把锁--头文件--菜单">2.3 第二把锁 · 头文件 = 菜单</a></h2>
-<p>锁后厨只解决一半问题。<code>static</code> 锁住的是函数，但你的 struct 字段 <code>pin / brightness / is_on</code> 还是敞着。同事 <code>red_led.pin = 999</code> 这一行还是能改坏你的数据。</p>
-<p>得给客人发一份菜单。菜单上写什么？菜名和价格（也就是函数声明）。菜单上不写什么？配方（也就是字段定义和函数实现）。</p>
-<p>你的 <code>.h</code> 文件就是菜单。<code>.c</code> 文件就是配方。</p>
-<p>第 1 章 <code>led.h</code> 里写了完整的 struct 定义：</p>
-<pre><code class="language-c">/* ch01 led.h */
-struct led {
-	uint8_t pin;
-	uint8_t brightness;
-	bool    is_on;
-};
-</code></pre>
-<p><code>#include "led.h"</code> 的任何文件都看得到字段名、字段顺序、字段类型，自然也都能 <code>me-&gt;pin = 999</code> 直接改。</p>
-<p>ch02 的修复很小：把字段定义从 <code>led.h</code> 搬到 <code>led.c</code>，<code>led.h</code> 里只留一行：</p>
-<pre><code class="language-c">/* ch02 led.h */
-struct led;
-</code></pre>
-<p>这行叫前向声明（forward declaration）。它告诉编译器：有这么个类型，但具体长什么样我不告诉你。</p>
-<p>字段名一字不动（<code>pin / brightness / is_on</code>），改的只是 visibility。</p>
-<p>外部代码：</p>
-<pre><code class="language-c">#include "led.h"   /* 只看到 struct led; */
+<p><code>static</code> 是 C 语言的硬通货。这本书后面每一章每一个驱动都在用它锁内部工具函数。读懂别人的 C 模块，先看哪些函数加了 <code>static</code>、哪些没加：没加 <code>static</code> 的就是这个模块对外承诺的接口，加了的全是内部实现细节。这条规矩内核、nginx、Redis、FreeRTOS 都在用，是行业事实标准。</p>
+<h2 id="23-第二把锁--头文件契约---private--纪律"><a class="header" href="#23-第二把锁--头文件契约---private--纪律">2.3 第二把锁 · 头文件契约 + /* private */ 纪律</a></h2>
+<p>锁住后厨只解决一半问题。<code>static</code> 锁住的是函数，但你的 struct 字段 <code>pin / brightness / is_on</code> 还敞着。同事 <code>red_led.pin = 999</code> 这一行，编译器拦不住。</p>
+<p>C 里你做两件事。</p>
+<p><strong>第一件</strong>：把头文件当成模块的契约清单。<code>.h</code> 里写<strong>外部能调的函数</strong>，再把字段加上 <code>/* private */</code> 注释，明确告诉读者哪些不该直接写：</p>
+<pre><code class="language-c">/* led.h - 这是你对外承诺的全部接口 */
 
-struct led *red = led_create(13);
-red-&gt;pin = 999;       /* 编译报错: invalid use of undefined type */
-</code></pre>
-<p><code>gcc</code> 在 <code>red-&gt;pin</code> 这一行直接拒绝继续：它知道有个 <code>struct led</code>，但不知道里面有没有 <code>pin</code>。这种“看得到指针，看不到字段“的写法叫不透明指针（opaque pointer）。</p>
-<p>字段定义只在 <code>led.c</code> 内部：</p>
-<pre><code class="language-c">/* ch02 led.c */
+#include "platform.h"
+
 struct led {
-	uint8_t pin;
-	uint8_t brightness;
-	bool    is_on;
+	uint8_t pin;            /* private: 通过 led_init 设置 */
+	uint8_t brightness;     /* private: 通过 led_set_brightness 设置 */
+	bool    is_on;          /* private: 通过 led_on / led_off 设置 */
 };
+
+int led_init(struct led *me, uint8_t pin);
+int led_deinit(struct led *me);
+
+int led_on(struct led *me);
+int led_off(struct led *me);
+int led_toggle(struct led *me);
+int led_set_brightness(struct led *me, uint8_t brightness);
+
+int led_get_state(const struct led *me,
+                  bool *is_on, uint8_t *brightness);
 </code></pre>
-<p>外部要操作 LED，只能走 <code>led.h</code> 暴露的函数：<code>led_create / led_destroy / led_on / led_off / led_set_brightness / led_get_state</code>。这些函数是菜单上写明的菜，外部能点。其他的，菜单上没有，碰不到。</p>
-<p><img src="assets/ch02/slide3_头文件菜单.png" alt="头文件 = 菜单"></p>
+<p>注意一件事：字段还<strong>留在 <code>.h</code> 里</strong>，没有被搬走。这是 C 语言的工程现实：很多场景需要外部知道 <code>struct led</code> 的大小（栈上直接 <code>struct led red_led;</code> 分配，或者子模块嵌套它做继承，下章开始你会反复看到），字段藏到 <code>.c</code> 里整个机制就用不了。</p>
+<p>但每个字段后面挂了一行注释 <code>/* private: ... */</code>。它在告诉读 <code>led.h</code> 的人：<strong>字段是给 <code>led.c</code> 自己用的，外部别直接写。要改，走对应的 API</strong>。</p>
+<p>新增的 <code>led_get_state</code> 是这套契约的另一面：外部要<strong>读</strong>字段，也走 API，不直接读 <code>me-&gt;is_on</code>。这件事教学价值大于运行时价值：它让“通过 API 访问“成为口头禅，下章你新建电机模块也会自然写 <code>motor_get_state</code>、ch06 写继承时父类查询函数也走这个套路。</p>
+<p><strong>第二件</strong>：内部工具函数加 <code>static</code> 关进 <code>.c</code>，外部连名字都看不到。这是 2.2 节那把锁。</p>
+<pre><code class="language-c">/* led.c */
+
+#include "led.h"
+
+static void update_hardware(struct led *me)
+{
+	platform_gpio_write(me-&gt;pin, me-&gt;is_on);
+}
+
+static bool brightness_valid(uint8_t brightness)
+{
+	return brightness &lt;= 100;
+}
+
+int led_init(struct led *me, uint8_t pin) { /* ... */ }
+
+int led_on(struct led *me)
+{
+	if (!me) return -1;
+	me-&gt;is_on = true;
+	update_hardware(me);
+	return 0;
+}
+
+/* ... */
+</code></pre>
+<p>外部要操作 LED，只能走 <code>led.h</code> 暴露的函数：<code>led_init / led_on / led_off / led_toggle / led_set_brightness / led_get_state / led_deinit</code>。这些是契约清单里写明的；其他的（<code>update_hardware</code> / <code>brightness_valid</code> / 字段直接写），契约里没提，工程纪律上禁止。</p>
+<p><img src="assets/ch02/slide3_头文件菜单.png" alt="头文件 = 契约"></p>
+<p>那同事 <code>red_led.pin = 999</code> 这一行，怎么办？</p>
+<p>C 语言里，<strong>这一行在编译器层面拦不住</strong>。编译器认 <code>.h</code> 里的字段定义，看到 <code>red_led.pin = 999</code> 不会报错。</p>
+<p>拦它的是工程纪律：</p>
+<ul>
+<li><strong>命名清晰</strong>：你的 API 全部 <code>led_xxx</code>。读 <code>red_led.pin = 999</code> 这一行的人，第一反应是「为什么不调 <code>led_xxx</code>」。这种写法在 code review 里立刻被打回</li>
+<li><strong><code>/* private */</code> 注释</strong>：每个字段挂着这一行。读 <code>led.h</code> 的人知道这是私有字段，绕过 API 直接写就是违纪</li>
+<li><strong>code review</strong>：进 master 的 commit 都要 review。一行 <code>red_led.pin = 999</code> 就是 reviewer 的红线</li>
+<li><strong><code>static</code> 工具函数</strong>：上面说过的链接期机制锁。<code>update_hardware</code> 这一类函数外部连名字都看不到，绕过 <code>led_on</code> 直接动硬件的路被彻底封死</li>
+</ul>
+<p>四道关一起上，业内 99% 的 C 项目这么做：nginx、Redis、LVGL、FreeRTOS、Linux 内核大部分驱动模块，struct 字段全在 <code>.h</code> 公开，靠这套纪律隔离。</p>
+<blockquote>
+<p>完全机制锁的方案在 C 里也存在，叫<strong>不透明指针</strong>：<code>.h</code> 里只写 <code>struct led;</code> 前向声明，字段藏到 <code>.c</code> 里，编译器直接拒绝外部读字段。代价是字段不可见后无法栈分配也无法被嵌套继承。这条路适合<strong>跨二进制库的 ABI 边界</strong>（<code>FILE *</code> / <code>pthread_t</code> / <code>sqlite3 *</code> / <code>CURL *</code> 这一类），在自家应用代码里几乎不用。详见 2.6.3 节。</p>
+</blockquote>
 <h2 id="24-这个东西叫什么"><a class="header" href="#24-这个东西叫什么">2.4 这个东西叫什么</a></h2>
-<p>你刚才跟我做的事，把不该让外面碰的东西藏起来，只通过接口和外界打交道，软件工程里有个名字。</p>
+<p>你刚才跟我做的事，把不该让外面碰的工具函数和字段藏起来，外部只通过命名清晰的接口和模块打交道，软件工程里有个名字。</p>
 <p>它叫信息隐藏（information hiding）。</p>
 <p>David Parnas 1972 年那篇 “On the Criteria To Be Used in Decomposing Systems into Modules” 第一次系统讲清楚这件事。中文叫信息隐藏，也常归到 encapsulation 这个大概念底下。</p>
-<p>你不是从我这里背了一个定义，是从一个具体痛点（同事改一行你的 LED 全乱了）出发，自己推出了 <code>static</code> + 不透明指针这套解。这种被自己说服的理解，是背不出来的。</p>
-<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。飞机驾驶舱里关键开关都有保护盖，不是飞行员不靠谱，是一个手滑代价太大。你的代码也一样，锁起来不是不信任同事，是不让任何人手滑。</p>
+<p>C 里实现信息隐藏的工具有三件：</p>
+<ol>
+<li><code>.h</code> 头文件作为契约：声明能用的函数 + 字段标 <code>/* private */</code></li>
+<li>内部工具函数加 <code>static</code>：链接期机制锁，绝对拦</li>
+<li>命名纪律 + code review：字段直接写靠纪律拦，不靠编译器</li>
+</ol>
+<p>你不是从我这里背了一个定义，是从一个具体痛点（同事改一行你的 LED 全乱了）出发，自己推出了这套解。这种被自己说服的理解，是背不出来的。</p>
+<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。<code>static</code> 是机制上的锁。<code>/* private */</code> 字段注释 + 命名纪律是工程文化。两件事一起做，C 项目就有了和 C++ 私有成员等价的效果。</p>
 <h2 id="25-c-对-c"><a class="header" href="#25-c-对-c">2.5 C 对 C++</a></h2>
 <p>如果你写过 C++，你会写：</p>
 <pre><code class="language-cpp">class Led {
@@ -1031,145 +1087,139 @@ private:
 </code></pre>
 <p>而 C 里写的是：</p>
 <pre><code class="language-c">/* led.h */
-struct led;
+struct led {
+	uint8_t pin;            /* private */
+	uint8_t brightness;     /* private */
+	bool    is_on;          /* private */
+};
+
 int led_on(struct led *me);
 int led_off(struct led *me);
 int led_set_brightness(struct led *me, uint8_t b);
 
 /* led.c */
-struct led {
-	uint8_t pin;
-	uint8_t brightness;
-	bool    is_on;
-};
 static void update_hardware(struct led *me);
 </code></pre>
 <p>做的是一模一样的事。</p>
-<p>C++ 的 <code>private:</code> 等同于 C 的“字段定义只放在 <code>.c</code>“加“工具函数加 <code>static</code>”。<code>public:</code> 等同于“声明放在 <code>.h</code>“。</p>
-<p>底层机器码差不多。C++ 的 <code>private</code> 是编译期检查（编译器看到外部碰 <code>pin_</code> 直接报错），C 的不透明指针也是编译期检查（编译器看到外部碰 <code>me-&gt;pin</code> 直接报错）。运行时一行 cost 都没多。</p>
+<p>C++ 的 <code>private:</code> 等同于 C 的“字段标 <code>/* private */</code> + 命名纪律 + code review“再加“工具函数加 <code>static</code>“。<code>public:</code> 等同于“声明放在 <code>.h</code>”。</p>
+<p>但有一个层面 C 和 C++ 不同：<strong>强度不同</strong>。</p>
+<ul>
+<li>C++ 的 <code>private</code> 是<strong>硬 private</strong>：编译器看到外部代码碰 <code>pin_</code> 直接报错，机制层 0 漏网概率</li>
+<li>C 的字段 <code>/* private */</code> 是<strong>软 private</strong>：编译器看到 <code>red_led.pin = 999</code> 不会报错，靠命名纪律 + code review 拦</li>
+<li>C 的 <code>static</code> 函数是<strong>硬 private</strong>：链接期机制锁，外部连符号都找不到</li>
+</ul>
+<p>这本书后面所有章节都用这套“软 private 字段 + 硬 private 工具函数“的写法。现实工程里这是 C 圈子的主流，nginx / Redis / LVGL / FreeRTOS / Linux 内核驱动全是这条路。靠纪律压住的代价换来一项收益：字段公开后才能做后面 18 章会展开的所有事（栈分配、子类嵌套继承、<code>container_of</code> 反向找回外层）。</p>
+<p>C 想要硬 private 的字段，唯一的办法是不透明指针。代价是失去栈分配和继承嵌套。这条路适合跨 ABI 边界（<code>FILE *</code> / <code>pthread_t</code>），不适合自家应用代码。2.6.3 节展开。</p>
+<p>底层机器码差不多。<code>update_hardware</code> 加不加 <code>static</code> 编译出的指令一样；<code>me-&gt;is_on</code> 在 <code>.h</code> 公开和藏 <code>.c</code> 里编译出的偏移访问也一样。运行时一行 cost 都没多。</p>
 <p><img src="assets/ch02/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
 <p>第 1 章的恒等是 <code>struct + me = class + this</code>。</p>
-<p>这一章的恒等是 <code>static + .h/.c 分离 = private + public</code>。</p>
+<p>这一章的恒等是 <code>static + .h/.c 分离 + /* private */ 纪律 = private + public</code>。</p>
 <p>两条加起来，C++ 面向对象的两个核心机制（封装和成员函数），你已经全懂了。而且不是背的，是自己用 C 推出来的。</p>
 <h2 id="26-视频里没讲透的几个细节"><a class="header" href="#26-视频里没讲透的几个细节">2.6 视频里没讲透的几个细节</a></h2>
-<h3 id="261-不透明指针-vs-暴露字段反事实推演"><a class="header" href="#261-不透明指针-vs-暴露字段反事实推演">2.6.1 不透明指针 vs 暴露字段，反事实推演</a></h3>
-<p>技术上你有三种藏字段的强度。</p>
-<p>第一种，完全不藏（ch01 的写法）：字段在 <code>.h</code>，外部 <code>me-&gt;pin = 999</code> 编译过、链接过、运行也“过“，bug 在生产环境出现。</p>
-<p>第二种，约定藏（注释里写“请勿直接修改“）：字段还在 <code>.h</code>，外部能改，靠 review 拦住。review 漏一次就是 bug。</p>
-<p>第三种，机制藏（ch02 的写法）：字段在 <code>.c</code>，前向声明在 <code>.h</code>，外部 <code>me-&gt;pin = 999</code> 编译就过不去。0 漏网概率。</p>
-<p>哪种是工业代码里的主流？看场景：</p>
-<ul>
-<li><strong>跨二进制库边界</strong>用第三种。libc <code>FILE *</code> / POSIX <code>pthread_t</code> / Win32 <code>HANDLE</code> / RT-Thread <code>rt_device_t</code> / Linux 内核 <code>struct kobject *</code> 这些都是。应用代码和库内部物理分离，中间只能传句柄</li>
-<li><strong>同一份工程一起编译的应用代码</strong>（你做的产品里大部分代码属于这种）几乎全用第二种：字段在 <code>.h</code> 公开 + <code>static</code> 工具函数 + 命名纪律。GitHub 上 nginx、Redis、LVGL 这一类主流 C 项目，struct 字段都在 <code>.h</code>，靠纪律隔离。第 4 章数据归位会把这种工业常态形态展开</li>
-</ul>
-<p>第三种的代价是字段隐藏后调用方不能 <code>sizeof</code>，所有对象生命周期得由库自己管（你需要 <code>xxx_create / xxx_destroy</code> 这一对接口）。这在跨二进制库场景值得，因为 ABI 兼容是硬需求。在自家应用代码里，字段 <code>.h</code> 公开 + 直接 <code>struct led red;</code> 用对象本身，工程上更顺手。</p>
-<p>工业控制板项目里 <code>eeprom_base_t</code> 是中间形态：</p>
-<pre><code class="language-c">/* eeprom_base.h */
-struct eeprom_ops;            /* 前向声明 ops 表 */
-
-typedef struct {
-	struct eeprom_ops *ops;   /* 这个字段对应用公开 */
-} eeprom_base_t;
-</code></pre>
-<p><code>struct eeprom_ops</code> 字段（一堆函数指针）私有，但外层 <code>eeprom_base_t</code> 公开能 <code>sizeof</code>。这叫“部分藏“，藏 ops 表的内部接口，不藏外层壳。本书第 9 章会演化到这个形态。</p>
-<p>ch02 主体演示的是第三种（完整不透明指针），是为了把“信息隐藏“机制讲透。后面章节大多用第二种 + 直接持有对象的工业常态写法。</p>
-<h3 id="262-为什么-ledh-里-forward-decl-要写-struct-led"><a class="header" href="#262-为什么-ledh-里-forward-decl-要写-struct-led">2.6.2 为什么 led.h 里 forward decl 要写 struct led;</a></h3>
-<p>你可能见过这种写法：</p>
-<pre><code class="language-c">typedef struct led led_t;
-</code></pre>
-<p>效果几乎一样。但 Linux 内核明确反对 typedef struct，理由在第 1 章 1.7.3 节讲过：<code>typedef</code> 把“这是个结构体“这件事藏起来。读 <code>led_t *me</code> 你不知道它能不能 <code>.</code> 或 <code>-&gt;</code>，读 <code>struct led *me</code> 你立刻知道。</p>
-<p>本书统一不 typedef struct，包括前向声明。<code>struct led;</code> 这一行同时承担两件事：声明类型存在 + 不暴露字段。</p>
-<h3 id="263-led_create--led_destroy-用-malloc-的取舍"><a class="header" href="#263-led_create--led_destroy-用-malloc-的取舍">2.6.3 led_create / led_destroy 用 malloc 的取舍</a></h3>
-<p>ch01 里 <code>struct led red_led;</code> 是栈上对象，外部能直接定义。ch02 字段藏起来后，外部 <code>struct led red;</code> 编译器立刻报错 <code>storage size of 'red' isn't known</code>。编译器不知道 struct 多大，自然不知道分多少栈。</p>
-<p>只能让 <code>led.c</code> 内部分配。最直观的方式是 <code>malloc</code>，外部拿 <code>struct led *</code> 这个指针句柄回去。<code>FILE *</code> / <code>pthread_t</code> / <code>HANDLE</code> / <code>SOCKET</code> 都是这个模式。</p>
-<p><code>malloc</code> 在嵌入式里以前有“堆碎片、确定性、实时性“的争议。<strong>这是 1990 年代裸机 8051 / 小 RAM MCU 时代留下的 dogma，不是现代嵌入式现实</strong>。FreeRTOS heap_4 / heap_5、RT-Thread 的 mp 和 heap、量产级状态机框架的事件池，都是动态内存机制，工业控制和汽车电子项目里大量在用。MISRA C:2012 amendment 1、DO-178C 都已经允许有约束的动态内存。</p>
-<p>真正的工业纪律不是“不用 malloc“，是<strong>生命周期管理</strong>：</p>
-<ul>
-<li>配对销毁：每个 alloc 一定有对应的 free 路径</li>
-<li><code>goto cleanup</code>：异常退出分阶段释放（2.6.8 节展开）</li>
-<li>引用计数：共享所有权用 <code>kref_get / kref_put</code>（Linux 内核标准）</li>
-</ul>
-<p>只有少数特殊场景才优先用静态预分配：8051 / M0 + 16 KB 这种小 RAM 场景，或者中断热路径每秒几百万次 alloc 的极端情况。这些情况下选 <code>malloc</code> 还是静态分配是工程决策，不是教条。第 4 章数据归位会展示同一组数据怎么按场景选静态实例 / <code>malloc</code> / 对象池。</p>
-<h3 id="264-命名规范决策"><a class="header" href="#264-命名规范决策">2.6.4 命名规范决策</a></h3>
-<p><code>led_create</code> / <code>led_destroy</code> 的命名是有考虑的。</p>
-<p>不叫 <code>led_new</code> / <code>led_delete</code>：和 C++ 关键字撞，读代码容易误认为 C++。</p>
-<p>不叫 <code>led_alloc</code> / <code>led_free</code>：alloc 暗示纯内存分配，create / destroy 暗示构造 / 析构语义。</p>
-<p>不叫 <code>led_open</code> / <code>led_close</code>：open / close 是 POSIX 文件接口的语义，留给 sysfs 用。</p>
-<p>工业代码里 <code>led_base_t *</code> 这种句柄常用 <code>led_xxx_init(led_xxx_t *me, ...)</code> 命名，因为对象是栈上分配（实例字段公开给本驱动模块），<code>init</code> 是“对已分配的对象初始化“，不涉及堆分配。等到第 4 章数据归位讲完，你能看出“什么时候该 create / destroy、什么时候该 init / deinit“的判断标准。</p>
-<h3 id="265-链接器层面static-和不加-static-的差别"><a class="header" href="#265-链接器层面static-和不加-static-的差别">2.6.5 链接器层面，static 和不加 static 的差别</a></h3>
+<h3 id="261-三种隐藏强度对照"><a class="header" href="#261-三种隐藏强度对照">2.6.1 三种隐藏强度对照</a></h3>
+<p>C 里你有三种把字段藏起来的强度。</p>
+<p><strong>第一种 · 完全不藏</strong>（ch01 的写法）：字段在 <code>.h</code>，外部 <code>me-&gt;pin = 999</code> 编译过、链接过、运行也“过“，bug 在生产环境出现。</p>
+<p><strong>第二种 · 软 private</strong>（ch02 主体演示，本书全程使用）：字段在 <code>.h</code>，加 <code>/* private */</code> 注释 + 命名纪律 + code review，工具函数加 <code>static</code>。<code>me-&gt;pin = 999</code> 这一行编译能过，但 PR 进不了 master，纪律拦下，漏网概率取决于团队 review 强度。</p>
+<p><strong>第三种 · 硬 private（不透明指针）</strong>：字段藏 <code>.c</code>，<code>.h</code> 只前向声明 <code>struct led;</code>。外部 <code>me-&gt;pin = 999</code> 编译就过不去（<code>invalid use of undefined type</code>），机制层面 0 漏网。代价是字段不可见后失去 (a) 外部栈分配（编译器算不出 <code>sizeof</code>）(b) 子类嵌套继承（子类源文件需要看到完整字段才能 embed）。</p>
+<p>GitHub 上主流 C 项目的选择：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>项目</th><th>选哪种</th><th>原因</th></tr>
+</thead>
+<tbody>
+<tr><td>Linux 内核大部分驱动</td><td>第二种</td><td>设备子系统继承嵌套，必须看到字段</td></tr>
+<tr><td>nginx / Redis / LVGL</td><td>第二种</td><td>自家工程，命名纪律压得住</td></tr>
+<tr><td>FreeRTOS</td><td>第二种</td><td>RTOS 内部结构体大量嵌套</td></tr>
+<tr><td>libc <code>FILE *</code> / POSIX <code>pthread_t</code></td><td>第三种</td><td>跨二进制库 ABI 边界</td></tr>
+<tr><td><code>sqlite3 *</code> / <code>CURL *</code></td><td>第三种</td><td>跨二进制库 ABI 边界</td></tr>
+</tbody>
+</table>
+</div>
+<p>工业代码里第三种的真实用武之地是<strong>跨二进制库</strong>：库做成 <code>.so</code> / <code>.dll</code> / <code>.a</code>，应用代码以 binary 形式连进来，库的 struct 字段在不同版本可能改动，把字段藏起来是 ABI 兼容性的硬需求。自家应用代码（一份工程一起编译）几乎不用。</p>
+<h3 id="262-链接器层面static-和不加-static-的差别"><a class="header" href="#262-链接器层面static-和不加-static-的差别">2.6.2 链接器层面，static 和不加 static 的差别</a></h3>
 <p><code>static</code> 改变的不是编译期可见性，是链接期符号表。</p>
 <p>不加 <code>static</code> 的函数（external linkage）：编译器把函数名写进 <code>.o</code> 文件的全局符号表，链接器在合并多个 <code>.o</code> 时能看到。不同 <code>.o</code> 里的同名函数，链接器报 <code>multiple definition</code>。</p>
 <p>加 <code>static</code> 的函数（internal linkage）：编译器要么完全不写符号表（被内联或调用图剪枝），要么写成本地符号（链接器跨 <code>.o</code> 看不到）。</p>
 <pre><code>$ nm led.o
-0000000000000000 T led_create
-0000000000000098 T led_destroy
+0000000000000000 T led_init
+0000000000000098 T led_deinit
 0000000000000114 T led_on
 0000000000000180 T led_off
 00000000000001a0 t update_hardware
 00000000000001f0 t brightness_valid
 </code></pre>
 <p>大写 <code>T</code> 是 external，小写 <code>t</code> 是 file-local。这就是为什么外部 <code>update_hardware(red);</code> 链接报 <code>undefined reference</code>：链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>。</p>
-<h3 id="266-不透明指针的运行时代价"><a class="header" href="#266-不透明指针的运行时代价">2.6.6 不透明指针的运行时代价</a></h3>
-<p>零。</p>
-<p><code>red-&gt;is_on</code> 在 <code>led.c</code> 内部和 ch01 的 <code>red-&gt;is_on</code> 编译出同样的汇编：</p>
-<pre><code>LDRB  r1, [r0, #2]      ; 偏移 2 是 is_on 字段
+<p><code>static</code> 给的是链接期硬锁，比注释 + 纪律强一个量级。所以这本书后面所有内部工具函数都加 <code>static</code>：硬锁能上的位置必须上。</p>
+<h3 id="263-不透明指针--跨-abi-边界的写法"><a class="header" href="#263-不透明指针--跨-abi-边界的写法">2.6.3 不透明指针 · 跨 ABI 边界的写法</a></h3>
+<p>如果你写过 <code>fopen / fclose</code>，已经用过不透明指针。<code>FILE</code> 的字段在不同 libc 实现里不一样（glibc 一组，musl 另一组，Windows MSVC 又是一组），但你的应用代码全部走 <code>FILE *</code> 这个不透明指针 + <code>fopen / fread / fclose</code> 这套 API，跨 libc 实现都能编都能跑。</p>
+<p>实现是这样的：</p>
+<pre><code class="language-c">/* stdio.h - libc 对外的契约 */
+typedef struct _IO_FILE FILE;     /* 不透明前向声明 */
+
+FILE  *fopen(const char *path, const char *mode);
+size_t fread(void *p, size_t sz, size_t n, FILE *f);
+int    fclose(FILE *f);
+
+/* libc 内部某个 .c 文件 */
+struct _IO_FILE {
+	int    fd;
+	char  *buf;
+	size_t buf_size;
+	/* ... 几十个字段, glibc 和 musl 完全不一样 ... */
+};
 </code></pre>
-<p><code>led_on(red)</code> 在 main.c 里编译出 <code>BL led_on</code>（branch with link，跳转并保存返回地址）。函数调用本身有几个周期开销，但这和 ch01 是一样的（ch01 也是函数调用）。</p>
-<p>外部代码“看不见字段“是编译期机制，链接出二进制后字段还在那里、布局不变、偏移不变。Bjarne Stroustrup 那句“不用的特性零成本“在 C 上同样成立。</p>
-<h3 id="267-linux-内核-struct-file-也是一个不透明指针"><a class="header" href="#267-linux-内核-struct-file-也是一个不透明指针">2.6.7 Linux 内核 struct file 也是一个不透明指针</a></h3>
-<p>把视角拉到工业级。Linux 内核的 <code>struct file</code>（每打开一个文件就有一份）就是不透明指针的活样本。</p>
-<p><code>include/linux/fs.h</code> 里只声明 <code>struct file</code>，里面的字段（<code>f_pos</code>、<code>f_flags</code>、<code>f_inode</code> 等几十个）只对 fs 子系统内部公开。其他子系统（drivers / net / sched）拿到的是 <code>struct file *</code>，能传它、能挂回调，但不能 <code>f-&gt;f_pos = 0</code> 直接改。</p>
-<p>为什么内核要这么设计？</p>
-<p>因为 <code>struct file</code> 的字段在不同内核版本之间会变（4.x 加了几个字段，5.x 把另几个字段挪进 <code>struct file_ra_state</code>）。如果 driver 直接读字段，每升一次内核所有 driver 都要改。藏起来后 driver 走 <code>f-&gt;f_op-&gt;read(f, ...)</code> 这种接口调用，字段怎么变都不影响。</p>
-<p>这本书第 16 章会展开 <code>struct file</code> 和 <code>struct file_operations</code> 的工业级用法。这一章你只需要看到：你刚才在 <code>struct led</code> 上做的事，Linux 内核 4000 万行代码也在做，机制完全一样。</p>
-<h3 id="268-句柄生命周期--c-语言的-raii-类比"><a class="header" href="#268-句柄生命周期--c-语言的-raii-类比">2.6.8 句柄生命周期 · C 语言的 RAII 类比</a></h3>
-<p>C++ 有 RAII（Resource Acquisition Is Initialization）：对象进入作用域自动构造、离开作用域自动析构。资源不会泄漏。</p>
-<p>C 没有 RAII。<code>led_create</code> 拿到 <code>struct led *</code> 之后，谁负责 <code>led_destroy</code>？只能靠工程纪律。</p>
-<p>工业代码里管这种“谁创建谁销毁“的纪律，最常见有三套写法。</p>
-<p><strong>配对释放</strong>：哪个函数 <code>create</code>，同一个调用者 <code>destroy</code>。简单直观，但函数中间 <code>return</code> 多了容易漏。这是 C 标准库 <code>fopen / fclose</code>、<code>malloc / free</code> 的写法。</p>
-<p><strong>goto cleanup</strong>：函数中间任何一步失败，<code>goto out</code> 集中走清理路径。Linux 内核风格，几十年实践证明能压住所有 leak。形态是：</p>
-<pre><code class="language-c">struct led *led_create_two(void)
-{
-	struct led *r = NULL, *g = NULL;
-
-	r = led_create(13);
-	if (!r)
-		goto fail;
-
-	g = led_create(14);
-	if (!g)
-		goto fail_g;
-
-	return r;     /* 这里要把两个都返回，省略 */
-
-fail_g:
-	led_destroy(r);
-fail:
-	return NULL;
-}
-</code></pre>
-<p>每一个 <code>goto</code> 都把已经分配的资源对应释放。从前往后看是分配链，从后往前看是清理链，对称。</p>
-<p><strong>引用计数</strong>：对象自己带一个 <code>refcount</code>，每个使用者 <code>get</code> 一次 <code>+1</code>，用完 <code>put</code> 一次 <code>-1</code>，归零自动 destroy。Linux 内核 <code>kref_init / kref_get / kref_put</code> 是标准模板，几乎所有内核对象（<code>struct device</code>、<code>struct file</code>、<code>struct kobject</code>）都用这套。本章先不展开，第 17 章讲完 initcall 后会回到这条线。</p>
-<p>ch02 的 <code>led_create / led_destroy</code> 是配对释放风格。<code>led.c</code> 内部用 <code>malloc</code>，调用者拿 <code>struct led *</code> 句柄，结束时 <code>led_destroy</code> 负责 <code>free</code>。这是初学最干净的形态。</p>
-<h3 id="269-堆分配-vs-栈分配--按场景选"><a class="header" href="#269-堆分配-vs-栈分配--按场景选">2.6.9 堆分配 vs 栈分配 · 按场景选</a></h3>
-<p>ch01 写 <code>struct led red_led;</code>（栈分配），ch02 改成 <code>struct led *red = led_create(13);</code>（堆分配）。两种风格各有各的代价。</p>
+<p>应用代码 <code>#include &lt;stdio.h&gt;</code> 拿到 <code>FILE *</code>，但永远碰不到字段。libc 升级把 <code>_IO_FILE</code> 字段加一个减一个，应用代码不用改也不用重新编译。这就是跨 ABI 边界。</p>
+<p>C 圈子的不透明指针经典例子：</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>维度</th><th>栈 / 静态实例 (<code>struct led red</code>)</th><th>堆 (<code>led_create</code>)</th></tr>
+<tr><th>API</th><th>不透明类型</th><th>用途</th></tr>
 </thead>
 <tbody>
-<tr><td>字段是否可见</td><td>必须可见（编译器要算 size）</td><td>可隐藏（只暴露指针）</td></tr>
-<tr><td>分配开销</td><td>几乎零（移栈指针）</td><td>malloc 内部要找空闲块</td></tr>
-<tr><td>释放开销</td><td>自动（出作用域）</td><td>手动 free，漏一次就 leak</td></tr>
-<tr><td>实时性</td><td>确定（O(1)）</td><td>RTOS heap_4/5 有保证；newlib dlmalloc 不保证</td></tr>
-<tr><td>内存占用</td><td>函数调用结束就回收 / 整个程序生命周期占着</td><td>在 free 前一直占着</td></tr>
-<tr><td>适合场景</td><td>数量固定的全局对象（LED / 串口 / 传感器）</td><td>生命周期不固定的对象（动态接收的数据包、临时缓冲区、按需创建的会话）</td></tr>
+<tr><td>libc</td><td><code>FILE *</code></td><td>文件流</td></tr>
+<tr><td>POSIX</td><td><code>pthread_t</code> / <code>pthread_mutex_t</code></td><td>线程和互斥锁</td></tr>
+<tr><td>sqlite3</td><td><code>sqlite3 *</code> / <code>sqlite3_stmt *</code></td><td>数据库连接和预编译语句</td></tr>
+<tr><td>libcurl</td><td><code>CURL *</code></td><td>HTTP 请求句柄</td></tr>
+<tr><td>Win32</td><td><code>HANDLE</code></td><td>系统资源句柄</td></tr>
+<tr><td>RT-Thread</td><td><code>rt_device_t</code></td><td>设备驱动句柄（应用层视角）</td></tr>
 </tbody>
 </table>
 </div>
-<p>工业 MCU 代码里两种都常用，按对象生命周期选。同一份工程里<strong>全局少量对象</strong>通常 <code>static struct xxx instance;</code> 或顶层模块持有，<strong>生命周期不固定的对象</strong>用 RTOS 提供的 heap（FreeRTOS heap_4/5、RT-Thread <code>rt_malloc</code>）。两种都是工业级常态。</p>
-<p>ch02 里 <code>led_create + malloc</code> 是为了把“信息隐藏 + 句柄式 API“这件事讲清楚。隐式句柄风格存在于 <code>FILE *</code> / <code>pthread_t</code> / <code>rt_device_t</code> 这一类跨库边界场景。后面 ch04 数据归位会展开“实例字段公开 + 直接 <code>struct led red;</code> 静态实例“这种自家应用代码常态形态，跟 ch02 这种隐式句柄形态对照。两种是工程决策，不是非此即彼。</p>
+<p>特征都一样：库做成可独立部署的二进制，应用代码以 link 形式连进来，库内部字段改了应用层不感知。这是不透明指针的真实工业用武之地。</p>
+<p>字段藏 <code>.c</code> 还有一个连带代价：调用方不能 <code>sizeof</code>，所有对象生命周期得由库自己管，所以这种 API 通常成对出现 <code>xxx_create + xxx_destroy</code>（<code>fopen + fclose</code> / <code>pthread_create + pthread_join</code> / <code>sqlite3_open + sqlite3_close</code>）。<code>xxx_create</code> 内部 <code>malloc</code>，调用方拿到指针，结束时 <code>xxx_destroy</code> 负责 <code>free</code>。这不是因为不透明指针非要堆分配，是因为 ABI 边界让调用方算不出 size 只能让库代分配。自家应用代码字段公开的写法，对象就直接 <code>struct led red;</code> 在栈上分配，不需要 create/destroy 这一对。</p>
+<p><strong>本书后面 18 章 OOP 主线全部不用不透明指针</strong>。原因：(a) 这本书写的是嵌入式自家应用代码，不是跨二进制库；(b) ch06 起所有继承都需要子类看到父类字段做 embed，字段藏起来 <code>struct led_gpio { struct led_base base; ... }</code> 这一行直接编译报错。</p>
+<p>如果哪天你做的是给别人用的库（嵌入式 <code>.a</code> SDK / Linux <code>.so</code>），那时候用第三种。框架不一样，工具不一样。</p>
+<h3 id="264-不透明指针的运行时代价"><a class="header" href="#264-不透明指针的运行时代价">2.6.4 不透明指针的运行时代价</a></h3>
+<p>零。</p>
+<p>不管是第二种还是第三种，<code>red-&gt;is_on</code> 在 <code>led.c</code> 内部编译出的指令一样：</p>
+<pre><code>LDRB  r1, [r0, #2]      ; 偏移 2 是 is_on 字段
+</code></pre>
+<p><code>led_on(red)</code> 在 <code>main.c</code> 里编译出 <code>BL led_on</code>（branch with link，跳转并保存返回地址）。函数调用本身有几个周期开销，但 ch01 也是函数调用，没有额外。</p>
+<p>第三种“看不见字段“是编译期机制，链接出二进制后字段还在那里、布局不变、偏移不变。Bjarne Stroustrup 那句“不用的特性零成本“在 C 上同样成立。</p>
+<h3 id="265-linux-内核-struct-file--为什么选软-private"><a class="header" href="#265-linux-内核-struct-file--为什么选软-private">2.6.5 Linux 内核 struct file · 为什么选软 private</a></h3>
+<p>把视角拉到工业级。Linux 内核的 <code>struct file</code>（每打开一个文件就有一份）是软 private 的工业级范例。</p>
+<p><code>include/linux/fs.h</code> 里 <strong><code>struct file</code> 的字段是公开的</strong>：驱动代码 <code>#include &lt;linux/fs.h&gt;</code> 看得到 <code>f_pos / f_flags / f_inode</code> 等字段。这是软 private：内核内部所有子系统共享同一份头文件，字段公开是为了允许内核子系统嵌套和读取。</p>
+<p>但内核<strong>强烈劝阻驱动直接读字段</strong>。内核驱动的工程惯例是 <code>f-&gt;f_op-&gt;read(f, ...)</code> 走 ops 表，字段层不该碰。Greg Kroah-Hartman 在 LKML 邮件和驱动文档里反复强调过：驱动直接读 <code>struct file</code> 字段是设计味道（design smell），review 时会被打回。这是命名纪律 + code review 的工程层。</p>
+<p>为什么不直接搞成硬 private（不透明指针）？因为 <code>struct file</code> 嵌套在 <code>struct task_struct</code> 里，VFS 层自己也要按字段操作它，藏起来整个内核就跑不动。这是软 / 硬 private 的真实权衡：内核选软 private 是被嵌套继承需求拽过去的。</p>
+<p>这本书第 16 章会展开 <code>struct file</code> 和 <code>struct file_operations</code> 的工业级用法。这一章你只需要看到：你刚才在 <code>struct led</code> 上做的事，字段公开 + 命名纪律 + 内部工具加 <code>static</code>，Linux 内核 4000 万行代码也在做，规模不一样而已。</p>
+<h3 id="266-命名前缀---private--注释--工业纪律"><a class="header" href="#266-命名前缀---private--注释--工业纪律">2.6.6 命名前缀 + /* private */ 注释 = 工业纪律</a></h3>
+<p><code>led_</code> 这个前缀不只是为了下章解决名字冲突。<strong>对外 API 全部 <code>led_xxx</code></strong> 这件事还顺带传达了一个工程纪律：</p>
+<pre><code class="language-c">struct led red_led;
+
+led_set_brightness(&amp;red_led, 75);    /* OK 走 API */
+red_led.pin = 999;                    /* 不 OK 绕过 API 直接写字段 */
+</code></pre>
+<p>第二行的违规感来自命名一致性：项目里所有关于 LED 的合法操作都叫 <code>led_xxx</code>。看到 <code>red_led.pin = 999</code> 这种“长得不像 API“的写法，reviewer 立刻警觉。</p>
+<p>字段挂 <code>/* private */</code> 注释是更明确的标记。一些项目用更规范化的标签：</p>
+<pre><code class="language-c">struct led {
+	uint8_t pin;            /* @private 通过 led_init 设置 */
+	uint8_t brightness;     /* @private 通过 led_set_brightness 设置 */
+	bool    is_on;          /* @private 通过 led_on / led_off 设置 */
+};
+</code></pre>
+<p>Linux 内核 kerneldoc 注释里用 <code>@private:</code> 标签写这件事。GTK GObject 的字段会写 <code>&lt;private&gt;</code> HTML tag。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
+<p>工业代码 review checklist 通常包含一条：<strong>任何 <code>xxx.field = ...</code> 形式的 PR，先确认字段不是 <code>/* private */</code>。是的话打回，走 setter API</strong>。这条规矩进 review 后，软 private 漏网概率压得很低。</p>
 <h2 id="27-你现在的-led-在-stm32-上长什么样"><a class="header" href="#27-你现在的-led-在-stm32-上长什么样">2.7 你现在的 LED 在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c"><code>oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c</code></a>）：</p>
 <pre><code class="language-c">#include "platform.h"
@@ -1195,8 +1245,8 @@ void platform_gpio_write(uint8_t pin, bool value)
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
-<p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。字段还藏在 <code>led.c</code> 里，<code>main.c</code> 还是看不到 <code>pin / brightness / is_on</code>。变化的只是这层 platform 胶水。</p>
-<p>不透明指针在 ARM Cortex-M 上和 x86 上行为完全一致。它是编译期机制，编译器拒绝就拒绝，烧不到芯片上。</p>
+<p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。字段在 <code>led.h</code> 里依然公开（标了 <code>/* private */</code>），<code>update_hardware</code> / <code>brightness_valid</code> 在 <code>led.c</code> 里依然加了 <code>static</code>，命名纪律依然要求外部走 <code>led_xxx</code> 接口。变化的只是这层 platform 胶水。</p>
+<p>软 private 在 ARM Cortex-M 上和 x86 上行为完全一致。它是工程纪律 + 编译期 <code>static</code> 锁，跨平台规则一致。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 11 章演化出 vptr 之后，会把 platform 层重构成 ops 表式，和 2.9 节工业代码对齐。</p>
 <h2 id="28-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#28-你现在的-led-在-linux-用户态长什么样">2.8 你现在的 LED 在 Linux 用户态长什么样</a></h2>
 <p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c"><code>oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c</code></a>）：</p>
@@ -1235,38 +1285,58 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 还是一字不改。</p>
 <p>这一节同样是函数式包装的教学简化形态，工业级用 ops 表。第 11 章之后会演化对齐。</p>
 <h2 id="29-工业代码里的-led-长什么样"><a class="header" href="#29-工业代码里的-led-长什么样">2.9 工业代码里的 led 长什么样</a></h2>
-<p>我做的工业控制板项目里，LED 这一块的 <code>.h</code> 是这样：</p>
+<p>我做的工业控制板项目里，LED 这一块的 <code>led_base.h</code> 是这样：</p>
 <pre><code class="language-c">/* led_base.h - 应用层只看这一份 */
-typedef struct led_base led_base_t;       /* 不透明前向声明 */
+#include "platform.h"
 
-void led_on(led_base_t *me);
-void led_off(led_base_t *me);
-</code></pre>
-<pre><code class="language-c">/* led_base.c - 字段定义和实现都关在这里 */
 struct led_base {
-	const char *name;
-	uint8_t     pin;
-	bool        is_on;
+	const char *name;       /* private: 给日志打印用，例如 "red" */
+	bool        is_on;      /* private: 当前开关状态 */
 	/* 真实工程还有几个字段, 这里省略 */
 };
 
-void led_on(led_base_t *me)
-{
-	/* ... 实际 GPIO 操作 ... */
-}
+int  led_base_init(struct led_base *me, const char *name);
+void led_on(struct led_base *me);
+void led_off(struct led_base *me);
+const char *led_base_get_name(const struct led_base *me);
+bool led_base_is_on(const struct led_base *me);
 </code></pre>
-<p>应用调用：</p>
-<pre><code class="language-c">extern led_base_t *green_led;
-extern led_base_t *red_led;
+<pre><code class="language-c">/* led_base.c - 实现 + 内部工具 */
+
+#include "led_base.h"
+
+static void update_hardware(struct led_base *me);   /* file-private */
+
+int led_base_init(struct led_base *me, const char *name)
+{
+	if (!me || !name) return -1;
+	me-&gt;name = name;
+	me-&gt;is_on = false;
+	return 0;
+}
+
+void led_on(struct led_base *me)
+{
+	if (!me) return;
+	me-&gt;is_on = true;
+	update_hardware(me);
+}
+
+/* ... */
+</code></pre>
+<p>应用层调用：</p>
+<pre><code class="language-c">extern struct led_base *green_led;
+extern struct led_base *red_led;
 
 led_on(green_led);
 led_off(red_led);
+const char *who = led_base_get_name(green_led);
 </code></pre>
-<p>这和你这一章学的不透明指针骨架一模一样：把“实现细节“塞进 <code>.c</code>，<code>.h</code> 只暴露指针类型 + 操作函数。</p>
+<p>和你这一章学的写法骨架一致：字段公开在 <code>.h</code> 但标了 <code>/* private */</code>，内部工具加 <code>static</code> 关进 <code>.c</code>，外部走 <code>led_*</code> 命名一致的 API。应用层既不直接读字段，也不知道也不需要知道 <code>update_hardware</code> 这种内部细节。</p>
 <blockquote>
-<p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏“这一招学透就够，不用懂 ops 表。</p>
+<p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏 = 字段标 private + 工具加 static + 命名纪律“这一招学透就够，不用懂 ops 表。</p>
 </blockquote>
-<p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果暴露的是完整的 struct 定义，是 ch01 阶段的代码，正在等一次 ch02 重构。如果只暴露前向声明 + 操作函数，是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
+<p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果字段没标 private 也没 setter API，是 ch01 阶段的代码，正在等一次 ch02 重构。如果字段公开但带 <code>/* private */</code> 注释 + 一组 <code>xxx_*</code> 命名一致的 API，是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
 <h2 id="210-跑一遍"><a class="header" href="#210-跑一遍">2.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/02-static-hiding/pc
 make
@@ -1274,10 +1344,10 @@ make
 </code></pre>
 <p>输出节选：</p>
 <pre><code>========================================
-  Hide the fields. Talk through the API.
+  ch02: lock the kitchen, mark fields private
 ========================================
 
---- Create two LEDs ---
+--- Init two LEDs (struct on stack) ---
 [GPIO] Pin13 init as OUTPUT
 [GPIO] Pin13 -&gt; LOW (OFF)
   [LED] Pin13 initialized
@@ -1297,19 +1367,17 @@ make
 
 --- Out-of-range brightness rejected by API ---
   [LED] Error: brightness 200 out of range (0~100)
-  led_set_brightness(red, 200) returned -2 (-2 = out of range)
-
---- Direct field access blocked at compile time ---
-  Try uncommenting `red-&gt;pin = 999;` in main.c
-  gcc will refuse to compile (struct is incomplete here).
+  led_set_brightness(red, 200) returned -2
 </code></pre>
-<p>试一下：把 main.c 里 <code>/* red-&gt;pin = 999; */</code> 这一行的注释去掉，再 <code>make</code>：</p>
+<p>试一下：把 main.c 里 <code>/* update_hardware(&amp;red); */</code> 这一行的注释去掉，再 <code>make</code>：</p>
 <pre><code>main.c: In function 'main':
-main.c:XX:XX: error: invalid use of undefined type 'struct led'
-   red-&gt;pin = 999;
-       ^~
+main.c:XX:XX: warning: implicit declaration of function 'update_hardware'
+/usr/bin/ld: /tmp/main-xxxxx.o: in function `main':
+main.c:XX: undefined reference to `update_hardware'
+collect2: error: ld returned 1 exit status
 </code></pre>
-<p><code>gcc</code> 在不知道 struct 字段的情况下拒绝编译。同事这一行永远到不了你的运行时。</p>
+<p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是 file-private 符号，外部连名字都看不到。这是机制层的硬锁。</p>
+<p>字段方面，<code>red.pin = 999</code> 这一行编译能过：这是命名纪律 + code review 拦的位置，不是编译器拦的位置。理解这两层强度的差别，就理解了 C 圈子的“软 private 字段 + 硬 private 工具函数“工程现实。</p>
 <h2 id="211-视频回放"><a class="header" href="#211-视频回放">2.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
@@ -1317,7 +1385,7 @@ main.c:XX:XX: error: invalid use of undefined type 'struct led'
 </blockquote>
 <p>视频里讲了银行类比、后厨类比、菜单类比的现场感，节奏更紧凑。书里补了视频没讲透的 6 个细节（2.6 节）和工业代码的对照（2.9 节）。</p>
 <h2 id="下一章-1"><a class="header" href="#下一章-1">下一章</a></h2>
-<p>锁了字段，锁了后厨，暴露了菜单。但你的菜单上现在有 <code>led_create / led_on / led_off / led_destroy / ...</code> 七八个函数。</p>
+<p>锁了后厨，标了字段 private，对外暴露了一份接口契约。但你的契约清单上现在有 <code>led_init / led_on / led_off / led_deinit / led_set_brightness / led_get_state</code> 七八个函数。</p>
 <p>你同事接手代码，打开 <code>led.h</code>，第一个问题是：我先调哪个？</p>
 <p>更现实的问题：项目要加一个电机模块，你新建 <code>motor.c</code>，写了 <code>init / on / off</code>。LED 模块也有 <code>init / on / off</code>。链接报错 <code>multiple definition of 'init'</code>。</p>
 <p>下一章解决。</p>
@@ -1326,7 +1394,7 @@ main.c:XX:XX: error: invalid use of undefined type 'struct led'
 <h1 id="第-3-章--你用-c-手搓了一个-class"><a class="header" href="#第-3-章--你用-c-手搓了一个-class">第 3 章 · 你用 C 手搓了一个 class</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/"><code>oop-in-c/code/03-handwritten-class/</code></a></p>
 <h2 id="31-一个真实场景"><a class="header" href="#31-一个真实场景">3.1 一个真实场景</a></h2>
-<p>第 2 章你把 LED 模块的字段藏起来了。同事改不动你的数据，你松了一口气。</p>
+<p>第 2 章你给 LED 模块的字段标了 <code>/* private */</code>、把内部工具函数加 <code>static</code> 锁进了 <code>.c</code>。同事改不动你的数据，你松了一口气。</p>
 <p>下班前 PM 走过来：明天加一个电机控制模块。</p>
 <p>简单。新建 <code>motor.c</code>，按惯例写三个函数：</p>
 <pre><code class="language-c">int init(struct motor *me, uint8_t pin)   { ... }
@@ -1339,7 +1407,7 @@ int off(struct motor *me)                 { ... }
 </code></pre>
 <p>你的 LED 模块也有 <code>init / on / off</code>。两个 <code>init</code>、两个 <code>on</code>，链接器问你这俩到底谁是谁。</p>
 <p>你的 <code>init</code> 是配 GPIO 的，他的 <code>init</code> 是配 PWM 的。但 C 的链接器不管你做什么，只看名字。名字一样，打架。</p>
-<p>C 有一个底层规则：所有不加 <code>static</code> 的函数，名字必须全局唯一。这叫外部链接（external linkage），是 ANSI C 标准定的。一个函数加了 <code>static</code> 它就是文件私有（第 2 章 2.6.5 节讲过）。不加 <code>static</code>，它进全局符号表，全工程范围内不能重名。</p>
+<p>C 有一个底层规则：所有不加 <code>static</code> 的函数，名字必须全局唯一。这叫外部链接（external linkage），是 ANSI C 标准定的。一个函数加了 <code>static</code> 它就是文件私有（第 2 章 2.6.2 节讲过）。不加 <code>static</code>，它进全局符号表，全工程范围内不能重名。</p>
 <p>项目只有一个模块的时候没问题。两个模块、三个、十个，名字迟早撞。</p>
 <p><img src="assets/ch03/slide1_名称冲突.png" alt="名称冲突"></p>
 <h2 id="32-沙县小吃和兰州拉面"><a class="header" href="#32-沙县小吃和兰州拉面">3.2 沙县小吃和兰州拉面</a></h2>
@@ -1455,7 +1523,7 @@ led_deinit(&amp;red);
 </thead>
 <tbody>
 <tr><td>第 1 章</td><td><code>struct + me</code></td><td><code>class + this</code></td></tr>
-<tr><td>第 2 章</td><td><code>static + .h/.c 分离</code></td><td><code>private + public</code></td></tr>
+<tr><td>第 2 章</td><td><code>static + /* private */ 纪律</code></td><td><code>private + public</code></td></tr>
 <tr><td>第 3 章</td><td><code>前缀 + init/deinit</code></td><td><code>类名 + 构造/析构</code></td></tr>
 </tbody>
 </table>
@@ -1520,16 +1588,7 @@ $ nm motor.o
 </table>
 </div>
 <p>工业代码里 <code>module_action</code> 这种 lowercase + underscore + <code>_</code> 分隔的写法是 Linux 内核风格的标准，本书坚持这一种。</p>
-<h3 id="375-头文件里-struct-led-字段恢复公开了违反-ch02-教训吗"><a class="header" href="#375-头文件里-struct-led-字段恢复公开了违反-ch02-教训吗">3.7.5 头文件里 struct led 字段恢复公开了，违反 ch02 教训吗</a></h3>
-<p>第 2 章把 <code>struct led</code> 字段藏在 <code>led.c</code> 里，这一章字段又出现在 <code>led.h</code> 里。是不是回退？</p>
-<p>不是。这一章关心的是“两个模块和命名规范“，不是“字段可见性“。字段重新公开换来两个好处：</p>
-<ol>
-<li>外部能写 <code>struct led red;</code> 在栈上分配（不再需要 <code>led_create / led_destroy</code> 的堆分配）。</li>
-<li>main.c 能直接做 <code>led_init(&amp;red, 13)</code> 这种“构造已分配对象“的标准模式。</li>
-</ol>
-<p>代价是字段又能被外部 <code>me-&gt;pin = 999</code> 改坏。这是工程权衡。绝大多数自家应用代码（驱动、设备实例、模块）走的就是这条路：字段公开 + 命名纪律 + <code>static</code> 工具函数，因为应用层和驱动层在同一份工程里一起编译，靠 review 和工程文化就够了。GitHub 上 nginx、Redis、LVGL 这一类主流 C 项目都是这种写法。</p>
-<p>只有跨二进制库边界（libc <code>FILE *</code> / POSIX <code>pthread_t</code> / SDK 提供给第三方使用）才坚持 ch02 的不透明指针写法。两条路都成立，根据需求选。</p>
-<h3 id="376-链接器冲突的真实长相"><a class="header" href="#376-链接器冲突的真实长相">3.7.6 链接器冲突的真实长相</a></h3>
+<h3 id="375-链接器冲突的真实长相"><a class="header" href="#375-链接器冲突的真实长相">3.7.5 链接器冲突的真实长相</a></h3>
 <p><code>led.c</code> 里写一个 <code>init</code>，<code>motor.c</code> 里也写一个 <code>init</code>，编译两个 <code>.o</code> 文件的时候各自都过。<code>gcc led.c motor.c -o demo</code> 在链接阶段才炸：</p>
 <pre><code>$ gcc -c led.c        # 单文件编译过
 $ gcc -c motor.c      # 单文件编译过
@@ -1563,7 +1622,7 @@ $ nm motor.o
 <p>每个全局符号都唯一了，链接器开心。</p>
 <p>另一种规避冲突的方式是给 init 加 <code>static</code>，让它退化成 file-local 符号（<code>nm</code> 里小写 <code>t</code>）。但这样 init 就不能跨文件调用了，<code>main.c</code> 里 <code>led_init(...)</code> 直接编译报 <code>undefined reference</code>。<code>static</code> 解决冲突的代价是失去外部接口。</p>
 <p>工业上选前缀不选 <code>static</code> 的原因清楚了：要让外部模块能 <code>led_init(...)</code>，又不能撞名，加前缀是唯一的路。</p>
-<h3 id="377-前缀方案-vs-嵌套方法表方案"><a class="header" href="#377-前缀方案-vs-嵌套方法表方案">3.7.7 前缀方案 vs 嵌套方法表方案</a></h3>
+<h3 id="376-前缀方案-vs-嵌套方法表方案"><a class="header" href="#376-前缀方案-vs-嵌套方法表方案">3.7.6 前缀方案 vs 嵌套方法表方案</a></h3>
 <p>C 语言的“避免冲突“还有第二条路。有些项目走的不是前缀，而是嵌套方法表。形态像这样：</p>
 <pre><code class="language-c">struct led_class {
 	int (*init)(struct led *me, uint8_t pin);
@@ -1588,7 +1647,7 @@ led.on(&amp;red);
 <li>工业代码静态分析工具（PCLint / Coverity）对直接调用支持更好</li>
 </ul>
 <p>到了 ch09-ch11 会引入 ops 表 + vptr，那是嵌套方法表的“工业级正确用法“：用来支持运行时多态，不是用来规避命名冲突。两件事不要混。</p>
-<h3 id="378-为什么-motor-多了-direction-和-state-字段"><a class="header" href="#378-为什么-motor-多了-direction-和-state-字段">3.7.8 为什么 motor 多了 direction 和 state 字段</a></h3>
+<h3 id="377-为什么-motor-多了-direction-和-state-字段"><a class="header" href="#377-为什么-motor-多了-direction-和-state-字段">3.7.7 为什么 motor 多了 direction 和 state 字段</a></h3>
 <p><code>struct motor</code> 字段是 <code>pin / pwm_duty / direction / state / initialized</code>，比 <code>struct led</code> 多了 <code>direction</code> 和 <code>state</code>。</p>
 <p>电机和 LED 的状态量本来就不一样：</p>
 <ul>
@@ -1752,7 +1811,7 @@ make
 <p>你的 <code>.c</code> 文件开头有几个全局变量？</p>
 <p>数一数。</p>
 <p>今天它们一个都活不了。</p>
-<p>第 1 章到第 3 章做了不少事。挂号单（struct）、me 指针、字段藏起来、命名前缀、init/deinit 生命周期。但翻开你的 <code>led.c</code> 看头几行，可能还在躺着这种东西：</p>
+<p>第 1 章到第 3 章做了不少事。挂号单（struct）、me 指针、字段标 <code>/* private */</code> + 工具函数加 <code>static</code>、命名前缀、init/deinit 生命周期。但翻开你的 <code>led.c</code> 看头几行，可能还在躺着这种东西：</p>
 <pre><code class="language-c">/* led_bad.c · 反面教材 */
 #include "led.h"
 
@@ -1803,7 +1862,7 @@ bad_led_on();       /* 想点亮红灯 */
 <pre><code class="language-c">static unsigned int s_init_count;   /* 模块累计 init 次数 */
 static int          s_debug_flag;   /* 模块调试开关 */
 </code></pre>
-<p><code>static</code> 这个修饰词让编译器把这两个变量的符号写成 file-local（第 2 章 2.6.5 节讲过链接器视角）。别的文件 <code>extern</code> 都找不到。</p>
+<p><code>static</code> 这个修饰词让编译器把这两个变量的符号写成 file-local（第 2 章 2.6.2 节讲过链接器视角）。别的文件 <code>extern</code> 都找不到。</p>
 <p>外部想知道 <code>s_init_count</code>？走函数：</p>
 <pre><code class="language-c">unsigned int led_get_init_count(void)
 {
@@ -1872,7 +1931,7 @@ static void debug_print(const char *msg);
 <p>刚才你做的事，把全局变量按“实例 / 模块 / 常量“三类归位，这个动作软件工程里叫数据所有权（data ownership）或者数据归位。</p>
 <p>每一份数据都得有主人。实例数据的主人是 struct 字段（跟着 me 走），模块共享数据的主人是 <code>static</code> 变量（关在文件里），常量的主人是 <code>static const</code>（编译期固定）。</p>
 <p>数据没有主人，bug 就是主人。</p>
-<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。把数据按所有权归位，是机制层面的防御。第 2 章把字段藏起来防外部乱写、第 4 章把全局变量按所有权归位防内部乱写，两条加起来是数据层面的“封装“完整版。</p>
+<p>费曼讲过一句话：好的设计不靠人小心，靠机制上不让错误发生。把数据按所有权归位，是机制层面的防御。第 2 章把字段标 <code>/* private */</code> + 内部工具加 <code>static</code> 防外部乱写、第 4 章把全局变量按所有权归位防内部乱写，两条加起来是数据层面的“封装“完整版。</p>
 <p><img src="assets/ch04/slide7_数据归位表.png" alt="数据归位表"></p>
 <h2 id="47-视频里没讲透的几个细节"><a class="header" href="#47-视频里没讲透的几个细节">4.7 视频里没讲透的几个细节</a></h2>
 <h3 id="471-实例数据-vs-模块共享数据怎么分"><a class="header" href="#471-实例数据-vs-模块共享数据怎么分">4.7.1 实例数据 vs 模块共享数据，怎么分</a></h3>
@@ -1912,7 +1971,7 @@ struct led *me = led_acquire(13);   /* 从池里拿一个空槽 */
 ...
 led_release(me);                    /* 用完还回去 */
 </code></pre>
-<p>数量上限固定但具体哪些槽用、什么时候用不固定时用对象池。Linux 内核的 <code>kmem_cache</code> / slab 分配器是同一个思路的工业级形态（第 17 章展开）。本章配套代码用这种写法是为了把“模块共享数据 + 实例数据“凑齐演示。</p>
+<p>数量上限固定但具体哪些槽用、什么时候用不固定时用对象池。Linux 内核的 <code>kmem_cache</code> / slab 分配器是同一个思路的工业级形态。本章配套代码用这种写法是为了把“模块共享数据 + 实例数据“凑齐演示。</p>
 <p><strong>写法 C · 动态分配</strong></p>
 <pre><code class="language-c">struct led *me = malloc(sizeof(*me));
 if (!me)
@@ -1946,7 +2005,7 @@ if (!red) {
 	return -ENOMEM;
 }
 </code></pre>
-<p>工业代码里这种 NULL 检查是强制的，几乎没有“分配失败就忽略“的情况。第 17 章讲 Linux 内核的 <code>kmalloc</code> 也是同样的纪律。</p>
+<p>工业代码里这种 NULL 检查是强制的，几乎没有“分配失败就忽略“的情况。Linux 内核 <code>kmalloc</code> 一样：每次分配后立刻判空，是内核驱动 review 的硬指标。</p>
 <h3 id="474-static-第三义--函数内部的-static-局部变量"><a class="header" href="#474-static-第三义--函数内部的-static-局部变量">4.7.4 static 第三义 · 函数内部的 static 局部变量</a></h3>
 <p><code>static</code> 这个词在 C 里有三种含义：</p>
 <div class="table-wrapper">
@@ -2022,7 +2081,7 @@ stack   函数调用栈（运行时增长）
 <p>工业纪律的关键不是“不用 malloc“，是<strong>生命周期管理</strong>。判定标准：</p>
 <ol>
 <li><strong>每个 alloc 有配对的 free 路径</strong>。函数中间任何 <code>return</code> 都不能漏过 free</li>
-<li><strong>异常退出走 <code>goto cleanup</code></strong>。Linux 内核风格，几十年实践能压住所有 leak。形态在 ch02 2.6.8 节贴过</li>
+<li><strong>异常退出走 <code>goto cleanup</code></strong>。Linux 内核风格，几十年实践能压住所有 leak</li>
 <li><strong>共享所有权用引用计数</strong>。Linux <code>kref_init / kref_get / kref_put</code> 是标准模板</li>
 <li><strong>选 RTOS 提供的 heap 而不是 newlib <code>dlmalloc</code></strong>。前者有合并机制 + 审计接口，后者反复分配释放后容易碎片放大</li>
 <li><strong>关键路径的 WCET 要测</strong>。<code>pvPortMalloc</code> 在 heap_4 上是 O(N)（N 是 free list 长度），实时任务里用对象池或者预分配避开</li>
@@ -2037,7 +2096,7 @@ stack   函数调用栈（运行时增长）
 <p><strong>动态内存不是危险品，缺乏生命周期纪律才是</strong>。AI 工具（Coverity / Codacy / Claude Code 这一类）现在能自动审计 alloc / free 的配对路径和异常退出分支，工程上比手工 review 可靠得多。</p>
 <h3 id="477-stm32h7-内存地图举例"><a class="header" href="#477-stm32h7-内存地图举例">4.7.7 STM32H7 内存地图举例</a></h3>
 <p>抽象的 <code>.text / .rodata / .data / .bss / heap / stack</code> 在真实 MCU 上是哪几片物理 SRAM？</p>
-<p>以 STM32H7 系列（Cortex-M7，是 Simon 工业控制板项目用的同一代核）为例。这颗芯片的内存布局：</p>
+<p>以 STM32H7 系列（Cortex-M7，是工业控制板常用的代核）为例。这颗芯片的内存布局：</p>
 <pre><code>0x0800 0000 - 0x081F FFFF   2 MB  Flash         (.text, .rodata, .data 初值)
 0x2000 0000 - 0x2001 FFFF   128KB DTCM          (Cortex-M7 紧耦合数据·CubeMX 默认 stack 在这)
 0x2400 0000 - 0x2407 FFFF   512KB AXI SRAM      (主 RAM, .bss / .data / heap)
@@ -2061,13 +2120,13 @@ stack   函数调用栈（运行时增长）
 <p>是。</p>
 <p>要分清楚两种“全局“：</p>
 <p><strong>裸数据型全局变量</strong>：例如 <code>int g_temp_value;</code>、<code>char g_buffer[64];</code>、<code>int g_status;</code>。这种要避免。任何模块都能直接读写，谁改了谁没改追不到，并发场景下竞态拉满。这是 ch01-ch03 一直在反对的“敞开的挂号单“。</p>
-<p><strong>接口型全局指针句柄</strong>：例如 <code>extern struct led_base *green_led;</code>、<code>extern struct uart *console;</code>、<code>extern struct rtc_dev *system_rtc;</code>。这种是合理的。指针指向的对象关在驱动的 <code>.c</code> 文件里（参考 ch01 1.10 节的不透明指针），应用层只能通过 <code>led_on(green_led)</code> 这种封装函数操作它，拿不到“裸字段读写“的能力。这是对一个<strong>单例对象的句柄绑定</strong>，不是裸数据共享。</p>
-<p>工业代码里 <code>extern xxx_base_t *xxx_dev;</code> 这种声明是大量存在的，每个外设设备实例（LED、按键、UART、RTC、温度传感器）通常都对应一两个全局句柄。这就是“设备树思路“在 C 里的落地：全局可见的设备名 + 不透明的设备实例。第 19 章工业实战会展开。</p>
+<p><strong>接口型全局指针句柄</strong>：例如 <code>extern struct led_base *green_led;</code>、<code>extern struct uart *console;</code>、<code>extern struct rtc_dev *system_rtc;</code>。这种是合理的。指针指向的对象 static 分配在驱动的 <code>.c</code> 文件里（同 ch01 1.10.1 节的指针句柄持有），应用层通过 <code>led_on(green_led)</code> 这种封装函数操作它，按工业纪律不直接读写字段。这是把一个<strong>单例对象用指针句柄暴露给应用层</strong>，不是裸数据共享。</p>
+<p>工业代码里 <code>extern xxx_base_t *xxx_dev;</code> 这种声明是大量存在的，每个外设设备实例（LED、按键、UART、RTC、温度传感器）通常都对应一两个全局句柄。这就是“设备树思路“在 C 里的落地：全局可见的设备名 + 应用层不直接访问字段的设备实例。第 19 章工业实战会展开。</p>
 <p>另一种合理的全局是 initcall 段（第 17 章详讲）：一组函数指针放在 <code>.bss</code> 的特殊段里，启动时按顺序调用。这不是数据共享，是机制实现。</p>
 <p>需要警惕的两个使用方式：</p>
 <ol>
 <li><strong>全局指针句柄之间的互相依赖</strong>：A 模块的初始化引用了 B 模块的句柄，但 B 还没 init。这是 ch17 initcall 7 级排序要解决的问题。</li>
-<li><strong>应用层通过句柄访问对象字段</strong>：写 <code>green_led-&gt;pin = 5</code> 这种应该编译报错（不透明指针保护），写 <code>g_temp = 100</code> 这种应该 code review 打回。</li>
+<li><strong>应用层通过句柄访问对象字段</strong>：写 <code>green_led-&gt;pin = 5</code> 和写 <code>g_temp = 100</code> 一样，code review 看到就要打回。应用层只走 <code>led_on / led_off</code> 这种封装接口，不直接读写驱动 struct 的字段。</li>
 </ol>
 <h2 id="48-你现在的代码在-stm32-上长什么样"><a class="header" href="#48-你现在的代码在-stm32-上长什么样">4.8 你现在的代码在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/04-data-classification/stm32-snippet/led_stm32.c"><code>oop-in-c/code/04-data-classification/stm32-snippet/led_stm32.c</code></a>）：</p>
@@ -2210,7 +2269,7 @@ make
 <p><a href="https://www.bilibili.com/video/BV1pAD9BmEu8/">《C 语言：你的全局变量·该死了｜C 语言封装篇终章·数据归位》</a></p>
 </blockquote>
 <p>视频里讲了白板类比（全局变量被路过的人擦掉）、部门文件夹类比（static 文件私有），节奏更紧凑。书里补了视频没讲透的 6 个细节（4.7 节）和工业代码的对照（4.10 节）。</p>
-<p>封装篇到这里：第 1 章 struct + me、第 2 章 static + 不透明指针、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。所有零件凑齐了。</p>
+<p>封装篇到这里：第 1 章 struct + me、第 2 章 static + <code>/* private */</code> 纪律、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。所有零件凑齐了。</p>
 <p><img src="assets/ch04/slide9_CvsCpp.png" alt="C 对 C++"></p>
 <h2 id="下一章-3"><a class="header" href="#下一章-3">下一章</a></h2>
 <p>但我说了不算。下一章打开 STM32 HAL 库的源码，看看 ST 工程师在做同样的事。<code>HAL_GPIO_Init</code>、<code>HAL_GPIO_WritePin</code>、<code>GPIOA / GPIOB / GPIOC</code>，几千个 HAL 函数就一个套路。</p>
@@ -2220,7 +2279,7 @@ make
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/"><code>oop-in-c/code/05-hal-mapping/</code></a></p>
 <h2 id="51-你天天用-hal_gpio_init"><a class="header" href="#51-你天天用-hal_gpio_init">5.1 你天天用 HAL_GPIO_Init</a></h2>
 <p>你知道它为什么叫这个名字吗？</p>
-<p>封装四章学完了：第 1 章 struct + me、第 2 章 static + 不透明指针、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。</p>
+<p>封装四章学完了：第 1 章 struct + me、第 2 章 static + <code>/* private */</code> 纪律、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。</p>
 <p>但学的东西“是不是真的工业标准“，光我说不算。打开 STM32 HAL 库源码，亲眼验证。</p>
 <p>这一章不教新概念。它是验证课。要做的事：把 HAL 库的设计逐项映射回前 4 章学过的东西。学完你会发现，你这一个月学的，就是几千个工业函数背后的同一套机制。</p>
 <h2 id="52-gpio_typedef-就是-struct"><a class="header" href="#52-gpio_typedef-就是-struct">5.2 GPIO_TypeDef 就是 struct</a></h2>
@@ -4366,7 +4425,7 @@ void platform_gpio_write(uint8_t pin, bool value);
 void platform_gpio_deinit(uint8_t pin);
 bool platform_gpio_read(uint8_t pin);
 </code></pre>
-<p>每章的 STM32 / Linux snippet 都告诉你这是教学简化版。真正工业级 platform 抽象用 ops 表。第 11 章演化出 vptr 之后，就把这个承诺兑现。</p>
+<p>每章的 STM32 / Linux snippet 都告诉你这是教学简化版。真正工业级 platform 抽象用 ops 表。本章演化出 vptr 之后，就把这个承诺兑现。</p>
 <p>兑现的方式有讲究：<strong>对外</strong>这 4 个函数签名一字不动，<strong>对内</strong>从直接实现演化成 ops dispatch。驱动层、应用层永远只看到这 4 个签名，看不到下面的 ops 表。</p>
 <p>观察这一招在概念上和 ch10 的 <code>struct led_base</code> 一字不差：</p>
 <div class="table-wrapper">
@@ -7473,7 +7532,7 @@ Platform 层 platform_*.c      物理操作
 </code></pre>
 <p>5 层。每一层只调下一层。这就是工业代码里“业务和硬件解耦得彻底“的做法。</p>
 <p>中间件不是凭空多出来的“过度设计“。它的判据是：<strong>当业务语义和硬件操作不是一对一映射的时候</strong>，中间件就值得引入。“报警 → 三盏灯协同（红灯主报、绿灯熄灭、蜂鸣器响 1 秒）“是一对多映射，写在 app 里 app 就有了硬件知识，写在 led.c 里 led.c 就有了业务知识，都不对。中间件吸收这个错配。</p>
-<p>ch15 的配套代码没有中间件层（教学简化），ch19 的工业实战章会展开一个完整的 indicator 中间件案例。</p>
+<p>ch15 的配套代码没有中间件层（教学简化）。ch19 的工业实战章会列出主控板用到的几个中间件库（环形缓冲、shell、日志、按键），看一眼工业代码里这一层是什么形态。</p>
 <h3 id="151010-platform_ops-的字段规模"><a class="header" href="#151010-platform_ops-的字段规模">15.10.10 platform_ops 的字段规模</a></h3>
 <p>本章 platform_ops 只有 4 个字段（init / write / read / name）。真实工业项目里规模大很多：</p>
 <pre><code class="language-c">struct platform_ops {
@@ -7509,7 +7568,7 @@ Platform 层 platform_*.c      物理操作
 };
 </code></pre>
 <p>20-30 个字段。每家芯片提供一份完整实现。</p>
-<p>字段太多了拆不拆？看你项目。SOLID 接口隔离原则会建议拆成 <code>gpio_ops / i2c_ops / spi_ops / ...</code> 多个小表。Linux 内核走的就是这条路（没有一个大 platform_ops，而是一堆 subsystem 各自的 ops 表）。本书 ch16 会展开 Linux 的多个 ops 表。</p>
+<p>字段太多了拆不拆？看你项目。SOLID 接口隔离原则会建议拆成 <code>gpio_ops / i2c_ops / spi_ops / ...</code> 多个小表。Linux 内核走的就是这条路（没有一个大 platform_ops，而是一堆 subsystem 各自的 ops 表）。本书 ch16 会展开 Linux 的两组典型 ops 表（<code>gpio_chip</code> / <code>file_operations</code>）。</p>
 <h2 id="1511-你现在的代码在-stm32-上长什么样"><a class="header" href="#1511-你现在的代码在-stm32-上长什么样">15.11 你现在的代码在 STM32 上长什么样</a></h2>
 <p><code>stm32-snippet/platform_ops_stm32.c</code> 是真实硬件版的 <code>platform_ops</code> 实例：</p>
 <pre><code class="language-c">static void stm32_gpio_write(uint8_t pin, bool value)
@@ -11301,7 +11360,7 @@ typedef struct v_motor_base {
 </code></pre>
 <p>IFX007T 是英飞凌一颗 H 桥驱动芯片。两个控制引脚 + 两个使能引脚。<code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。简单到几行 GPIO 操作就完成。</p>
 <blockquote>
-<p>仓库里 <code>v_motor_ifx007t.h</code> 是产品级版本，子类 struct 字段更多（两路 PWM 设备 + 两个减速区限位开关 + 一路 IS 电流采样 ADC + 工作线程 + 周期定时器 + 软启动 / 加减速 / 故障检测的运行时状态），上面这块代码是把它压成“OOP 抽象骨架“的教学最小核。产品代码里 <code>ctrl_1</code> / <code>ctrl_2</code> 走的是 PWM 调速而不是 GPIO 推挽，但抽象层面就是控制 H 桥两路高边臂——子类内部具体怎么斩波怎么爬坡，基类层一字看不见。完整产品级实现在 § 20.10.2 里展开。</p>
+<p>仓库里 <code>v_motor_ifx007t.h</code> 是产品级版本，子类 struct 字段更多（两路 PWM 设备 + 两个减速区限位开关 + 一路 IS 电流采样 ADC + 工作线程 + 周期定时器 + 软启动 / 加减速 / 故障检测的运行时状态），上面这块代码是把它压成“OOP 抽象骨架“的教学最小核。产品代码里 <code>ctrl_1</code> / <code>ctrl_2</code> 走的是 PWM 调速而不是 GPIO 推挽，但抽象层面就是控制 H 桥两路高边臂——子类内部具体怎么斩波怎么爬坡，基类层一字看不见。完整产品级实现在 20.10.2 节里展开。</p>
 </blockquote>
 <p>应用层接口风格完全统一：</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h */
@@ -12707,7 +12766,7 @@ make flash    # 用 st-flash 烧到 0x08000000
 <p>目标硬件：<strong>树莓派 4B</strong>（ARM64 Cortex-A72，4 核 1.5 GHz，4 GB RAM，跑 Raspberry Pi OS / Ubuntu）。这是国内最容易拿到的 ARM SBC，淘宝几百块。</p>
 <p>不同 SBC 跑这个工程都是 5% 改动量。香橙派、飞腾派、瑞芯微 RK3588、全志 H6 / H616 等任何一颗，照着 <code>app/platform/arch/board/pin_libgpiod.c</code> 改 <code>GPIO_CHIP_DEV</code> 一行就能跑。</p>
 <p>工程功能：板上 4 颗 LED 流水灯（GPIO17 / GPIO27 / GPIO22 / GPIO23 BCM 编号，对应树莓派 4B 物理引脚 11 / 13 / 15 / 16）。硬件接法：每颗 LED 长脚串 220Ω 限流电阻接 GPIO 引脚，短脚接 GND。</p>
-<p>跑通全书所有 OOP 抽象，对应章节同附录 B § B.1。</p>
+<p>跑通全书所有 OOP 抽象，对应章节同附录 B 的 B.1 节。</p>
 <h2 id="c2-工程结构"><a class="header" href="#c2-工程结构">C.2 工程结构</a></h2>
 <pre><code>industrial/linux_full/
 ├── README.md

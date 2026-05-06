@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -183,7 +183,7 @@
                         <h1 id="第-3-章--你用-c-手搓了一个-class"><a class="header" href="#第-3-章--你用-c-手搓了一个-class">第 3 章 · 你用 C 手搓了一个 class</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/"><code>oop-in-c/code/03-handwritten-class/</code></a></p>
 <h2 id="31-一个真实场景"><a class="header" href="#31-一个真实场景">3.1 一个真实场景</a></h2>
-<p>第 2 章你把 LED 模块的字段藏起来了。同事改不动你的数据，你松了一口气。</p>
+<p>第 2 章你给 LED 模块的字段标了 <code>/* private */</code>、把内部工具函数加 <code>static</code> 锁进了 <code>.c</code>。同事改不动你的数据，你松了一口气。</p>
 <p>下班前 PM 走过来：明天加一个电机控制模块。</p>
 <p>简单。新建 <code>motor.c</code>，按惯例写三个函数：</p>
 <pre><code class="language-c">int init(struct motor *me, uint8_t pin)   { ... }
@@ -196,7 +196,7 @@ int off(struct motor *me)                 { ... }
 </code></pre>
 <p>你的 LED 模块也有 <code>init / on / off</code>。两个 <code>init</code>、两个 <code>on</code>，链接器问你这俩到底谁是谁。</p>
 <p>你的 <code>init</code> 是配 GPIO 的，他的 <code>init</code> 是配 PWM 的。但 C 的链接器不管你做什么，只看名字。名字一样，打架。</p>
-<p>C 有一个底层规则：所有不加 <code>static</code> 的函数，名字必须全局唯一。这叫外部链接（external linkage），是 ANSI C 标准定的。一个函数加了 <code>static</code> 它就是文件私有（第 2 章 2.6.5 节讲过）。不加 <code>static</code>，它进全局符号表，全工程范围内不能重名。</p>
+<p>C 有一个底层规则：所有不加 <code>static</code> 的函数，名字必须全局唯一。这叫外部链接（external linkage），是 ANSI C 标准定的。一个函数加了 <code>static</code> 它就是文件私有（第 2 章 2.6.2 节讲过）。不加 <code>static</code>，它进全局符号表，全工程范围内不能重名。</p>
 <p>项目只有一个模块的时候没问题。两个模块、三个、十个，名字迟早撞。</p>
 <p><img src="../assets/ch03/slide1_名称冲突.png" alt="名称冲突"></p>
 <h2 id="32-沙县小吃和兰州拉面"><a class="header" href="#32-沙县小吃和兰州拉面">3.2 沙县小吃和兰州拉面</a></h2>
@@ -312,7 +312,7 @@ led_deinit(&amp;red);
 </thead>
 <tbody>
 <tr><td>第 1 章</td><td><code>struct + me</code></td><td><code>class + this</code></td></tr>
-<tr><td>第 2 章</td><td><code>static + .h/.c 分离</code></td><td><code>private + public</code></td></tr>
+<tr><td>第 2 章</td><td><code>static + /* private */ 纪律</code></td><td><code>private + public</code></td></tr>
 <tr><td>第 3 章</td><td><code>前缀 + init/deinit</code></td><td><code>类名 + 构造/析构</code></td></tr>
 </tbody>
 </table>
@@ -377,16 +377,7 @@ $ nm motor.o
 </table>
 </div>
 <p>工业代码里 <code>module_action</code> 这种 lowercase + underscore + <code>_</code> 分隔的写法是 Linux 内核风格的标准，本书坚持这一种。</p>
-<h3 id="375-头文件里-struct-led-字段恢复公开了违反-ch02-教训吗"><a class="header" href="#375-头文件里-struct-led-字段恢复公开了违反-ch02-教训吗">3.7.5 头文件里 struct led 字段恢复公开了，违反 ch02 教训吗</a></h3>
-<p>第 2 章把 <code>struct led</code> 字段藏在 <code>led.c</code> 里，这一章字段又出现在 <code>led.h</code> 里。是不是回退？</p>
-<p>不是。这一章关心的是“两个模块和命名规范“，不是“字段可见性“。字段重新公开换来两个好处：</p>
-<ol>
-<li>外部能写 <code>struct led red;</code> 在栈上分配（不再需要 <code>led_create / led_destroy</code> 的堆分配）。</li>
-<li>main.c 能直接做 <code>led_init(&amp;red, 13)</code> 这种“构造已分配对象“的标准模式。</li>
-</ol>
-<p>代价是字段又能被外部 <code>me-&gt;pin = 999</code> 改坏。这是工程权衡。绝大多数自家应用代码（驱动、设备实例、模块）走的就是这条路：字段公开 + 命名纪律 + <code>static</code> 工具函数，因为应用层和驱动层在同一份工程里一起编译，靠 review 和工程文化就够了。GitHub 上 nginx、Redis、LVGL 这一类主流 C 项目都是这种写法。</p>
-<p>只有跨二进制库边界（libc <code>FILE *</code> / POSIX <code>pthread_t</code> / SDK 提供给第三方使用）才坚持 ch02 的不透明指针写法。两条路都成立，根据需求选。</p>
-<h3 id="376-链接器冲突的真实长相"><a class="header" href="#376-链接器冲突的真实长相">3.7.6 链接器冲突的真实长相</a></h3>
+<h3 id="375-链接器冲突的真实长相"><a class="header" href="#375-链接器冲突的真实长相">3.7.5 链接器冲突的真实长相</a></h3>
 <p><code>led.c</code> 里写一个 <code>init</code>，<code>motor.c</code> 里也写一个 <code>init</code>，编译两个 <code>.o</code> 文件的时候各自都过。<code>gcc led.c motor.c -o demo</code> 在链接阶段才炸：</p>
 <pre><code>$ gcc -c led.c        # 单文件编译过
 $ gcc -c motor.c      # 单文件编译过
@@ -420,7 +411,7 @@ $ nm motor.o
 <p>每个全局符号都唯一了，链接器开心。</p>
 <p>另一种规避冲突的方式是给 init 加 <code>static</code>，让它退化成 file-local 符号（<code>nm</code> 里小写 <code>t</code>）。但这样 init 就不能跨文件调用了，<code>main.c</code> 里 <code>led_init(...)</code> 直接编译报 <code>undefined reference</code>。<code>static</code> 解决冲突的代价是失去外部接口。</p>
 <p>工业上选前缀不选 <code>static</code> 的原因清楚了：要让外部模块能 <code>led_init(...)</code>，又不能撞名，加前缀是唯一的路。</p>
-<h3 id="377-前缀方案-vs-嵌套方法表方案"><a class="header" href="#377-前缀方案-vs-嵌套方法表方案">3.7.7 前缀方案 vs 嵌套方法表方案</a></h3>
+<h3 id="376-前缀方案-vs-嵌套方法表方案"><a class="header" href="#376-前缀方案-vs-嵌套方法表方案">3.7.6 前缀方案 vs 嵌套方法表方案</a></h3>
 <p>C 语言的“避免冲突“还有第二条路。有些项目走的不是前缀，而是嵌套方法表。形态像这样：</p>
 <pre><code class="language-c">struct led_class {
 	int (*init)(struct led *me, uint8_t pin);
@@ -445,7 +436,7 @@ led.on(&amp;red);
 <li>工业代码静态分析工具（PCLint / Coverity）对直接调用支持更好</li>
 </ul>
 <p>到了 ch09-ch11 会引入 ops 表 + vptr，那是嵌套方法表的“工业级正确用法“：用来支持运行时多态，不是用来规避命名冲突。两件事不要混。</p>
-<h3 id="378-为什么-motor-多了-direction-和-state-字段"><a class="header" href="#378-为什么-motor-多了-direction-和-state-字段">3.7.8 为什么 motor 多了 direction 和 state 字段</a></h3>
+<h3 id="377-为什么-motor-多了-direction-和-state-字段"><a class="header" href="#377-为什么-motor-多了-direction-和-state-字段">3.7.7 为什么 motor 多了 direction 和 state 字段</a></h3>
 <p><code>struct motor</code> 字段是 <code>pin / pwm_duty / direction / state / initialized</code>，比 <code>struct led</code> 多了 <code>direction</code> 和 <code>state</code>。</p>
 <p>电机和 LED 的状态量本来就不一样：</p>
 <ul>

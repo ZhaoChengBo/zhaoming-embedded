@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6b706af4.js";
+            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -402,7 +402,7 @@ typedef struct v_motor_base {
 </code></pre>
 <p>IFX007T 是英飞凌一颗 H 桥驱动芯片。两个控制引脚 + 两个使能引脚。<code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。简单到几行 GPIO 操作就完成。</p>
 <blockquote>
-<p>仓库里 <code>v_motor_ifx007t.h</code> 是产品级版本，子类 struct 字段更多（两路 PWM 设备 + 两个减速区限位开关 + 一路 IS 电流采样 ADC + 工作线程 + 周期定时器 + 软启动 / 加减速 / 故障检测的运行时状态），上面这块代码是把它压成“OOP 抽象骨架“的教学最小核。产品代码里 <code>ctrl_1</code> / <code>ctrl_2</code> 走的是 PWM 调速而不是 GPIO 推挽，但抽象层面就是控制 H 桥两路高边臂——子类内部具体怎么斩波怎么爬坡，基类层一字看不见。完整产品级实现在 § 20.10.2 里展开。</p>
+<p>仓库里 <code>v_motor_ifx007t.h</code> 是产品级版本，子类 struct 字段更多（两路 PWM 设备 + 两个减速区限位开关 + 一路 IS 电流采样 ADC + 工作线程 + 周期定时器 + 软启动 / 加减速 / 故障检测的运行时状态），上面这块代码是把它压成“OOP 抽象骨架“的教学最小核。产品代码里 <code>ctrl_1</code> / <code>ctrl_2</code> 走的是 PWM 调速而不是 GPIO 推挽，但抽象层面就是控制 H 桥两路高边臂——子类内部具体怎么斩波怎么爬坡，基类层一字看不见。完整产品级实现在 20.10.2 节里展开。</p>
 </blockquote>
 <p>应用层接口风格完全统一：</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h */
