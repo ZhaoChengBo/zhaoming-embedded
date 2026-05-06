@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d1e77a06.js";
+            window.path_to_searchindex_js = "searchindex-4d11f18b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -797,7 +797,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
 <p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
-<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
+<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch（分发：走到对的实现）、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分两层：基类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。基类那两份长这样：</p>
 <pre><code class="language-c">/* drivers/led/led_base.h · 基类公共头·子类和应用层都 #include */
 
@@ -1057,7 +1057,7 @@ int led_on(struct led *me)
 </ul>
 <p>四道关一起上，业内 99% 的 C 项目这么做：nginx、Redis、LVGL、FreeRTOS、Linux 内核大部分驱动模块，struct 字段全在 <code>.h</code> 公开，靠这套纪律隔离。</p>
 <blockquote>
-<p>完全机制锁的方案在 C 里也存在，叫<strong>不透明指针</strong>：<code>.h</code> 里只写 <code>struct led;</code> 前向声明，字段藏到 <code>.c</code> 里，编译器直接拒绝外部读字段。代价是字段不可见后无法栈分配也无法被嵌套继承。这条路适合<strong>跨二进制库的 ABI 边界</strong>（<code>FILE *</code> / <code>pthread_t</code> / <code>sqlite3 *</code> / <code>CURL *</code> 这一类），在自家应用代码里几乎不用。详见 2.6.3 节。</p>
+<p>完全机制锁的方案在 C 里也存在，叫<strong>不透明指针</strong>：<code>.h</code> 里只写 <code>struct led;</code> 前向声明，字段藏到 <code>.c</code> 里，编译器直接拒绝外部读字段。代价是字段不可见后无法栈分配也无法被嵌套继承。这条路适合<strong>跨二进制库的 ABI 边界</strong>（ABI = Application Binary Interface，应用程序二进制接口；通俗讲就是“已经编译好的库“和“应用代码“对接时双方约定的字段布局），例子有 <code>FILE *</code> / <code>pthread_t</code> / <code>sqlite3 *</code> / <code>CURL *</code> 这一类。在自家应用代码里几乎不用。详见 2.6.3 节。</p>
 </blockquote>
 <h2 id="24-这个东西叫什么"><a class="header" href="#24-这个东西叫什么">2.4 这个东西叫什么</a></h2>
 <p>你刚才跟我做的事，把不该让外面碰的工具函数和字段藏起来，外部只通过命名清晰的接口和模块打交道，软件工程里有个名字。</p>
@@ -1139,8 +1139,8 @@ static void update_hardware(struct led *me);
 <p>工业代码里第三种的真实用武之地是<strong>跨二进制库</strong>：库做成 <code>.so</code> / <code>.dll</code> / <code>.a</code>，应用代码以 binary 形式连进来，库的 struct 字段在不同版本可能改动，把字段藏起来是 ABI 兼容性的硬需求。自家应用代码（一份工程一起编译）几乎不用。</p>
 <h3 id="262-链接器层面static-和不加-static-的差别"><a class="header" href="#262-链接器层面static-和不加-static-的差别">2.6.2 链接器层面，static 和不加 static 的差别</a></h3>
 <p><code>static</code> 改变的不是编译期可见性，是链接期符号表。</p>
-<p>不加 <code>static</code> 的函数（external linkage）：编译器把函数名写进 <code>.o</code> 文件的全局符号表，链接器在合并多个 <code>.o</code> 时能看到。不同 <code>.o</code> 里的同名函数，链接器报 <code>multiple definition</code>。</p>
-<p>加 <code>static</code> 的函数（internal linkage）：编译器要么完全不写符号表（被内联或调用图剪枝），要么写成本地符号（链接器跨 <code>.o</code> 看不到）。</p>
+<p>不加 <code>static</code> 的函数（外部链接 external linkage）：编译器把函数名写进 <code>.o</code> 文件的全局符号表，链接器在合并多个 <code>.o</code> 时能看到。不同 <code>.o</code> 里的同名函数，链接器报 <code>multiple definition</code>。</p>
+<p>加 <code>static</code> 的函数（内部链接 internal linkage）：编译器要么完全不写符号表（被内联或调用图剪枝），要么写成本地符号（链接器跨 <code>.o</code> 看不到）。</p>
 <pre><code>$ nm led.o
 0000000000000000 T led_init
 0000000000000098 T led_deinit
@@ -1218,7 +1218,7 @@ red_led.pin = 999;                    /* 不 OK 绕过 API 直接写字段 */
 	bool    is_on;          /* @private 通过 led_on / led_off 设置 */
 };
 </code></pre>
-<p>Linux 内核 kerneldoc 注释里用 <code>@private:</code> 标签写这件事。GTK GObject 的字段会写 <code>&lt;private&gt;</code> HTML tag。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
+<p>Linux 内核的 kerneldoc 注释规范（内核源码里统一的注释格式）里用 <code>@private:</code> 标签写这件事。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
 <p>工业代码 review checklist 通常包含一条：<strong>任何 <code>xxx.field = ...</code> 形式的 PR，先确认字段不是 <code>/* private */</code>。是的话打回，走 setter API</strong>。这条规矩进 review 后，软 private 漏网概率压得很低。</p>
 <h2 id="27-你现在的-led-在-stm32-上长什么样"><a class="header" href="#27-你现在的-led-在-stm32-上长什么样">2.7 你现在的 LED 在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c"><code>oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c</code></a>）：</p>
@@ -1376,7 +1376,7 @@ main.c:XX:XX: warning: implicit declaration of function 'update_hardware'
 main.c:XX: undefined reference to `update_hardware'
 collect2: error: ld returned 1 exit status
 </code></pre>
-<p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是 file-private 符号，外部连名字都看不到。这是机制层的硬锁。</p>
+<p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是文件私有符号（file-private symbol），外部连名字都看不到。这是机制层的硬锁。</p>
 <p>字段方面，<code>red.pin = 999</code> 这一行编译能过：这是命名纪律 + code review 拦的位置，不是编译器拦的位置。理解这两层强度的差别，就理解了 C 圈子的“软 private 字段 + 硬 private 工具函数“工程现实。</p>
 <h2 id="211-视频回放"><a class="header" href="#211-视频回放">2.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
@@ -1513,7 +1513,7 @@ led_on(&amp;red);
 led_deinit(&amp;red);
 </code></pre>
 <p>做的是一模一样的事。</p>
-<p>C++ 把你手动写的前缀变成了编译器管理的类名（namespace + name mangling）。把你手动写的 <code>init / deinit</code> 变成了对象创建 / 销毁时自动调用的构造和析构。</p>
+<p>C++ 把你手动写的前缀变成了编译器管理的类名（namespace 命名空间 + 名字混淆 name mangling，本节末 3.6 / 3.7.4 节会展开）。把你手动写的 <code>init / deinit</code> 变成了对象创建 / 销毁时自动调用的构造和析构。</p>
 <p><img src="assets/ch03/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
 <p>到这里三个恒等都凑齐了：</p>
 <div class="table-wrapper">
@@ -1547,7 +1547,7 @@ motor_start(&amp;uninit);
 </code></pre>
 <p>立刻返回 <code>-3</code>，不去操作未配置的硬件。</p>
 <p>如果没这个标志，未初始化的 motor 拿着垃圾 pin 去操作 GPIO，行为完全不可预测。在工业控制板上这是能引发安全停止的 bug。</p>
-<p>工业代码里所有公开 API 的对象都有类似的 sentinel 字段：FreeRTOS 的 <code>TCB.uxBasePriority</code> 检查、Linux 内核的 <code>device.driver_data</code> 检查、Linux 的 <code>kref</code> 计数检查，全是同一套防御。</p>
+<p>工业代码里所有公开 API 的对象都有类似的“哨兵字段“（sentinel：用一个字段记录对象状态，让所有公开函数先查这个字段判断对象是否可用）：FreeRTOS 的 <code>TCB.uxBasePriority</code> 检查、Linux 内核的 <code>device.driver_data</code> 检查、Linux 的 <code>kref</code> 计数检查，全是同一套防御。</p>
 <h3 id="372-为什么-c-不能像-c-那样自动调用构造函数"><a class="header" href="#372-为什么-c-不能像-c-那样自动调用构造函数">3.7.2 为什么 C 不能像 C++ 那样自动调用构造函数</a></h3>
 <p>C 的设计哲学是“你写什么就执行什么，没有隐式动作“。</p>
 <p><code>struct led red;</code> 这一行只分配栈内存，编译器不偷偷调任何函数。</p>
@@ -2014,8 +2014,8 @@ if (!red) {
 <tr><th>修饰位置</th><th>效果</th><th>例子</th></tr>
 </thead>
 <tbody>
-<tr><td>函数前</td><td>file-private 函数</td><td><code>static void update_hardware(...)</code></td></tr>
-<tr><td>文件作用域变量前</td><td>file-private 变量</td><td><code>static int s_debug_flag</code></td></tr>
+<tr><td>函数前</td><td>文件私有函数（file-private）</td><td><code>static void update_hardware(...)</code></td></tr>
+<tr><td>文件作用域变量前</td><td>文件私有变量（file-private）</td><td><code>static int s_debug_flag</code></td></tr>
 <tr><td>函数内局部变量前</td><td>跨调用保持值</td><td><code>static int call_count</code></td></tr>
 </tbody>
 </table>
@@ -2792,121 +2792,58 @@ struct led_gpio {
 <li><code>(struct led_base *)&amp;red_led</code> 是强制类型转换，告诉编译器“闭嘴信我“，万一哪天 base 不在第一个位置（被人改了 struct），编译器不会报错，运行时崩</li>
 </ul>
 <p>Linux 内核 / GObject / Zephyr 三个项目里，第一种写法（<code>&amp;red_led.base</code>）是默认风格，强转只在 <code>container_of</code> 这种“反方向找回外层“的场景里用。第 13 章会看到。</p>
-<h3 id="676-组合-vs-继承"><a class="header" href="#676-组合-vs-继承">6.7.6 组合 vs 继承</a></h3>
-<p>继承不是唯一的复用手段。另一个手段叫<strong>组合</strong>（composition）。</p>
-<p>两者的关系语义不同：</p>
+<h3 id="676-继承-vs-组合--同样是复用的两条路"><a class="header" href="#676-继承-vs-组合--同样是复用的两条路">6.7.6 继承 vs 组合 · 同样是“复用“的两条路</a></h3>
+<p>继承不是唯一的复用方式。还有一种叫<strong>组合</strong>。区别在生活里就分得清。</p>
+<p><strong>继承 = “是一种“关系</strong></p>
 <ul>
-<li><strong>继承</strong>：A <strong>is-a</strong> B（A 就是一种 B）。<code>led_gpio is-a led_base</code>。</li>
-<li><strong>组合</strong>：A <strong>has-a</strong> B（A 持有一个 B）。<code>fan_ctrl has-a pwm_channel</code>（风扇控制器持有一个 PWM 通道）。</li>
+<li>苹果 是一种 水果</li>
+<li>狗 是一种 动物</li>
+<li>GPIO LED 是一种 LED</li>
 </ul>
-<p>继承在 C 里的写法你这一章学过，把父类 struct 嵌进子类的第一个字段：</p>
+<p>“是一种“意味着 A 不光长得像 B、行为也像 B、身份就是 B 的一员。你跟人说“我家有只苹果”，对方第一反应是“啥？“，苹果不是宠物。但你说“我家有只狗”，对方立刻懂，狗就是一种动物，不需要解释。</p>
+<p>C 里“是一种“的写法你这一章已经学了：把父类整块嵌进子类的第一个字段：</p>
 <pre><code class="language-c">struct led_gpio {
-	struct led_base base;     /* led_gpio is-a led_base */
+	struct led_base base;     /* GPIO LED 是一种 LED */
 	uint8_t         pin;
 };
 </code></pre>
-<p>组合在 C 里有两种合法实现，差别在生命周期和所有权。</p>
-<p>第一种是<strong>持有实例</strong>（值成员），最纯正的 has-a 形态：</p>
-<pre><code class="language-c">/* 风扇控制器持有一个 PWM 通道·实例 */
-struct fan_ctrl {
-	struct pwm_channel pwm;     /* fan has-a PWM·随 fan 一起出生死亡 */
+<p>第一个字段是 <code>struct led_base</code>，所以 <code>led_gpio</code> “就是” 一种 <code>led_base</code>。<code>&amp;gpio.base</code> 这个地址既能当 GPIO LED 用，也能当 LED 用，这就是下章会讲的“向上转型“，本质就是“既然你是一种 LED，那我把你当 LED 用没毛病“。</p>
+<p><strong>组合 = “拥有一个“关系</strong></p>
+<ul>
+<li>汽车 拥有一个 引擎</li>
+<li>手机 拥有一个 电池</li>
+<li>风扇控制器 拥有一个 PWM 通道（PWM 是嵌入式里调亮度、调转速用的脉冲信号源）</li>
+</ul>
+<p>“拥有一个“意味着 A 内部有一个 B 在工作，但 A 本身不是 B。你跟人说“我家车坏了”，对方不会以为是引擎坏了，车比引擎大，引擎只是车的一个零件。</p>
+<p>C 里“拥有一个“的写法：</p>
+<pre><code class="language-c">struct fan_ctrl {
+	struct pwm_channel pwm;    /* 风扇拥有一个 PWM 通道 */
 	uint8_t            level;
 };
 
 void fan_ctrl_set_speed(struct fan_ctrl *me, uint8_t pct)
 {
-	pwm_channel_set_duty(&amp;me-&gt;pwm, pct);
+	pwm_channel_set_duty(&amp;me-&gt;pwm, pct);   /* 通过自己拥有的 PWM 工作 */
 	me-&gt;level = pct;
 }
 </code></pre>
-<p><code>pwm</code> 字段直接是 <code>struct pwm_channel</code> 的实例，分配 <code>fan_ctrl</code> 时 <code>pwm</code> 也一起分配，释放 <code>fan_ctrl</code> 时 <code>pwm</code> 也一起释放。<code>fan_ctrl</code> 独占这个 <code>pwm</code>，别人不能共享。这是组合（composition）的标准教材形态。Java 里 <code>class Car { private Engine engine = new Engine(); }</code>、Linux 内核里 <code>struct workqueue_struct { struct mutex mutex; ... }</code> 都是这一形态。</p>
-<p>第二种是<strong>持有指针</strong>（引用成员）：</p>
-<pre><code class="language-c">struct fan_ctrl {
-	struct pwm_channel *pwm;
-	uint8_t             level;
-};
-</code></pre>
-<p>注意：<strong>指针成员本身分不清是组合还是聚合</strong>，要看 owner 是否负责 part 的创建和销毁。看代码才能定性。</p>
-<p>如果 <code>fan_ctrl</code> 自己 <code>malloc / free</code> 这块 <code>pwm</code>，<strong>仍然是组合</strong>：</p>
-<pre><code class="language-c">int fan_ctrl_init(struct fan_ctrl *me)
-{
-	me-&gt;pwm = malloc(sizeof(struct pwm_channel));
-	if (!me-&gt;pwm)
-		return -1;
-	pwm_channel_init(me-&gt;pwm);
-	return 0;
-}
+<p>代码上跟继承长得很像，都是把另一个 struct 当字段嵌进来。但语义和用法完全不同：</p>
+<pre><code class="language-c">/* 继承：GPIO LED "是一种" LED，可以整体当 LED 用 */
+struct led_base *p = &amp;gpio.base;       /* OK，&amp;gpio.base 既是 GPIO LED 也是 LED */
 
-void fan_ctrl_destroy(struct fan_ctrl *me)
-{
-	pwm_channel_deinit(me-&gt;pwm);
-	free(me-&gt;pwm);     /* fan_ctrl 析构时释放 part */
-}
+/* 组合：风扇 "拥有一个" PWM，不是 PWM */
+struct pwm_channel *p = &amp;fan.pwm;      /* 只是访问内部的零件，风扇本身不是 PWM */
 </code></pre>
-<p>这种“指针实现的组合“在嵌入式 RAM 紧张时少见（裸机不爱动态分配），Linux 用户态业务模块里常见。</p>
-<p>如果 <code>pwm</code> 由别人创建、<code>fan_ctrl</code> 只借用，析构时不释放，<strong>那才是聚合</strong>（aggregation）：</p>
-<pre><code class="language-c">void fan_ctrl_init(struct fan_ctrl *me, struct pwm_channel *external_pwm)
-{
-	me-&gt;pwm = external_pwm;     /* 借用·不拥有 */
-}
-
-void fan_ctrl_destroy(struct fan_ctrl *me)
-{
-	/* 不动 me-&gt;pwm·由外部负责 */
-	(void)me;
-}
-</code></pre>
-<p>聚合是弱所有权：part 可以被多个 whole 共享，可以独立于 whole 存在。</p>
-<p>判断标准始终是<strong>谁负责 part 的创建和销毁</strong>，而不是“成员是值还是指针“。C++ 用 <code>std::unique_ptr&lt;T&gt;</code> 表达组合（独占所有权）、用裸指针 / <code>std::weak_ptr</code> 表达聚合，把所有权编码进类型让编译器和读者都看得见。C 没有这层语法支持，工业代码里靠注释约定标记：</p>
-<pre><code class="language-c">struct fan_ctrl {
-	struct pwm_channel *pwm;     /* OWNED·fan_ctrl_destroy 负责释放 */
-	struct logger      *log;     /* BORROWED·外部生命周期 */
-};
-</code></pre>
-<p>OWNED 是组合，BORROWED 是聚合。Linux 内核里同套写法常用 kerneldoc 注释里写明 <code>Lifetime:</code> 字段说清楚。</p>
-<p>注意：组合的“持有实例“跟继承的“嵌入父类“在 C 里<strong>写起来很像</strong>，都是直接把另一个 struct 当字段嵌进来。区别在语义：</p>
-<pre><code class="language-c">/* 继承：led_gpio is-a led_base·向上转型成立 */
-struct led_gpio {
-	struct led_base base;
-	uint8_t         pin;
-};
-struct led_base *p = &amp;gpio.base;   /* OK·led_gpio "就是" led_base */
-
-/* 组合：fan_ctrl has-a pwm_channel·向上转型不成立 */
-struct fan_ctrl {
-	struct pwm_channel pwm;
-	uint8_t            level;
-};
-struct pwm_channel *p = &amp;fan.pwm;  /* OK·但只是访问 part·fan 不"是"PWM */
-</code></pre>
-<p>代码长得几乎一样，但调用方式不同：继承允许把 <code>&amp;gpio.base</code> 当 <code>led_base *</code> 整体替换使用（向上转型）；组合不行，应用层只能调 <code>fan_ctrl_xxx(&amp;fan, ...)</code> 这种壳子函数，里面再决定怎么用 <code>pwm</code> 字段。</p>
-<p>何时用继承·何时用组合：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>场景</th><th>选择</th><th>例子</th></tr>
-</thead>
-<tbody>
-<tr><td>N 种实现共享同一接口（多态分发）</td><td>继承（嵌入）</td><td><code>led_gpio</code> / <code>led_pwm</code> / <code>led_i2c</code> 都是 <code>led_base</code></td></tr>
-<tr><td>一个对象用一个底层服务（生命周期绑死）</td><td>组合（值成员）</td><td><code>fan_ctrl has-a pwm_channel</code></td></tr>
-<tr><td>一个对象引用一个可替换的依赖</td><td>聚合（指针成员）</td><td><code>logger has-a output_sink_t *</code></td></tr>
-</tbody>
-</table>
-</div>
-<p>工业代码经验：</p>
+<p>继承允许“把子类当父类整体替换使用“：所有 LED 共用一个 <code>led_on</code> 函数，传谁都行。组合做不到这一步，你不能把风扇控制器传给一个只接受 PWM 通道的函数，风扇不是 PWM。</p>
+<p><strong>何时选哪一种</strong></p>
 <ul>
-<li><strong>驱动框架</strong>（同一接口·多种硬件实现）一律用继承嵌入。Linux 内核 <code>struct cdev { struct kobject kobj; ... }</code>、<code>struct net_device { struct device dev; ... }</code>，所有字符设备 / 块设备 / 网络设备全部 first-field embedding。</li>
-<li><strong>业务对象</strong>（一个模块用一组底层服务）多用组合。状态指示器持有三盏 LED 句柄，风扇控制器持有 PWM 通道 + 转速传感器，电机驱动持有 PWM + 编码器。这些场景里“X is-a Y“讲不通，“X has-a Y“才对。</li>
+<li>N 种实现 + 同一接口（多种 LED 都要 <code>led_on / led_off</code>）→ <strong>继承</strong>。Linux 内核所有字符设备 / 块设备 / 网络设备都是这个套路（一套 read/write/open 接口，N 家芯片实现）</li>
+<li>一个对象需要某个工具（风扇需要 PWM 来调速）→ <strong>组合</strong>。这种关系下“风扇是一种 PWM“讲不通，“风扇拥有一个 PWM“才对</li>
 </ul>
-<p>GoF 设计模式书里那句被反复引用的 “Favor composition over inheritance”（优先用组合而不是继承）是 90 年代为应用层 Java / C++ 业务系统设计的。那种场景里多层继承容易导致“脆弱基类“问题（基类改一行所有子类崩）。但内核驱动这种“统一接口 + 大量芯片实现“的场景，继承（first-field embedding）才是世界标准。它解决的就是“N 家芯片 + 1 套接口“问题，没有第二个答案。</p>
+<p><img src="assets/ch06/slide9_继承vs组合.png" alt="继承 vs 组合"></p>
+<p>那本《设计模式》（GoF）有句被反复引用的话：“优先用组合而不是继承”。这句话是 90 年代为应用层 Java / C++ 业务系统说的：那种场景里多层继承容易让基类一改全崩。但内核驱动这种“统一接口 + 大量芯片实现“的场景，继承（把父类嵌进子类第一个字段）才是世界标准，解决的就是“N 家芯片 + 1 套接口“的问题，没有第二个答案。</p>
 <p>不要套教条。看场景。</p>
-<h3 id="677-宽继承-vs-窄继承"><a class="header" href="#677-宽继承-vs-窄继承">6.7.7 宽继承 vs 窄继承</a></h3>
-<p>加多少字段进 base 也是个工程权衡。</p>
-<p><strong>窄继承</strong>：base 只放最少最公共的字段（你这一章的 <code>name + is_on</code>）。优点：base 改一次影响面小，子类灵活。缺点：基类层 API 能做的事少。</p>
-<p><strong>宽继承</strong>：base 放尽量多公共字段（name、is_on、最后操作时间、错误码、注册回调等）。优点：基类层 API 强，应用层只看 base 就能做很多事。缺点：base 改一次所有子类都要重新编译；某些子类用不到的字段也要带着。</p>
-<p>工业代码里典型的折衷：<strong>base 放高频共享字段（name / is_on），硬件特定字段下到子类</strong>。Linux 内核 <code>struct device</code> 是个宽继承典范：里面有 50+ 字段，但都是几乎所有设备都需要的（驱动指针、电源管理、设备树节点、release 回调等）。</p>
-<p>这一章的 <code>struct led_base</code> 只有 <code>name + is_on</code> 两个字段（窄继承演示）。第 10 章演化到 ops 表后会再加一个 <code>ops</code> 指针放在最前面。第 19 章工业案例里你会看到真实的 <code>led_base</code> 含 4-5 个字段（ops / name / is_on / 类型标签等），是工程上经过取舍后的形态。</p>
-<h3 id="678-应用层视角调用方知不知道继承"><a class="header" href="#678-应用层视角调用方知不知道继承">6.7.8 应用层视角：调用方知不知道继承</a></h3>
+<h3 id="677-应用层视角调用方知不知道继承"><a class="header" href="#677-应用层视角调用方知不知道继承">6.7.7 应用层视角：调用方知不知道继承</a></h3>
 <p>调用层写：</p>
 <pre><code class="language-c">struct led_gpio red_led;
 led_gpio_init(&amp;red_led, "red", 13);

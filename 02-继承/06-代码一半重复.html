@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
+            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -425,121 +425,58 @@ struct led_gpio {
 <li><code>(struct led_base *)&amp;red_led</code> 是强制类型转换，告诉编译器“闭嘴信我“，万一哪天 base 不在第一个位置（被人改了 struct），编译器不会报错，运行时崩</li>
 </ul>
 <p>Linux 内核 / GObject / Zephyr 三个项目里，第一种写法（<code>&amp;red_led.base</code>）是默认风格，强转只在 <code>container_of</code> 这种“反方向找回外层“的场景里用。第 13 章会看到。</p>
-<h3 id="676-组合-vs-继承"><a class="header" href="#676-组合-vs-继承">6.7.6 组合 vs 继承</a></h3>
-<p>继承不是唯一的复用手段。另一个手段叫<strong>组合</strong>（composition）。</p>
-<p>两者的关系语义不同：</p>
+<h3 id="676-继承-vs-组合--同样是复用的两条路"><a class="header" href="#676-继承-vs-组合--同样是复用的两条路">6.7.6 继承 vs 组合 · 同样是“复用“的两条路</a></h3>
+<p>继承不是唯一的复用方式。还有一种叫<strong>组合</strong>。区别在生活里就分得清。</p>
+<p><strong>继承 = “是一种“关系</strong></p>
 <ul>
-<li><strong>继承</strong>：A <strong>is-a</strong> B（A 就是一种 B）。<code>led_gpio is-a led_base</code>。</li>
-<li><strong>组合</strong>：A <strong>has-a</strong> B（A 持有一个 B）。<code>fan_ctrl has-a pwm_channel</code>（风扇控制器持有一个 PWM 通道）。</li>
+<li>苹果 是一种 水果</li>
+<li>狗 是一种 动物</li>
+<li>GPIO LED 是一种 LED</li>
 </ul>
-<p>继承在 C 里的写法你这一章学过，把父类 struct 嵌进子类的第一个字段：</p>
+<p>“是一种“意味着 A 不光长得像 B、行为也像 B、身份就是 B 的一员。你跟人说“我家有只苹果”，对方第一反应是“啥？“，苹果不是宠物。但你说“我家有只狗”，对方立刻懂，狗就是一种动物，不需要解释。</p>
+<p>C 里“是一种“的写法你这一章已经学了：把父类整块嵌进子类的第一个字段：</p>
 <pre><code class="language-c">struct led_gpio {
-	struct led_base base;     /* led_gpio is-a led_base */
+	struct led_base base;     /* GPIO LED 是一种 LED */
 	uint8_t         pin;
 };
 </code></pre>
-<p>组合在 C 里有两种合法实现，差别在生命周期和所有权。</p>
-<p>第一种是<strong>持有实例</strong>（值成员），最纯正的 has-a 形态：</p>
-<pre><code class="language-c">/* 风扇控制器持有一个 PWM 通道·实例 */
-struct fan_ctrl {
-	struct pwm_channel pwm;     /* fan has-a PWM·随 fan 一起出生死亡 */
+<p>第一个字段是 <code>struct led_base</code>，所以 <code>led_gpio</code> “就是” 一种 <code>led_base</code>。<code>&amp;gpio.base</code> 这个地址既能当 GPIO LED 用，也能当 LED 用，这就是下章会讲的“向上转型“，本质就是“既然你是一种 LED，那我把你当 LED 用没毛病“。</p>
+<p><strong>组合 = “拥有一个“关系</strong></p>
+<ul>
+<li>汽车 拥有一个 引擎</li>
+<li>手机 拥有一个 电池</li>
+<li>风扇控制器 拥有一个 PWM 通道（PWM 是嵌入式里调亮度、调转速用的脉冲信号源）</li>
+</ul>
+<p>“拥有一个“意味着 A 内部有一个 B 在工作，但 A 本身不是 B。你跟人说“我家车坏了”，对方不会以为是引擎坏了，车比引擎大，引擎只是车的一个零件。</p>
+<p>C 里“拥有一个“的写法：</p>
+<pre><code class="language-c">struct fan_ctrl {
+	struct pwm_channel pwm;    /* 风扇拥有一个 PWM 通道 */
 	uint8_t            level;
 };
 
 void fan_ctrl_set_speed(struct fan_ctrl *me, uint8_t pct)
 {
-	pwm_channel_set_duty(&amp;me-&gt;pwm, pct);
+	pwm_channel_set_duty(&amp;me-&gt;pwm, pct);   /* 通过自己拥有的 PWM 工作 */
 	me-&gt;level = pct;
 }
 </code></pre>
-<p><code>pwm</code> 字段直接是 <code>struct pwm_channel</code> 的实例，分配 <code>fan_ctrl</code> 时 <code>pwm</code> 也一起分配，释放 <code>fan_ctrl</code> 时 <code>pwm</code> 也一起释放。<code>fan_ctrl</code> 独占这个 <code>pwm</code>，别人不能共享。这是组合（composition）的标准教材形态。Java 里 <code>class Car { private Engine engine = new Engine(); }</code>、Linux 内核里 <code>struct workqueue_struct { struct mutex mutex; ... }</code> 都是这一形态。</p>
-<p>第二种是<strong>持有指针</strong>（引用成员）：</p>
-<pre><code class="language-c">struct fan_ctrl {
-	struct pwm_channel *pwm;
-	uint8_t             level;
-};
-</code></pre>
-<p>注意：<strong>指针成员本身分不清是组合还是聚合</strong>，要看 owner 是否负责 part 的创建和销毁。看代码才能定性。</p>
-<p>如果 <code>fan_ctrl</code> 自己 <code>malloc / free</code> 这块 <code>pwm</code>，<strong>仍然是组合</strong>：</p>
-<pre><code class="language-c">int fan_ctrl_init(struct fan_ctrl *me)
-{
-	me-&gt;pwm = malloc(sizeof(struct pwm_channel));
-	if (!me-&gt;pwm)
-		return -1;
-	pwm_channel_init(me-&gt;pwm);
-	return 0;
-}
+<p>代码上跟继承长得很像，都是把另一个 struct 当字段嵌进来。但语义和用法完全不同：</p>
+<pre><code class="language-c">/* 继承：GPIO LED "是一种" LED，可以整体当 LED 用 */
+struct led_base *p = &amp;gpio.base;       /* OK，&amp;gpio.base 既是 GPIO LED 也是 LED */
 
-void fan_ctrl_destroy(struct fan_ctrl *me)
-{
-	pwm_channel_deinit(me-&gt;pwm);
-	free(me-&gt;pwm);     /* fan_ctrl 析构时释放 part */
-}
+/* 组合：风扇 "拥有一个" PWM，不是 PWM */
+struct pwm_channel *p = &amp;fan.pwm;      /* 只是访问内部的零件，风扇本身不是 PWM */
 </code></pre>
-<p>这种“指针实现的组合“在嵌入式 RAM 紧张时少见（裸机不爱动态分配），Linux 用户态业务模块里常见。</p>
-<p>如果 <code>pwm</code> 由别人创建、<code>fan_ctrl</code> 只借用，析构时不释放，<strong>那才是聚合</strong>（aggregation）：</p>
-<pre><code class="language-c">void fan_ctrl_init(struct fan_ctrl *me, struct pwm_channel *external_pwm)
-{
-	me-&gt;pwm = external_pwm;     /* 借用·不拥有 */
-}
-
-void fan_ctrl_destroy(struct fan_ctrl *me)
-{
-	/* 不动 me-&gt;pwm·由外部负责 */
-	(void)me;
-}
-</code></pre>
-<p>聚合是弱所有权：part 可以被多个 whole 共享，可以独立于 whole 存在。</p>
-<p>判断标准始终是<strong>谁负责 part 的创建和销毁</strong>，而不是“成员是值还是指针“。C++ 用 <code>std::unique_ptr&lt;T&gt;</code> 表达组合（独占所有权）、用裸指针 / <code>std::weak_ptr</code> 表达聚合，把所有权编码进类型让编译器和读者都看得见。C 没有这层语法支持，工业代码里靠注释约定标记：</p>
-<pre><code class="language-c">struct fan_ctrl {
-	struct pwm_channel *pwm;     /* OWNED·fan_ctrl_destroy 负责释放 */
-	struct logger      *log;     /* BORROWED·外部生命周期 */
-};
-</code></pre>
-<p>OWNED 是组合，BORROWED 是聚合。Linux 内核里同套写法常用 kerneldoc 注释里写明 <code>Lifetime:</code> 字段说清楚。</p>
-<p>注意：组合的“持有实例“跟继承的“嵌入父类“在 C 里<strong>写起来很像</strong>，都是直接把另一个 struct 当字段嵌进来。区别在语义：</p>
-<pre><code class="language-c">/* 继承：led_gpio is-a led_base·向上转型成立 */
-struct led_gpio {
-	struct led_base base;
-	uint8_t         pin;
-};
-struct led_base *p = &amp;gpio.base;   /* OK·led_gpio "就是" led_base */
-
-/* 组合：fan_ctrl has-a pwm_channel·向上转型不成立 */
-struct fan_ctrl {
-	struct pwm_channel pwm;
-	uint8_t            level;
-};
-struct pwm_channel *p = &amp;fan.pwm;  /* OK·但只是访问 part·fan 不"是"PWM */
-</code></pre>
-<p>代码长得几乎一样，但调用方式不同：继承允许把 <code>&amp;gpio.base</code> 当 <code>led_base *</code> 整体替换使用（向上转型）；组合不行，应用层只能调 <code>fan_ctrl_xxx(&amp;fan, ...)</code> 这种壳子函数，里面再决定怎么用 <code>pwm</code> 字段。</p>
-<p>何时用继承·何时用组合：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>场景</th><th>选择</th><th>例子</th></tr>
-</thead>
-<tbody>
-<tr><td>N 种实现共享同一接口（多态分发）</td><td>继承（嵌入）</td><td><code>led_gpio</code> / <code>led_pwm</code> / <code>led_i2c</code> 都是 <code>led_base</code></td></tr>
-<tr><td>一个对象用一个底层服务（生命周期绑死）</td><td>组合（值成员）</td><td><code>fan_ctrl has-a pwm_channel</code></td></tr>
-<tr><td>一个对象引用一个可替换的依赖</td><td>聚合（指针成员）</td><td><code>logger has-a output_sink_t *</code></td></tr>
-</tbody>
-</table>
-</div>
-<p>工业代码经验：</p>
+<p>继承允许“把子类当父类整体替换使用“：所有 LED 共用一个 <code>led_on</code> 函数，传谁都行。组合做不到这一步，你不能把风扇控制器传给一个只接受 PWM 通道的函数，风扇不是 PWM。</p>
+<p><strong>何时选哪一种</strong></p>
 <ul>
-<li><strong>驱动框架</strong>（同一接口·多种硬件实现）一律用继承嵌入。Linux 内核 <code>struct cdev { struct kobject kobj; ... }</code>、<code>struct net_device { struct device dev; ... }</code>，所有字符设备 / 块设备 / 网络设备全部 first-field embedding。</li>
-<li><strong>业务对象</strong>（一个模块用一组底层服务）多用组合。状态指示器持有三盏 LED 句柄，风扇控制器持有 PWM 通道 + 转速传感器，电机驱动持有 PWM + 编码器。这些场景里“X is-a Y“讲不通，“X has-a Y“才对。</li>
+<li>N 种实现 + 同一接口（多种 LED 都要 <code>led_on / led_off</code>）→ <strong>继承</strong>。Linux 内核所有字符设备 / 块设备 / 网络设备都是这个套路（一套 read/write/open 接口，N 家芯片实现）</li>
+<li>一个对象需要某个工具（风扇需要 PWM 来调速）→ <strong>组合</strong>。这种关系下“风扇是一种 PWM“讲不通，“风扇拥有一个 PWM“才对</li>
 </ul>
-<p>GoF 设计模式书里那句被反复引用的 “Favor composition over inheritance”（优先用组合而不是继承）是 90 年代为应用层 Java / C++ 业务系统设计的。那种场景里多层继承容易导致“脆弱基类“问题（基类改一行所有子类崩）。但内核驱动这种“统一接口 + 大量芯片实现“的场景，继承（first-field embedding）才是世界标准。它解决的就是“N 家芯片 + 1 套接口“问题，没有第二个答案。</p>
+<p><img src="../assets/ch06/slide9_继承vs组合.png" alt="继承 vs 组合"></p>
+<p>那本《设计模式》（GoF）有句被反复引用的话：“优先用组合而不是继承”。这句话是 90 年代为应用层 Java / C++ 业务系统说的：那种场景里多层继承容易让基类一改全崩。但内核驱动这种“统一接口 + 大量芯片实现“的场景，继承（把父类嵌进子类第一个字段）才是世界标准，解决的就是“N 家芯片 + 1 套接口“的问题，没有第二个答案。</p>
 <p>不要套教条。看场景。</p>
-<h3 id="677-宽继承-vs-窄继承"><a class="header" href="#677-宽继承-vs-窄继承">6.7.7 宽继承 vs 窄继承</a></h3>
-<p>加多少字段进 base 也是个工程权衡。</p>
-<p><strong>窄继承</strong>：base 只放最少最公共的字段（你这一章的 <code>name + is_on</code>）。优点：base 改一次影响面小，子类灵活。缺点：基类层 API 能做的事少。</p>
-<p><strong>宽继承</strong>：base 放尽量多公共字段（name、is_on、最后操作时间、错误码、注册回调等）。优点：基类层 API 强，应用层只看 base 就能做很多事。缺点：base 改一次所有子类都要重新编译；某些子类用不到的字段也要带着。</p>
-<p>工业代码里典型的折衷：<strong>base 放高频共享字段（name / is_on），硬件特定字段下到子类</strong>。Linux 内核 <code>struct device</code> 是个宽继承典范：里面有 50+ 字段，但都是几乎所有设备都需要的（驱动指针、电源管理、设备树节点、release 回调等）。</p>
-<p>这一章的 <code>struct led_base</code> 只有 <code>name + is_on</code> 两个字段（窄继承演示）。第 10 章演化到 ops 表后会再加一个 <code>ops</code> 指针放在最前面。第 19 章工业案例里你会看到真实的 <code>led_base</code> 含 4-5 个字段（ops / name / is_on / 类型标签等），是工程上经过取舍后的形态。</p>
-<h3 id="678-应用层视角调用方知不知道继承"><a class="header" href="#678-应用层视角调用方知不知道继承">6.7.8 应用层视角：调用方知不知道继承</a></h3>
+<h3 id="677-应用层视角调用方知不知道继承"><a class="header" href="#677-应用层视角调用方知不知道继承">6.7.7 应用层视角：调用方知不知道继承</a></h3>
 <p>调用层写：</p>
 <pre><code class="language-c">struct led_gpio red_led;
 led_gpio_init(&amp;red_led, "red", 13);

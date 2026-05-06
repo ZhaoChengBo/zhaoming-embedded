@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
+            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -286,7 +286,7 @@ int led_on(struct led *me)
 </ul>
 <p>四道关一起上，业内 99% 的 C 项目这么做：nginx、Redis、LVGL、FreeRTOS、Linux 内核大部分驱动模块，struct 字段全在 <code>.h</code> 公开，靠这套纪律隔离。</p>
 <blockquote>
-<p>完全机制锁的方案在 C 里也存在，叫<strong>不透明指针</strong>：<code>.h</code> 里只写 <code>struct led;</code> 前向声明，字段藏到 <code>.c</code> 里，编译器直接拒绝外部读字段。代价是字段不可见后无法栈分配也无法被嵌套继承。这条路适合<strong>跨二进制库的 ABI 边界</strong>（<code>FILE *</code> / <code>pthread_t</code> / <code>sqlite3 *</code> / <code>CURL *</code> 这一类），在自家应用代码里几乎不用。详见 2.6.3 节。</p>
+<p>完全机制锁的方案在 C 里也存在，叫<strong>不透明指针</strong>：<code>.h</code> 里只写 <code>struct led;</code> 前向声明，字段藏到 <code>.c</code> 里，编译器直接拒绝外部读字段。代价是字段不可见后无法栈分配也无法被嵌套继承。这条路适合<strong>跨二进制库的 ABI 边界</strong>（ABI = Application Binary Interface，应用程序二进制接口；通俗讲就是“已经编译好的库“和“应用代码“对接时双方约定的字段布局），例子有 <code>FILE *</code> / <code>pthread_t</code> / <code>sqlite3 *</code> / <code>CURL *</code> 这一类。在自家应用代码里几乎不用。详见 2.6.3 节。</p>
 </blockquote>
 <h2 id="24-这个东西叫什么"><a class="header" href="#24-这个东西叫什么">2.4 这个东西叫什么</a></h2>
 <p>你刚才跟我做的事，把不该让外面碰的工具函数和字段藏起来，外部只通过命名清晰的接口和模块打交道，软件工程里有个名字。</p>
@@ -368,8 +368,8 @@ static void update_hardware(struct led *me);
 <p>工业代码里第三种的真实用武之地是<strong>跨二进制库</strong>：库做成 <code>.so</code> / <code>.dll</code> / <code>.a</code>，应用代码以 binary 形式连进来，库的 struct 字段在不同版本可能改动，把字段藏起来是 ABI 兼容性的硬需求。自家应用代码（一份工程一起编译）几乎不用。</p>
 <h3 id="262-链接器层面static-和不加-static-的差别"><a class="header" href="#262-链接器层面static-和不加-static-的差别">2.6.2 链接器层面，static 和不加 static 的差别</a></h3>
 <p><code>static</code> 改变的不是编译期可见性，是链接期符号表。</p>
-<p>不加 <code>static</code> 的函数（external linkage）：编译器把函数名写进 <code>.o</code> 文件的全局符号表，链接器在合并多个 <code>.o</code> 时能看到。不同 <code>.o</code> 里的同名函数，链接器报 <code>multiple definition</code>。</p>
-<p>加 <code>static</code> 的函数（internal linkage）：编译器要么完全不写符号表（被内联或调用图剪枝），要么写成本地符号（链接器跨 <code>.o</code> 看不到）。</p>
+<p>不加 <code>static</code> 的函数（外部链接 external linkage）：编译器把函数名写进 <code>.o</code> 文件的全局符号表，链接器在合并多个 <code>.o</code> 时能看到。不同 <code>.o</code> 里的同名函数，链接器报 <code>multiple definition</code>。</p>
+<p>加 <code>static</code> 的函数（内部链接 internal linkage）：编译器要么完全不写符号表（被内联或调用图剪枝），要么写成本地符号（链接器跨 <code>.o</code> 看不到）。</p>
 <pre><code>$ nm led.o
 0000000000000000 T led_init
 0000000000000098 T led_deinit
@@ -447,7 +447,7 @@ red_led.pin = 999;                    /* 不 OK 绕过 API 直接写字段 */
 	bool    is_on;          /* @private 通过 led_on / led_off 设置 */
 };
 </code></pre>
-<p>Linux 内核 kerneldoc 注释里用 <code>@private:</code> 标签写这件事。GTK GObject 的字段会写 <code>&lt;private&gt;</code> HTML tag。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
+<p>Linux 内核的 kerneldoc 注释规范（内核源码里统一的注释格式）里用 <code>@private:</code> 标签写这件事。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
 <p>工业代码 review checklist 通常包含一条：<strong>任何 <code>xxx.field = ...</code> 形式的 PR，先确认字段不是 <code>/* private */</code>。是的话打回，走 setter API</strong>。这条规矩进 review 后，软 private 漏网概率压得很低。</p>
 <h2 id="27-你现在的-led-在-stm32-上长什么样"><a class="header" href="#27-你现在的-led-在-stm32-上长什么样">2.7 你现在的 LED 在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c"><code>oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c</code></a>）：</p>
@@ -605,7 +605,7 @@ main.c:XX:XX: warning: implicit declaration of function 'update_hardware'
 main.c:XX: undefined reference to `update_hardware'
 collect2: error: ld returned 1 exit status
 </code></pre>
-<p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是 file-private 符号，外部连名字都看不到。这是机制层的硬锁。</p>
+<p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是文件私有符号（file-private symbol），外部连名字都看不到。这是机制层的硬锁。</p>
 <p>字段方面，<code>red.pin = 999</code> 这一行编译能过：这是命名纪律 + code review 拦的位置，不是编译器拦的位置。理解这两层强度的差别，就理解了 C 圈子的“软 private 字段 + 硬 private 工具函数“工程现实。</p>
 <h2 id="211-视频回放"><a class="header" href="#211-视频回放">2.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>

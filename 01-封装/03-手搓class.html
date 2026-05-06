@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
+            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -302,7 +302,7 @@ led_on(&amp;red);
 led_deinit(&amp;red);
 </code></pre>
 <p>做的是一模一样的事。</p>
-<p>C++ 把你手动写的前缀变成了编译器管理的类名（namespace + name mangling）。把你手动写的 <code>init / deinit</code> 变成了对象创建 / 销毁时自动调用的构造和析构。</p>
+<p>C++ 把你手动写的前缀变成了编译器管理的类名（namespace 命名空间 + 名字混淆 name mangling，本节末 3.6 / 3.7.4 节会展开）。把你手动写的 <code>init / deinit</code> 变成了对象创建 / 销毁时自动调用的构造和析构。</p>
 <p><img src="../assets/ch03/slide4_C对比Cpp.png" alt="C 对比 C++"></p>
 <p>到这里三个恒等都凑齐了：</p>
 <div class="table-wrapper">
@@ -336,7 +336,7 @@ motor_start(&amp;uninit);
 </code></pre>
 <p>立刻返回 <code>-3</code>，不去操作未配置的硬件。</p>
 <p>如果没这个标志，未初始化的 motor 拿着垃圾 pin 去操作 GPIO，行为完全不可预测。在工业控制板上这是能引发安全停止的 bug。</p>
-<p>工业代码里所有公开 API 的对象都有类似的 sentinel 字段：FreeRTOS 的 <code>TCB.uxBasePriority</code> 检查、Linux 内核的 <code>device.driver_data</code> 检查、Linux 的 <code>kref</code> 计数检查，全是同一套防御。</p>
+<p>工业代码里所有公开 API 的对象都有类似的“哨兵字段“（sentinel：用一个字段记录对象状态，让所有公开函数先查这个字段判断对象是否可用）：FreeRTOS 的 <code>TCB.uxBasePriority</code> 检查、Linux 内核的 <code>device.driver_data</code> 检查、Linux 的 <code>kref</code> 计数检查，全是同一套防御。</p>
 <h3 id="372-为什么-c-不能像-c-那样自动调用构造函数"><a class="header" href="#372-为什么-c-不能像-c-那样自动调用构造函数">3.7.2 为什么 C 不能像 C++ 那样自动调用构造函数</a></h3>
 <p>C 的设计哲学是“你写什么就执行什么，没有隐式动作“。</p>
 <p><code>struct led red;</code> 这一行只分配栈内存，编译器不偷偷调任何函数。</p>

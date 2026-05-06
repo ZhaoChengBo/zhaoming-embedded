@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d1e77a06.js";
+            window.path_to_searchindex_js = "../searchindex-4d11f18b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1bc8502d.js"></script>
@@ -543,7 +543,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
 <p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
-<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
+<p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch（分发：走到对的实现）、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分两层：基类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。基类那两份长这样：</p>
 <pre><code class="language-c">/* drivers/led/led_base.h · 基类公共头·子类和应用层都 #include */
 
