@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -262,125 +262,28 @@ static void gpio_led_set(struct led_classdev *led_cdev,
 </code></pre>
 <p>这一行 <code>container_of</code> 你 ch13 学过。这一行 <code>gpiod_set_value</code> 你刚刚见到，它内部走 <code>gc-&gt;set</code> 多态 dispatch 到具体 SoC。</p>
 <p>整个 <code>leds-gpio.c</code> 文件 200 多行，跨所有 SoC 通吃。芯片厂的工作只是写自己那份 <code>gc-&gt;set</code> 实现，driver 作者一行不动。</p>
-<p><img src="../assets/ch16/slide5_Linux_GPIO.png" alt="Linux GPIO 子系统"></p>
-<h2 id="166-struct-gpio_chip-真身"><a class="header" href="#166-struct-gpio_chip-真身">16.6 struct gpio_chip 真身</a></h2>
-<p>打开 Linux 内核 <code>include/linux/gpio/driver.h</code> 第 415 行：</p>
+<p><code>struct gpio_chip</code> 真身在 <code>include/linux/gpio/driver.h</code> 第 415 行，挑核心字段看：</p>
 <pre><code class="language-c">struct gpio_chip {
-	const char		*label;
-	struct gpio_device	*gpiodev;
-	struct device		*parent;
-	struct fwnode_handle	*fwnode;
-	struct module		*owner;
+	const char	*label;       /* "vendorA-gpio" 这种名字 */
+	struct device	*parent;      /* 关联的 device 节点 */
 
-	int			(*request)(struct gpio_chip *gc,
-						unsigned int offset);
-	void			(*free)(struct gpio_chip *gc,
-						unsigned int offset);
-	int			(*get_direction)(struct gpio_chip *gc,
-						unsigned int offset);
-	int			(*direction_input)(struct gpio_chip *gc,
-						unsigned int offset);
-	int			(*direction_output)(struct gpio_chip *gc,
-						unsigned int offset, int value);
-	int			(*get)(struct gpio_chip *gc,
-						unsigned int offset);
-	int			(*get_multiple)(struct gpio_chip *gc,
-						unsigned long *mask,
-						unsigned long *bits);
-	void			(*set)(struct gpio_chip *gc,
-						unsigned int offset, int value);
-	/* ... 还有 30 多个字段 ... */
+	int  (*direction_output)(struct gpio_chip *gc,
+				 unsigned int offset, int value);
+	int  (*get)(struct gpio_chip *gc, unsigned int offset);
+	void (*set)(struct gpio_chip *gc, unsigned int offset, int value);
+	/* ... 还有 30 多个字段：中断、热插拔、debug、节点管理 ... */
 };
 </code></pre>
-<p>你看：</p>
-<ul>
-<li>第一段是元数据（<code>label</code>、<code>parent</code>、<code>owner</code>），相当于 <code>struct led_base</code> 里的 <code>name</code>。</li>
-<li>中间一大堆函数指针，就是你的 <code>struct led_ops</code>，只是字段更多。</li>
-<li>后面还有更多字段（中断、热插拔、debug、节点管理）省略了。</li>
-</ul>
-<p>这就是 ch11 你演化出来的 <code>struct led_base</code> + <code>struct led_ops</code>，<strong>放大成工业级</strong>的样子。</p>
-<p>整个 GPIO 子系统骨架，就这一招。</p>
-<h2 id="167-file_operations另一组同样的招"><a class="header" href="#167-file_operations另一组同样的招">16.7 file_operations：另一组同样的招</a></h2>
-<p>打开 Linux 内核 <code>include/linux/fs.h</code> 第 1852 行：</p>
-<pre><code class="language-c">struct file_operations {
-	struct module *owner;
-	loff_t (*llseek) (struct file *, loff_t, int);
-	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
-	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
-	__poll_t (*poll) (struct file *, struct poll_table_struct *);
-	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
-	int (*mmap) (struct file *, struct vm_area_struct *);
-	int (*open) (struct inode *, struct file *);
-	int (*flush) (struct file *, fl_owner_t id);
-	int (*release) (struct inode *, struct file *);
-	/* ... 30 多个字段 ... */
-} __randomize_layout;
-</code></pre>
-<p>这是 Linux 字符设备 / 块设备 / 网络套接字 / 文件系统都用的统一接口。你打开一个 <code>/dev/xxx</code>，VFS 层调 <code>f_op-&gt;read(file, buf, size, pos)</code>，<code>f_op</code> 就是这张表，挂在每个设备实例的 <code>struct file</code> 里。read 字段指向哪里？指向具体设备驱动的 read 实现。</p>
-<p><code>read</code> 是必填，<code>write</code> 是必填，<code>unlocked_ioctl</code> 是选填，文件系统支持就填，不支持留 NULL，VFS 层走默认行为或返回 <code>-ENOTTY</code>。这就是你 ch14 学的必填 + 选填混合策略。</p>
-<p>整个 Linux 文件子系统骨架，还是这一招。</p>
-<h2 id="1671-三个不同子系统都用同一个-file_operations"><a class="header" href="#1671-三个不同子系统都用同一个-file_operations">16.7.1 三个不同子系统都用同一个 file_operations</a></h2>
-<p>一份 <code>struct file_operations</code> 实例代表一个具体设备的字符接口。Linux 内核里随便挑三个子系统看：</p>
-<p><strong>字符设备：随机数生成器 <code>drivers/char/random.c</code></strong></p>
-<pre><code class="language-c">const struct file_operations random_fops = {
-	.read           = random_read_iter,
-	.write          = random_write_iter,
-	.poll           = random_poll,
-	.unlocked_ioctl = random_ioctl,
-	.fasync         = random_fasync,
-	.llseek         = noop_llseek,
-};
-</code></pre>
-<p><code>/dev/random</code> 这个文件背后挂的就是这一张表。<code>cat /dev/random</code> 时 VFS 层调 <code>f_op-&gt;read(file, buf, size, pos)</code>，转到 <code>random_read_iter</code>。</p>
-<p><strong>块设备：通用块层 <code>block/fops.c</code></strong></p>
-<pre><code class="language-c">const struct file_operations def_blk_fops = {
-	.open       = blkdev_open,
-	.release    = blkdev_release,
-	.read_iter  = blkdev_read_iter,
-	.write_iter = blkdev_write_iter,
-	.iopoll     = iocb_bio_iopoll,
-	.mmap       = blkdev_mmap,
-	.fsync      = blkdev_fsync,
-	/* ... */
-};
-</code></pre>
-<p><code>/dev/sda</code> 这种磁盘文件背后挂的是 <code>def_blk_fops</code>。</p>
-<p><strong>procfs：内核状态导出 <code>fs/proc/inode.c</code></strong></p>
-<pre><code class="language-c">static const struct file_operations proc_reg_file_ops = {
-	.llseek         = proc_reg_llseek,
-	.read           = proc_reg_read,
-	.write          = proc_reg_write,
-	.poll           = proc_reg_poll,
-	.unlocked_ioctl = proc_reg_unlocked_ioctl,
-	.mmap           = proc_reg_mmap,
-	.open           = proc_reg_open,
-	.release        = proc_reg_release,
-};
-</code></pre>
-<p><code>/proc/cpuinfo</code>、<code>/proc/meminfo</code>、<code>/proc/version</code> 这些路径背后挂的是 <code>proc_reg_file_ops</code>。</p>
-<p>三个完全不同的子系统（随机数生成器是字符设备、磁盘是块设备、proc 是虚拟文件系统）。三张完全不同的 <code>struct file_operations</code> 实例。但 VFS 层调用方式都是同一行：<code>f_op-&gt;read(file, buf, size, pos)</code>。VFS 不知道也不需要知道背后是哪种设备。</p>
-<p>这就是 ch15 你看到的 <code>platform_gpio_write(...)</code> 同一招放大到内核全局：上层只见普通封装函数，封装函数内部走 ops 分发到当前实例。同一个调用点，不同的子类，多态 dispatch 自动找对实现。</p>
-<h2 id="168-到处都是-ops-表"><a class="header" href="#168-到处都是-ops-表">16.8 到处都是 ops 表</a></h2>
-<pre><code>spi_controller    .transfer / .setup / ...     SPI 控制器
-gpio_chip         .set / .get / .request / ... GPIO 控制器
-i2c_algorithm     .master_xfer / ...           I2C 控制器
-net_device_ops    .ndo_start_xmit / ...        网卡
-ethtool_ops       .get_link / ...              网卡管理
-file_operations   .read / .write / ...         字符设备 / 文件系统
-inode_operations  .lookup / .create / ...      文件系统节点
-super_operations  .alloc_inode / ...           文件系统超级块
-v4l2_ioctl_ops    .vidioc_querycap / ...       V4L2（摄像头）
-snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
-</code></pre>
-<p>整个 Linux 内核 4000 万行，骨架就是这几招，struct 装数据、ops 表装函数指针、不同的子类填不同的实现、container_of 反推、initcall 自注册。</p>
-<p>读完这一章你打开内核源码，会发现 90% 的代码都是这几招的展开。</p>
-<p><img src="../assets/ch16/slide6_AT24_EEPROM.png" alt="到处都是 ops"></p>
-<h2 id="169-一个驱动跨所有芯片at24-案例"><a class="header" href="#169-一个驱动跨所有芯片at24-案例">16.9 一个驱动跨所有芯片：at24 案例</a></h2>
+<p>第一段是元数据（<code>label</code>、<code>parent</code>），相当于 ch11 你的 <code>struct led_base</code> 里的 <code>name</code>。中间一大堆函数指针，就是你的 <code>struct led_ops</code>，只是字段更多。后面省略的字段是中断、热插拔、debug 这些工业级特性。</p>
+<p>骨架，就是 ch11 你演化出来的 base + ops，<strong>放大成工业级</strong>的样子。</p>
+<p><img src="../assets/ch16/slide5_Linux_GPIO.png" alt="Linux GPIO 子系统"></p>
+<h2 id="166-一个驱动跨所有芯片at24-案例"><a class="header" href="#166-一个驱动跨所有芯片at24-案例">16.6 一个驱动跨所有芯片：at24 案例</a></h2>
 <p>Linux 内核里有一个文件 <code>drivers/misc/eeprom/at24.c</code>。I2C EEPROM 的驱动。一个文件，支持几十种 EEPROM 型号（AT24C01、AT24C02、24C16、24C512……），跑在任何家 SoC 上，只要芯片厂的 I2C platform 层做好了。</p>
 <p>你不需要自己写 EEPROM 驱动。社区已经写好了。同样：I2C 扩展 IO、SPI 屏幕驱动、PWM 电机控制器，大部分都有现成的内核驱动。</p>
 <p>你以为自己要写的那些设备驱动，多数是在反复造轮子。</p>
 <p>没有 platform 层的时候，你给每家 SoC 写一份 EEPROM 驱动。有了 platform 层，一份 at24.c，到处用。</p>
-<h2 id="1610-platform-层你不用自己写"><a class="header" href="#1610-platform-层你不用自己写">16.10 Platform 层你不用自己写</a></h2>
+<p><img src="../assets/ch16/slide6_AT24_EEPROM.png" alt="at24 一个文件跑所有芯片"></p>
+<h2 id="167-platform-层你不用自己写"><a class="header" href="#167-platform-层你不用自己写">16.7 Platform 层你不用自己写</a></h2>
 <p>但 platform 层本身要不要写？</p>
 <p>不需要。</p>
 <p>Linux 内核：半导体厂商已经把 platform 层写好了。你买一颗 SoC，BSP 包里 GPIO / I2C / SPI / UART，全部 ready。</p>
@@ -394,14 +297,21 @@ snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
 <p>Platform 层？芯片厂做好了。设备驱动？大部分社区已经有了。</p>
 <p>这就是为什么用 Linux 开发比裸机 MCU 还简单，不是 Linux 简单，是有人替你把难的部分做完了。前提是你得理解这种分层设计，知道每一层解决什么问题。</p>
 <p><img src="../assets/ch16/slide7_不用自己写.png" alt="Platform 不用自己写"></p>
-<h2 id="1611-视频里没讲透的几个细节"><a class="header" href="#1611-视频里没讲透的几个细节">16.11 视频里没讲透的几个细节</a></h2>
-<h3 id="16111-trace_gpio_value-这一行干什么"><a class="header" href="#16111-trace_gpio_value-这一行干什么">16.11.1 trace_gpio_value 这一行干什么</a></h3>
+<h2 id="168-ai-时代"><a class="header" href="#168-ai-时代">16.8 AI 时代</a></h2>
+<p>有人说 AI 时代不需要学架构了，AI 能写代码。</p>
+<p>AI 能帮你写 gpio_on，能帮你写 platform 层适配，能从零生成一个 I2C 驱动。</p>
+<p>但决定“这里该用 ops 表还是 if-else“、“这层该抽象到什么程度”、“这个接口够不够稳定”，这一类问题不是 AI 给你答案，是你给 AI 答案，AI 才能照你的骨架往下写。</p>
+<p>而且 AI 是看你的代码仓库学习你的风格的。你的代码有分层，AI 输出就有分层。你的代码是一坨，AI 输出也是一坨。</p>
+<p>这就是 AI 时代你的核心竞争力，你的架构能力，决定了 AI 能帮你放大多少。</p>
+<p><img src="../assets/ch16/slide8_AI时代.png" alt="AI 时代"></p>
+<h2 id="169-视频里没讲透的几个细节"><a class="header" href="#169-视频里没讲透的几个细节">16.9 视频里没讲透的几个细节</a></h2>
+<h3 id="1691-trace_gpio_value-这一行干什么"><a class="header" href="#1691-trace_gpio_value-这一行干什么">16.9.1 trace_gpio_value 这一行干什么</a></h3>
 <p>第 16.5 节贴的 <code>gpiod_set_raw_value_commit</code> 里有一行：</p>
 <pre><code class="language-c">trace_gpio_value(desc_to_gpio(desc), 0, value);
 </code></pre>
 <p>这是内核 ftrace 框架的 trace 埋点。打开 ftrace 之后，每一次 GPIO 写入都会被记录到 trace buffer，开发期 debug 极方便。生产构建里 trace 框架可以彻底关掉，那一行编译期消失。</p>
 <p>这是 Linux 内核常见的“埋点 + 可关闭“模式。本书 ch14 讲 assert 时提过类似思路（assert 在 release 关掉零开销）。</p>
-<h3 id="16112-export_symbol_gpl-是什么"><a class="header" href="#16112-export_symbol_gpl-是什么">16.11.2 EXPORT_SYMBOL_GPL 是什么</a></h3>
+<h3 id="1692-export_symbol_gpl-是什么"><a class="header" href="#1692-export_symbol_gpl-是什么">16.9.2 EXPORT_SYMBOL_GPL 是什么</a></h3>
 <p><code>gpiod_set_value</code> 函数末尾这一行：</p>
 <pre><code class="language-c">EXPORT_SYMBOL_GPL(gpiod_set_value);
 </code></pre>
@@ -410,8 +320,8 @@ snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
 <li>把 <code>gpiod_set_value</code> 这个符号加到内核的导出符号表，让 loadable module 能链接到。</li>
 <li>标记 <code>_GPL</code>，意思是只有 GPL 兼容许可证的 module 才能用。</li>
 </ol>
-<p>这和 ch17 要讲的 initcall 机制同源，都是用 <code>__attribute__((section()))</code> 把信息塞进特殊段，运行时遍历。</p>
-<h3 id="16113-rt-thread--zephyr-同源"><a class="header" href="#16113-rt-thread--zephyr-同源">16.11.3 RT-Thread / Zephyr 同源</a></h3>
+<p>这一招和下一章要讲的注册机制同源，都是用 <code>__attribute__((section()))</code> 把信息塞进特殊段，运行时遍历。下一章你会看到完整玩法。</p>
+<h3 id="1693-rt-thread--zephyr-同源"><a class="header" href="#1693-rt-thread--zephyr-同源">16.9.3 RT-Thread / Zephyr 同源</a></h3>
 <p>打开 RT-Thread <code>components/drivers/include/drivers/pin.h</code>：</p>
 <pre><code class="language-c">struct rt_pin_ops {
 	void (*pin_mode)(struct rt_device *device, rt_base_t pin, rt_uint8_t mode);
@@ -435,39 +345,31 @@ snd_pcm_ops       .open / .hw_params / ...     ALSA 声卡
 };
 </code></pre>
 <p>字段名稍有不同，机制完全一致。三个项目（Linux 内核、RT-Thread、Zephyr）都是 C 写的，都用 ops 表 + 函数指针。读完本书你打开任何一个项目源码不会陌生。</p>
-<h3 id="16114-device-tree怎么把硬件树挂上-ops-表"><a class="header" href="#16114-device-tree怎么把硬件树挂上-ops-表">16.11.4 device tree：怎么把硬件树挂上 ops 表</a></h3>
+<h3 id="1694-device-tree怎么把硬件树挂上-ops-表"><a class="header" href="#1694-device-tree怎么把硬件树挂上-ops-表">16.9.4 device tree：怎么把硬件树挂上 ops 表</a></h3>
 <p>这个细节本章不展开。简单说：device tree 是 Linux / Zephyr 用来描述硬件拓扑的文本文件（比如 “GPIO bank A 在地址 0x40020000，连了 16 个引脚”）。启动期 device tree 被解析成 <code>struct device</code> 节点，每个节点根据 <code>compatible</code> 字符串找到对应的驱动，挂上 <code>ops</code> 表。</p>
 <p>device tree 解决的是“如何把 ops 表上挂的 chip 实例和实际硬件连起来“。本章你只要知道：注册（从静态全局 → device tree 动态）这一步，和 ops 表本身的机制无关。</p>
-<h3 id="16115-不要把-hal-库当-platform-层"><a class="header" href="#16115-不要把-hal-库当-platform-层">16.11.5 不要把 HAL 库当 platform 层</a></h3>
+<h3 id="1695-不要把-hal-库当-platform-层"><a class="header" href="#1695-不要把-hal-库当-platform-层">16.9.5 不要把 HAL 库当 platform 层</a></h3>
 <p>ST 的 HAL 库（<code>HAL_GPIO_WritePin</code> 那一套）经常被人当作 platform 抽象的例子。其实不是。HAL 库是“绑死 STM32 一家 + 函数式包装“，<code>HAL_GPIO_WritePin(GPIOA, ...)</code> 里的 GPIOA 是 STM32 寄存器布局的 typedef，绑得死死的。换到瑞萨 RA 上 GPIOA 这个符号都不存在。</p>
 <p>真正的 platform 层是抽象到“任何 SoC 都能实现“的程度。ops 表才是 platform 层的标准形态。HAL 库是 platform 层下面、绑死单家的实现，你用的时候只是 platform 层的一个具体子类。</p>
-<h3 id="16116-ai-时代的位置"><a class="header" href="#16116-ai-时代的位置">16.11.6 AI 时代的位置</a></h3>
-<p>有人说 AI 时代不需要学架构了，AI 能写代码。</p>
-<p>AI 能帮你写 gpio_on，能帮你写 platform 层适配，能从零生成一个 I2C 驱动。</p>
-<p>但决定“这里该用 ops 表还是 if-else“、“这层该抽象到什么程度”、“这个接口够不够稳定”，这一类问题不是 AI 给你答案，是你给 AI 答案，AI 才能照你的骨架往下写。</p>
-<p>而且 AI 是看你的代码仓库学习你的风格的。你的代码有分层，AI 输出就有分层。你的代码是一坨，AI 输出也是一坨。</p>
-<p>这就是 AI 时代你的核心竞争力，你的架构能力，决定了 AI 能帮你放大多少。</p>
-<p><img src="../assets/ch16/slide8_AI时代.png" alt="AI 时代"></p>
-<h2 id="1612-你现在的代码在-stm32-上长什么样"><a class="header" href="#1612-你现在的代码在-stm32-上长什么样">16.12 你现在的代码在 STM32 上长什么样</a></h2>
+<h2 id="1610-你现在的代码在-stm32--linux-上长什么样"><a class="header" href="#1610-你现在的代码在-stm32--linux-上长什么样">16.10 你现在的代码在 STM32 / Linux 上长什么样</a></h2>
 <p>ch16 是工程哲学章，没有“STM32 snippet“，你已经会的 ch15 platform_ops 就是 STM32 端的样子。</p>
 <p>如果你想把本章 pc/ 里山寨的 gpio_chip 框架移植到 STM32 裸机上，做法是：</p>
 <ol>
 <li>把 <code>vendor_a_set</code> 里的 printf 替换成真实的 BSRR 写入。</li>
-<li>启动期（或 ch17 的 initcall）调一次 <code>gpiochip_add(&amp;vendor_a_chip)</code>。</li>
+<li>启动期（或下一章的 initcall）调一次 <code>gpiochip_add(&amp;vendor_a_chip)</code>。</li>
 <li>led 驱动一行不改。</li>
 </ol>
 <p>效果就是“一份 leds-gpio.c 跑在不同 SoC 上“，这就是 Linux 内核的工作模式。</p>
 <p>详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/stm32-snippet/"><code>oop-in-c/code/16-linux-style/stm32-snippet/</code></a>。</p>
-<h2 id="1613-你现在的代码在-linux-上长什么样"><a class="header" href="#1613-你现在的代码在-linux-上长什么样">16.13 你现在的代码在 Linux 上长什么样</a></h2>
-<p>本章整章就是讲 Linux 内核怎么用 OOP 风格组织自己。Linux 端的“snippet“就是内核源码本身（如何获取内核源码做本地参考见附录 D，下面是 v6.6 LTS 的关键路径）：</p>
+<p>Linux 端的“snippet“就是内核源码本身（如何获取内核源码做本地参考见附录 D，下面是 v6.6 LTS 的关键路径）：</p>
 <ul>
 <li><code>include/linux/gpio/driver.h</code> 第 415 行：<code>struct gpio_chip</code> 真身</li>
 <li><code>drivers/gpio/gpiolib.c</code> 第 3245 行：<code>gpiod_set_value</code></li>
-<li><code>include/linux/fs.h</code> 第 1852 行：<code>struct file_operations</code></li>
+<li><code>drivers/misc/eeprom/at24.c</code>：一个文件跨所有 SoC 的 EEPROM 驱动</li>
 <li><code>include/linux/container_of.h</code> 第 18 行：<code>container_of</code> 真身</li>
 </ul>
-<p>读完本章 pc/ 山寨版再去读这四个内核源文件，你会发现“原来就是这一招“。</p>
-<h2 id="1614-工业代码里的对照"><a class="header" href="#1614-工业代码里的对照">16.14 工业代码里的对照</a></h2>
+<p>读完本章 pc/ 山寨版再去读这几个内核源文件，你会发现“原来就是这一招“。</p>
+<h2 id="1611-工业代码里的对照"><a class="header" href="#1611-工业代码里的对照">16.11 工业代码里的对照</a></h2>
 <p>工业控制板项目里没有 Linux 内核（裸机 + RTOS），但用的是同一套思路：</p>
 <pre><code class="language-c">/* drivers/gpio/gpio_chip.h */
 struct gpio_chip {
@@ -485,7 +387,7 @@ struct gpio_chip_ops {
 </code></pre>
 <p>5 套产品，3 款主控芯片，driver 模块（led / motor / encoder / sensor / eeprom）跨产品共享。每款芯片提供一份 <code>gpio_chip</code> 实现 + 注册一次 <code>gpiochip_add</code>。</p>
 <p>跟 Linux 内核 90% 一致。这套架构是“工业总结的最佳工程实践“，不是某个项目独创的。</p>
-<h2 id="1615-完整源码清单"><a class="header" href="#1615-完整源码清单">16.15 完整源码清单</a></h2>
+<h2 id="1612-完整源码清单"><a class="header" href="#1612-完整源码清单">16.12 完整源码清单</a></h2>
 <p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/pc/"><code>oop-in-c/code/16-linux-style/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
 <h3 id="文件-1mainc43-行"><a class="header" href="#文件-1mainc43-行">文件 1：<code>main.c</code>（43 行）</a></h3>
 <p>启动入口。注册两家芯片，然后用同一份 <code>leds-gpio</code> 驱动接口分别点亮两家芯片上的灯。</p>
@@ -858,7 +760,7 @@ make
 </code></pre>
 <p><code>led_gpio_brightness_set</code> 这个驱动函数对两个 LED 调同一行 <code>gpiod_set_value</code>。红灯走 vendorA 的寄存器（DR_REG），绿灯走 vendorB 的寄存器（BSRR 风格）。驱动一行不改。</p>
 <p>这就是 Linux 内核驱动作者每天的工作模式。</p>
-<h2 id="1616-视频回放"><a class="header" href="#1616-视频回放">16.16 视频回放</a></h2>
+<h2 id="1613-视频回放"><a class="header" href="#1613-视频回放">16.13 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV13WofBcEmv/">《C 语言·为什么 Linux 一点都不难·Platform 层·分层威力·AI 时代》</a></p>
 </blockquote>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>ch14 虚函数不实现会怎样 · 纯虚与抽象类 - C 语言面向对象编程·嵌入式实战</title>
+        <title>ch14 虚函数不实现 · 三种策略 - C 语言面向对象编程·嵌入式实战</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,10 +180,10 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-14-章--虚函数不实现会怎样--纯虚与抽象类"><a class="header" href="#第-14-章--虚函数不实现会怎样--纯虚与抽象类">第 14 章 · 虚函数不实现会怎样 · 纯虚与抽象类</a></h1>
+                        <h1 id="第-14-章--虚函数不实现--三种策略"><a class="header" href="#第-14-章--虚函数不实现--三种策略">第 14 章 · 虚函数不实现 · 三种策略</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/"><code>oop-in-c/code/14-pure-virtual/</code></a></p>
-<p>类型机制完整了，上转下转都能干。但 ops 表里有一颗雷你可能没意识到：如果某种 LED 在 <code>init</code> 的时候，<code>ops-&gt;on</code> 没填呢？</p>
-<h2 id="141-null-函数指针的崩溃"><a class="header" href="#141-null-函数指针的崩溃">14.1 NULL 函数指针的崩溃</a></h2>
+<p>类型机制完整了，上转下转都能干。但 ops 表里有一颗雷你可能还没意识到：如果某种 LED 在 <code>init</code> 的时候，<code>ops-&gt;on</code> 没填呢？</p>
+<h2 id="141-ops-表里有一颗雷--null-函数指针崩溃"><a class="header" href="#141-ops-表里有一颗雷--null-函数指针崩溃">14.1 ops 表里有一颗雷 · NULL 函数指针崩溃</a></h2>
 <p>第 11 章演化出来的 <code>led_on</code> 长这样：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
@@ -200,7 +200,7 @@
 <p>应用层调 <code>led_on(handle)</code>，进到 <code>me-&gt;ops-&gt;on(me)</code>，把 NULL 当函数地址跳过去。在 STM32 上一般是 0 地址（向量表起点），跳进去取出“函数指针“再跳，行为不可预测，多半是 HardFault 死循环。在 Linux 用户态收到 SIGSEGV，进程当场死。</p>
 <p>编译器一句话不说就让你过了。它觉得你是故意填 NULL 的。</p>
 <p><img src="../assets/ch14/slide1_NULL崩溃.png" alt="NULL 崩溃"></p>
-<h2 id="142-必填调用前检查"><a class="header" href="#142-必填调用前检查">14.2 必填：调用前检查</a></h2>
+<h2 id="142-必填策略--调用前-assert"><a class="header" href="#142-必填策略--调用前-assert">14.2 必填策略 · 调用前 assert</a></h2>
 <p>第一种做法：在统一接口里加一行检查。</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
@@ -216,7 +216,7 @@
 <p>调试期就抓住“忘记实现“的子类。这一类操作叫 <strong>必填</strong>，子类不实现，整个对象无效。</p>
 <p>灯的 <code>on</code> 和 <code>off</code> 就是必填。一颗灯不能开、不能关，那还叫什么灯？合同里的必填项，不填合同无效。</p>
 <p><img src="../assets/ch14/slide2_必须实现.png" alt="必填"></p>
-<h2 id="143-选填父类提供默认行为"><a class="header" href="#143-选填父类提供默认行为">14.3 选填：父类提供默认行为</a></h2>
+<h2 id="143-选填策略--父类提供默认行为"><a class="header" href="#143-选填策略--父类提供默认行为">14.3 选填策略 · 父类提供默认行为</a></h2>
 <p>但有些操作不是每种子类都需要自己实现。</p>
 <p><code>set_brightness</code>：PWM 灯支持调光，GPIO 灯不支持。GPIO 灯只有“开“和“关“，没有亮度概念。</p>
 <p>如果让 <code>led_set_brightness</code> 也走 <code>assert</code> 必填策略，GPIO 子类就得写一个空函数：</p>
@@ -244,7 +244,7 @@
 <p>子类填了 <code>set_brightness</code> 就走子类。子类没填，统一接口走默认。<strong>ops 表本身从来不改</strong>，NULL 就是 NULL，处理这个 NULL 的责任落在父类的统一接口上。</p>
 <p>这一类操作叫 <strong>选填</strong>。合同里的选填项，不填用默认条款，但合同主体没改过。</p>
 <p><img src="../assets/ch14/slide3_默认实现.png" alt="选填"></p>
-<h2 id="144-全必填接口interface"><a class="header" href="#144-全必填接口interface">14.4 全必填：接口（interface）</a></h2>
+<h2 id="144-全必填策略--接口interface"><a class="header" href="#144-全必填策略--接口interface">14.4 全必填策略 · 接口（interface）</a></h2>
 <p>把策略推到极致：如果一张 ops 表里每一个 op 都是必填呢？</p>
 <pre><code class="language-c">struct sensor_ops {
 	int (*read)(struct sensor *me, int32_t *out);
@@ -284,13 +284,13 @@ int sensor_self_test(struct sensor *me)
 <tbody>
 <tr><td>必填</td><td>统一接口里 <code>assert</code></td><td>纯虚函数 <code>virtual void f()=0;</code></td><td>调试期 assert 失败 / C++ 编译器拒绝实例化子类</td></tr>
 <tr><td>选填</td><td>统一接口里检查 NULL，提供默认</td><td>虚函数有默认实现 <code>virtual void f() {...}</code></td><td>子类继承父类默认行为</td></tr>
-<tr><td>全必填</td><td>ops 表所有字段都走必填</td><td>全是纯虚函数的抽象类（“接口”）</td><td>子类必须实现每一个</td></tr>
+<tr><td>全必填</td><td>ops 表所有字段都走必填</td><td>全是纯虚函数的类（“接口”）</td><td>子类必须实现每一个</td></tr>
 </tbody>
 </table>
 </div>
 <p>C++ 里编译器替你把这三种区分开。C 里你自己在统一接口里实现这套区分。底下逻辑一样。</p>
 <p><img src="../assets/ch14/slide5_概念揭示.png" alt="概念揭示"></p>
-<p>Linux 内核的 <code>struct file_operations</code> 就是混合策略的代表。<code>read</code>、<code>write</code> 这种关键操作必填，<code>unlocked_ioctl</code>、<code>mmap</code> 这些选填，文件系统不支持就 NULL，VFS 层走默认行为。第 16 章会展开 file_operations 的实例。</p>
+<p>Linux 内核的 <code>struct file_operations</code> 就是混合策略的代表：<code>read</code> / <code>write</code> 这种关键操作必填，<code>unlocked_ioctl</code> / <code>mmap</code> 这些选填，文件系统不支持就 NULL，VFS 层走默认行为。第 16 章会展开 file_operations 的实例。</p>
 <h2 id="146-c-对比-c"><a class="header" href="#146-c-对比-c">14.6 C 对比 C++</a></h2>
 <pre><code class="language-cpp">class LedBase {
 public:
@@ -310,11 +310,12 @@ public:
 	/* set_brightness 不实现，继承父类默认 */
 };
 </code></pre>
-<p>C++ 编译器看到子类没实现 <code>on</code>、<code>off</code>，<strong>编译期拒绝</strong>让你 <code>LedGpio gpio_led;</code>：抽象类不能直接实例化。</p>
+<p>C++ 编译器看到子类没实现 <code>on</code> / <code>off</code>，<strong>编译期拒绝</strong>让你 <code>LedGpio gpio_led;</code>：抽象类不能直接实例化。</p>
 <p>C 里编译器一句话不说，运行时 assert 才发现。区别只在出错的时机。</p>
+<p>一句话：<strong>C 语言自己约束自己，C++ 编译器约束你</strong>。</p>
 <p><img src="../assets/ch14/slide6_CvsCpp.png" alt="C vs C++"></p>
 <h2 id="147-视频里没讲透的几个细节"><a class="header" href="#147-视频里没讲透的几个细节">14.7 视频里没讲透的几个细节</a></h2>
-<h3 id="1471-assert-不是生产代码的最终防线"><a class="header" href="#1471-assert-不是生产代码的最终防线">14.7.1 assert 不是生产代码的最终防线</a></h3>
+<h3 id="1471-assert-在-release-构建里防线"><a class="header" href="#1471-assert-在-release-构建里防线">14.7.1 assert 在 release 构建里防线</a></h3>
 <p>assert 在 release 构建里被 <code>NDEBUG</code> 关掉。生产代码里如果你只靠 assert，关掉之后那一行就成了空语句，NULL 又能打过来了。</p>
 <p>更稳的做法：assert + 错误返回值并存。</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
@@ -330,7 +331,7 @@ public:
 }
 </code></pre>
 <p>调试期 assert 帮你定位问题，生产期错误码兜底。两个都不能少。</p>
-<h3 id="1472-为什么-ops-表用-const"><a class="header" href="#1472-为什么-ops-表用-const">14.7.2 为什么 ops 表用 const</a></h3>
+<h3 id="1472-ops-表一定要-const"><a class="header" href="#1472-ops-表一定要-const">14.7.2 ops 表一定要 const</a></h3>
 <p>工业项目里 ops 表都是这样定义：</p>
 <pre><code class="language-c">static const struct led_ops gpio_ops = {
 	.on  = gpio_on,
@@ -343,18 +344,19 @@ public:
 <li><strong>安全</strong>：跑飞的代码可能踩到 ops 表，把 <code>on</code> 改成野指针。const + .rodata 让这种踩踏立刻爆出来，比静默崩好。</li>
 <li><strong>缓存</strong>：所有相同子类的对象共享一份 ops 表（一个 ops 实例服务全部 GPIO LED 对象），只读段对 cache 友好。</li>
 </ol>
-<h3 id="1473-接口还是混合怎么选"><a class="header" href="#1473-接口还是混合怎么选">14.7.3 接口还是混合：怎么选</a></h3>
+<h3 id="1473-接口还是混合什么时候选哪种"><a class="header" href="#1473-接口还是混合什么时候选哪种">14.7.3 接口还是混合：什么时候选哪种</a></h3>
 <p>什么时候用全必填的接口风格，什么时候用必填 + 选填混合？</p>
-<p>如果 ops 里的每一个 op，子类都必须自己实现才有意义，那就是接口。例子：sensor 模块的 read/calibrate/self_test，每一个传感器都得自己提供。</p>
+<p>如果 ops 里的每一个 op，子类都必须自己实现才有意义，那就是接口。例子：sensor 模块的 read / calibrate / self_test，每一个传感器都得自己提供。</p>
 <p>如果 ops 里有些 op 是“通用默认行为可用、子类需要的话覆写“，那就是混合。例子：LED 的 set_brightness，大部分 LED 默认走“不支持调光“是合理的。</p>
 <p>判据：<strong>没有合理的默认行为 → 必填 → 接口风格</strong>。<strong>有合理默认 → 选填 → 混合</strong>。</p>
-<p>工业代码里两种都常见。读源码遇到一个 ops 表先看父类的统一接口怎么处理 NULL：每一个 NULL 都 assert，那是接口；有些 NULL 走默认行为，那是混合。</p>
-<h3 id="1474-头文件里的那个分号c-纯虚的--0"><a class="header" href="#1474-头文件里的那个分号c-纯虚的--0">14.7.4 头文件里的那个分号（C++ 纯虚的 <code>= 0</code>）</a></h3>
+<p>读源码遇到一个 ops 表先看父类的统一接口怎么处理 NULL：每一个 NULL 都 assert，那是接口；有些 NULL 走默认行为，那是混合。</p>
+<h3 id="1474-__cxa_pure_virtualc-里那个占位地址"><a class="header" href="#1474-__cxa_pure_virtualc-里那个占位地址">14.7.4 __cxa_pure_virtual：C++ 里那个占位地址</a></h3>
 <pre><code class="language-cpp">virtual int on() = 0;     /* 纯虚 */
 </code></pre>
 <p>C++ 这个 <code>= 0</code> 不是赋值。它是一个语法占位，告诉编译器“这个函数没实现，子类必须实现“。底层做法是给虚函数表的对应槽位填一个特殊地址（一般是 <code>__cxa_pure_virtual</code>），子类没覆写就调到这个特殊函数，运行时报“pure virtual function called“。</p>
 <p>C 里你手动让 ops 表的对应字段保持 NULL，再在统一接口里 assert，做的是同一件事。C++ 把这一招用语法藏起来，C 让你看见齿轮。</p>
-<h3 id="1475-默认行为长什么样最好"><a class="header" href="#1475-默认行为长什么样最好">14.7.5 默认行为长什么样最好</a></h3>
+<p>和你 ch11 学的 ops 分发是同一个机制。</p>
+<h3 id="1475-默认行为长什么样"><a class="header" href="#1475-默认行为长什么样">14.7.5 默认行为长什么样</a></h3>
 <p><code>led_set_brightness</code> 的默认是“安静跳过“。但默认也可以是别的。比如：</p>
 <pre><code class="language-c">int led_set_brightness(struct led_base *me, uint8_t brightness)
 {
@@ -373,69 +375,10 @@ public:
 </code></pre>
 <p>GPIO 灯虽然不支持真调光，亮度大于 50% 就开、小于就关，也是一种合理默认。</p>
 <p>默认行为是父类设计的责任。子类要的“非默认“才填 ops 字段。</p>
-<h3 id="1476-一个-c-里的接口经典案例linkedlist-adt"><a class="header" href="#1476-一个-c-里的接口经典案例linkedlist-adt">14.7.6 一个 C 里的接口经典案例：LinkedList ADT</a></h3>
-<p>如果你做过数据结构题，会写过这种东西：</p>
-<pre><code class="language-c">/* 一份 LinkedList 接口 */
-struct list_ops {
-	int  (*push_front)(struct list *me, void *value);
-	int  (*push_back) (struct list *me, void *value);
-	int  (*pop_front) (struct list *me, void **out);
-	int  (*pop_back)  (struct list *me, void **out);
-	size_t (*size)    (const struct list *me);
-};
-
-struct list {
-	const struct list_ops *ops;
-};
-</code></pre>
-<p>任何想成为 list 的子类都得实现这 5 个 op 才上得了体系。</p>
-<pre><code class="language-c">/* 单链表实现 */
-struct sllist {
-	struct list base;
-	struct sllist_node *head;
-	size_t              count;
-};
-
-/* 双链表实现 */
-struct dllist {
-	struct list base;
-	struct dllist_node *head;
-	struct dllist_node *tail;
-	size_t              count;
-};
-
-/* 数组列表实现 */
-struct arraylist {
-	struct list base;
-	void   **buf;
-	size_t   capacity;
-	size_t   count;
-};
-</code></pre>
-<p>三种实现，时间复杂度不同（单链表 push_back O(n)，双链表 O(1)，数组 amortized O(1)），但对外暴露同一个 <code>struct list</code> 接口。应用层换实现一行不改。</p>
-<p>这就是 C 里“接口“的标准案例，和你这一章学的全必填 ops 表机制完全一样。Java 的 <code>java.util.List</code> 接口、C++ STL 的容器适配器，骨架都是这一套。</p>
-<p>整个 C 标准库（stdlib.h 的 <code>qsort</code>）也用这一招：你把比较函数（一个函数指针）作为参数传给 qsort，qsort 不知道你比的是 int、string、struct，只通过那个函数指针调你的实现。这是“参数化的接口“，单 op 版。</p>
-<p>ops 表 + 必填策略不是 LED 专属。任何“我有多种实现，要让上层无感切换“的场景，都用这一招。</p>
-<h3 id="1477-接口分离"><a class="header" href="#1477-接口分离">14.7.7 接口分离</a></h3>
-<p>如果一个 ops 表里既有“所有人必须做的事“，又有“少数人才做的事“，可以拆成两张表：</p>
-<pre><code class="language-c">struct led_basic_ops {       /* 所有 LED 必填 */
-	int (*on)(struct led_base *me);
-	int (*off)(struct led_base *me);
-};
-
-struct led_dim_ops {         /* 仅可调光的 LED 填 */
-	int (*set_brightness)(struct led_base *me, uint8_t brightness);
-};
-
-struct led_base {
-	const struct led_basic_ops *basic;     /* 必有 */
-	const struct led_dim_ops   *dim;       /* 可为 NULL */
-	const char                 *name;
-};
-</code></pre>
-<p>GPIO 灯：<code>basic</code> 填、<code>dim</code> 留 NULL。PWM 灯：两个都填。</p>
-<p>这是 SOLID 五原则里的“接口隔离原则“（ISP）的 C 写法。比单 ops 表混合更显式，但代价是父类多一个指针字段。Linux 内核里 file_operations 那张大表没拆，因为历史包袱；后出的子系统倾向于拆得更细。</p>
-<h2 id="148-你现在的代码在-stm32-上长什么样"><a class="header" href="#148-你现在的代码在-stm32-上长什么样">14.8 你现在的代码在 STM32 上长什么样</a></h2>
+<h2 id="148-一句金句"><a class="header" href="#148-一句金句">14.8 一句金句</a></h2>
+<p>接口是一份合同 · 签了就必须全部履行。</p>
+<p><img src="../assets/ch14/slide6_CvsCpp.png" alt="金句"></p>
+<h2 id="149-你现在的代码在-stm32-上长什么样"><a class="header" href="#149-你现在的代码在-stm32-上长什么样">14.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>assert 在 STM32 上要小心：默认实现会调 <code>__assert_func</code>，里面常常是 <code>printf("..."); abort()</code>。printf 在 MCU 上要 retarget UART，abort 默认会跑 <code>_exit</code> 死循环。生产代码倾向于把 assert 替换成项目自己的错误日志 + 复位机制：</p>
 <pre><code class="language-c">#define ASSERT(cond)							\
 	do {								\
@@ -446,11 +389,11 @@ struct led_base {
 	} while (0)
 </code></pre>
 <p>错误日志写到非易失存储，下次开机能拉出来看哪一行炸了。完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/stm32-snippet/"><code>oop-in-c/code/14-pure-virtual/stm32-snippet/</code></a>。</p>
-<h2 id="149-你现在的代码在-linux-用户态长什么样"><a class="header" href="#149-你现在的代码在-linux-用户态长什么样">14.9 你现在的代码在 Linux 用户态长什么样</a></h2>
+<h2 id="1410-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1410-你现在的代码在-linux-用户态长什么样">14.10 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>Linux 用户态 assert 直接走 glibc 的实现，会把诊断信息打到 stderr 然后 abort。core dump 如果 ulimit 开了，gdb 拉出来能看到完整调用栈。</p>
 <p>完整 Linux 用户态 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/linux-snippet/"><code>oop-in-c/code/14-pure-virtual/linux-snippet/</code></a>。</p>
-<h2 id="1410-工业代码里的策略选择"><a class="header" href="#1410-工业代码里的策略选择">14.10 工业代码里的策略选择</a></h2>
-<p>工业控制板的 led 模块用混合策略（on/off 必填，set_brightness 选填），和本章 14.3 节一致。motor 模块就不一样，motor_base 的 ops 表有 24 个 op，全部必填：</p>
+<h2 id="1411-工业代码里的策略选择"><a class="header" href="#1411-工业代码里的策略选择">14.11 工业代码里的策略选择</a></h2>
+<p>工业控制板的 led 模块用混合策略（on / off 必填，set_brightness 选填），和本章 14.3 节一致。motor 模块就不一样，motor_base 的 ops 表有 24 个 op，全部必填：</p>
 <pre><code class="language-c">struct motor_ops {
 	int (*init)(struct motor_base *me, const struct motor_cfg *cfg);
 	int (*deinit)(struct motor_base *me);
@@ -465,386 +408,12 @@ struct led_base {
 </code></pre>
 <p>电机这种安全相关、行为复杂的对象，每一个 op 子类都必须明确表态，能做就实现，不能做就报错返回。没有“合理默认“。motor_ops 是接口风格的典型。</p>
 <p>判据回到 14.7.3：<strong>有没有合理的默认</strong>。没有，全必填，做成接口。有，混合。</p>
-<h2 id="1411-完整源码清单"><a class="header" href="#1411-完整源码清单">14.11 完整源码清单</a></h2>
-<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/pc/"><code>oop-in-c/code/14-pure-virtual/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
-<p><code>common/platform.h</code> 和 <code>common/platform_pc.c</code> 跟 ch01 一字不变，本章 Makefile 通过 <code>-I../../common</code> 引用。完整代码见 ch01 末尾完整源码清单。</p>
-<h3 id="文件-1mainc90-行"><a class="header" href="#文件-1mainc90-行">文件 1：<code>main.c</code>（90 行）</a></h3>
-<p>应用层。在 main 里展示三种策略：GPIO 灯 set_brightness 走默认行为不崩；PWM 灯三件套全填；temp_sensor 是一个完整接口实现，三件套都进子类。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * main.c - 演示三种 ops 表策略
- *
- * 1. GPIO 灯不支持调光：set_brightness 选填，调到走默认行为，不崩
- * 2. PWM 灯三件套全填：每个调用都走子类实现
- * 3. sensor 三件套全必填：演示 sensor_read 调到一个完整子类的情形
- *
- * 故意演示一段"忘了填 on" 的代码（注释保留），打开 NDEBUG 没开的话会触发 assert。
- */
-
-#include "led.h"
-#include &lt;stdio.h&gt;
-
-/* 一个完整的 sensor 子类：温度传感器 */
-struct temp_sensor {
-	struct sensor base;
-	int32_t       last_value;
-};
-
-static int temp_read(struct sensor *me, int32_t *out)
-{
-	struct temp_sensor *self = (struct temp_sensor *)me;
-	self-&gt;last_value = 25;
-	*out = self-&gt;last_value;
-	printf("  [%s] read = %d C\n", me-&gt;name, *out);
-	return 0;
-}
-
-static int temp_calibrate(struct sensor *me)
-{
-	printf("  [%s] calibrate\n", me-&gt;name);
-	return 0;
-}
-
-static int temp_self_test(struct sensor *me)
-{
-	printf("  [%s] self_test\n", me-&gt;name);
-	return 0;
-}
-
-static const struct sensor_ops temp_ops = {
-	.read      = temp_read,
-	.calibrate = temp_calibrate,
-	.self_test = temp_self_test,
-};
-
-int main(void)
-{
-	struct led_gpio g_led_err;
-	struct led_pwm  g_led_stat;
-	struct temp_sensor g_temp;
-
-	led_gpio_init(&amp;g_led_err,  "ERR",  10, true);
-	led_pwm_init (&amp;g_led_stat, "STAT",  1, 50);
-
-	g_temp.base.ops  = &amp;temp_ops;
-	g_temp.base.name = "TEMP";
-	g_temp.last_value = 0;
-
-	printf("\n=========================================\n");
-	printf("  ch14 - pure virtual / virtual / interface\n");
-	printf("=========================================\n");
-
-	printf("\n--- 1. GPIO LED, no dimming support ---\n");
-	led_on(&amp;g_led_err.base);
-	led_off(&amp;g_led_err.base);
-	/* set_brightness 没填，统一接口走默认行为，不崩 */
-	led_set_brightness(&amp;g_led_err.base, 50);
-
-	printf("\n--- 2. PWM LED, full ops ---\n");
-	led_on(&amp;g_led_stat.base);
-	led_set_brightness(&amp;g_led_stat.base, 70);
-	led_off(&amp;g_led_stat.base);
-
-	printf("\n--- 3. sensor, all required ---\n");
-	int32_t v = 0;
-	sensor_self_test(&amp;g_temp.base);
-	sensor_calibrate(&amp;g_temp.base);
-	sensor_read(&amp;g_temp.base, &amp;v);
-
-	printf("\n=========================================\n");
-	printf("  3 strategies: required / optional / contract\n");
-	printf("=========================================\n");
-
-	printf("\nPress Enter to exit...\n");
-	getchar();
-	return 0;
-}
-</code></pre>
-<h3 id="文件-2container_ofh11-行"><a class="header" href="#文件-2container_ofh11-行">文件 2：<code>container_of.h</code>（11 行）</a></h3>
-<p>container_of 宏的最小可用版。和 ch13 同源，缩写一些注释。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-#ifndef MY_CONTAINER_OF_H
-#define MY_CONTAINER_OF_H
-
-#include &lt;stddef.h&gt;
-
-#define container_of(ptr, type, member)					\
-	((type *)((char *)(ptr) - offsetof(type, member)))
-
-#endif
-</code></pre>
-<h3 id="文件-3ledh75-行"><a class="header" href="#文件-3ledh75-行">文件 3：<code>led.h</code>（75 行）</a></h3>
-<p>LED 父类（必填 + 选填混合）+ sensor 接口（全必填）。注释把每一个 op 标了“必填“ / “选填”，看一眼就知道策略。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * led.h - 三种 ops 表策略：必填 / 选填 / 全必填
- *
- * 必填（纯虚函数）：on / off。子类不填，led_on 内部 assert 失败。
- * 选填（带默认行为的虚函数）：set_brightness。子类不填，统一接口默认跳过。
- * 全必填（接口）：示例 struct sensor_ops，三个 op 全是必填。
- */
-
-#ifndef LED_H
-#define LED_H
-
-#include &lt;stdint.h&gt;
-#include &lt;stdbool.h&gt;
-
-struct led_base;
-
-struct led_ops {
-	int (*on)(struct led_base *me);                 /* 必填 */
-	int (*off)(struct led_base *me);                /* 必填 */
-	int (*set_brightness)(struct led_base *me,      /* 选填 */
-			      uint8_t brightness);
-};
-
-struct led_base {
-	const struct led_ops *ops;
-	const char           *name;
-	bool                  is_on;
-};
-
-int led_on(struct led_base *me);
-int led_off(struct led_base *me);
-int led_set_brightness(struct led_base *me, uint8_t brightness);
-
-/* GPIO 子类：只填 on / off，set_brightness 留空（不支持调光） */
-struct led_gpio {
-	struct led_base base;
-	uint8_t         pin;
-	bool            on_level;
-};
-
-void led_gpio_init(struct led_gpio *me, const char *name,
-		   uint8_t pin, bool on_level);
-
-/* PWM 子类：三件套全填 */
-struct led_pwm {
-	struct led_base base;
-	uint8_t         channel;
-	uint8_t         duty;
-};
-
-void led_pwm_init(struct led_pwm *me, const char *name,
-		  uint8_t channel, uint8_t duty);
-
-/* ============== 接口（全必填）示例 ============== */
-
-struct sensor;
-
-struct sensor_ops {
-	int (*read)(struct sensor *me, int32_t *out);   /* 全必填 */
-	int (*calibrate)(struct sensor *me);            /* 全必填 */
-	int (*self_test)(struct sensor *me);            /* 全必填 */
-};
-
-struct sensor {
-	const struct sensor_ops *ops;
-	const char              *name;
-};
-
-int sensor_read(struct sensor *me, int32_t *out);
-int sensor_calibrate(struct sensor *me);
-int sensor_self_test(struct sensor *me);
-
-#endif /* LED_H */
-</code></pre>
-<h3 id="文件-4ledc166-行"><a class="header" href="#文件-4ledc166-行">文件 4：<code>led.c</code>（166 行）</a></h3>
-<p>父类统一接口实现：<code>led_on / led_off</code> 走必填策略（assert + 错误返回）；<code>led_set_brightness</code> 走选填策略（NULL 检查 + 默认跳过）；<code>sensor_read / calibrate / self_test</code> 走全必填策略（每一个都 assert）。三种策略合在一份文件里看。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * led.c - 父类统一接口实现（必填 + 选填）
- *
- * led_on / led_off：必填。ops 没填或为 NULL，立刻 assert 报错并返回错误码。
- *                  这一类对应 C++ 的纯虚函数。
- * led_set_brightness：选填。ops 没填，安静返回 0。这一类对应 C++ 的虚函数
- *                  （父类提供默认行为）。
- *
- * sensor_xxx 三件套：全必填，每一个都 assert。这是接口（interface）的形态。
- */
-
-#include "led.h"
-#include "container_of.h"
-#include "platform.h"
-#include &lt;assert.h&gt;
-#include &lt;stdio.h&gt;
-
-/* ============== 父类统一接口（必填 + 选填混合） ============== */
-
-int led_on(struct led_base *me)
-{
-	if (!me)
-		return -1;
-
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp; "led_on: subclass must implement on()");
-	return me-&gt;ops-&gt;on(me);
-}
-
-int led_off(struct led_base *me)
-{
-	if (!me)
-		return -1;
-
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp; "led_off: subclass must implement off()");
-	return me-&gt;ops-&gt;off(me);
-}
-
-int led_set_brightness(struct led_base *me, uint8_t brightness)
-{
-	if (!me || !me-&gt;ops)
-		return -1;
-
-	if (!me-&gt;ops-&gt;set_brightness) {
-		/* 默认行为：这种 LED 不支持调光，安静跳过 */
-		printf("  [%s] no dimming support, skip (brightness=%u)\n",
-		       me-&gt;name, (unsigned)brightness);
-		return 0;
-	}
-	return me-&gt;ops-&gt;set_brightness(me, brightness);
-}
-
-/* ============== GPIO 子类：只填 on / off ============== */
-
-static int gpio_on(struct led_base *me)
-{
-	struct led_gpio *self = container_of(me, struct led_gpio, base);
-	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
-	me-&gt;is_on = true;
-	printf("  [%s] GPIO Pin%u ON\n", me-&gt;name, (unsigned)self-&gt;pin);
-	return 0;
-}
-
-static int gpio_off(struct led_base *me)
-{
-	struct led_gpio *self = container_of(me, struct led_gpio, base);
-	platform_gpio_write(self-&gt;pin, !self-&gt;on_level);
-	me-&gt;is_on = false;
-	printf("  [%s] GPIO Pin%u OFF\n", me-&gt;name, (unsigned)self-&gt;pin);
-	return 0;
-}
-
-/* set_brightness 故意不填，GPIO 不支持调光 */
-static const struct led_ops gpio_ops = {
-	.on  = gpio_on,
-	.off = gpio_off,
-};
-
-void led_gpio_init(struct led_gpio *me, const char *name,
-		   uint8_t pin, bool on_level)
-{
-	me-&gt;base.ops   = &amp;gpio_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;pin        = pin;
-	me-&gt;on_level   = on_level;
-	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
-}
-
-/* ============== PWM 子类：三件套全填 ============== */
-
-static int pwm_on(struct led_base *me)
-{
-	struct led_pwm *self = container_of(me, struct led_pwm, base);
-	printf("  [%s] PWM ch%u duty=%u%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
-	me-&gt;is_on = true;
-	return 0;
-}
-
-static int pwm_off(struct led_base *me)
-{
-	struct led_pwm *self = container_of(me, struct led_pwm, base);
-	printf("  [%s] PWM ch%u duty=0%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel);
-	me-&gt;is_on = false;
-	return 0;
-}
-
-static int pwm_set_brightness(struct led_base *me, uint8_t brightness)
-{
-	struct led_pwm *self = container_of(me, struct led_pwm, base);
-	if (brightness &gt; 100)
-		brightness = 100;
-	self-&gt;duty = brightness;
-	printf("  [%s] PWM ch%u duty=%u%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)brightness);
-	me-&gt;is_on = (brightness &gt; 0);
-	return 0;
-}
-
-static const struct led_ops pwm_ops = {
-	.on             = pwm_on,
-	.off            = pwm_off,
-	.set_brightness = pwm_set_brightness,
-};
-
-void led_pwm_init(struct led_pwm *me, const char *name,
-		  uint8_t channel, uint8_t duty)
-{
-	me-&gt;base.ops   = &amp;pwm_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;channel    = channel;
-	me-&gt;duty       = duty;
-}
-
-/* ============== sensor 接口：三件套全必填 ============== */
-
-int sensor_read(struct sensor *me, int32_t *out)
-{
-	if (!me || !out)
-		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;read &amp;&amp;
-	       "sensor.read is part of the interface contract");
-	return me-&gt;ops-&gt;read(me, out);
-}
-
-int sensor_calibrate(struct sensor *me)
-{
-	if (!me)
-		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;calibrate &amp;&amp;
-	       "sensor.calibrate is part of the interface contract");
-	return me-&gt;ops-&gt;calibrate(me);
-}
-
-int sensor_self_test(struct sensor *me)
-{
-	if (!me)
-		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;self_test &amp;&amp;
-	       "sensor.self_test is part of the interface contract");
-	return me-&gt;ops-&gt;self_test(me);
-}
-</code></pre>
-<h3 id="文件-5makefile19-行"><a class="header" href="#文件-5makefile19-行">文件 5：<code>Makefile</code>（19 行）</a></h3>
-<pre><code class="language-makefile"># Makefile - ch14 pure virtual (PC)
-
-CC      = gcc
-CFLAGS  = -Wall -Wextra -std=c99 -I../../common
-TARGET  = demo
-SRCS    = main.c led.c ../../common/platform_pc.c
-
-.PHONY: all clean run
-
-all: $(TARGET)
-
-$(TARGET): $(SRCS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
-
-run: $(TARGET)
-	./$(TARGET)
-
-clean:
-	rm -f $(TARGET) $(TARGET).exe
-</code></pre>
-<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
-<pre><code class="language-bash">cd oop-in-c/code/14-pure-virtual/pc
+<h2 id="1412-跑一遍"><a class="header" href="#1412-跑一遍">14.12 跑一遍</a></h2>
+<pre><code>cd oop-in-c/code/14-pure-virtual/pc
 make
 ./demo
 </code></pre>
-<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<p>输出节选：</p>
 <pre><code>[GPIO] Pin10 init as OUTPUT
 
 =========================================
@@ -867,35 +436,6 @@ make
   [TEMP] self_test
   [TEMP] calibrate
   [TEMP] read = 25 C
-
-=========================================
-  3 strategies: required / optional / contract
-=========================================
-
-Press Enter to exit...
-</code></pre>
-<h2 id="1412-跑一遍"><a class="header" href="#1412-跑一遍">14.12 跑一遍</a></h2>
-<pre><code>cd oop-in-c/code/14-pure-virtual/pc
-make
-./demo
-</code></pre>
-<p>输出节选：</p>
-<pre><code>--- 1. GPIO LED, no dimming support ---
-[GPIO] Pin10 -&gt; HIGH
-  [ERR] GPIO Pin10 ON
-[GPIO] Pin10 -&gt; LOW
-  [ERR] GPIO Pin10 OFF
-  [ERR] no dimming support, skip (brightness=50)
-
---- 2. PWM LED, full ops ---
-  [STAT] PWM ch1 duty=50%
-  [STAT] PWM ch1 duty=70%
-  [STAT] PWM ch1 duty=0%
-
---- 3. sensor, all required ---
-  [TEMP] self_test
-  [TEMP] calibrate
-  [TEMP] read = 25 C
 </code></pre>
 <p>GPIO 灯调 set_brightness 走默认行为（“no dimming support, skip”），不崩。PWM 灯三件套全填，每次都走子类。sensor 三件套全必填，调过去都能进子类实现。</p>
 <p>如果你想体验“忘了填 on“的崩溃：把 led_gpio_init 里的 <code>me-&gt;base.ops = &amp;gpio_ops;</code> 改成 <code>me-&gt;base.ops = NULL;</code>，再编译跑，<code>led_on</code> 里的 assert 立刻报错。</p>
@@ -906,7 +446,7 @@ make
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>封装、继承、多态、向上转型、向下转型、纯虚 / 虚 / 接口，C 里做 OOP 的全套武器你都见过了。</p>
 <p>但你还没见过它们组装在一起在一个真实项目里跑的样子。下一章把武器全部组装起来，演示一套完整的 LED 框架，换硬件应用层 0 改动。</p>
-<p>下一篇：<a href="15-Platform抽象.html">第 15 章 · 换硬件不改应用 · Platform 抽象到底</a></p>
+<p>下一篇：<a href="15-Platform抽象.html">第 15 章 · 换硬件不改应用 · OOP 完整框架</a></p>
 
                     </main>
 

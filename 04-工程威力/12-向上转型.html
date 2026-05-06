@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,48 +182,15 @@
                     <main>
                         <h1 id="第-12-章--一个指针指所有-led--向上转型"><a class="header" href="#第-12-章--一个指针指所有-led--向上转型">第 12 章 · 一个指针指所有 LED · 向上转型</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/"><code>oop-in-c/code/12-upcasting/</code></a></p>
-<p>第 11 章末尾你看到的局面是这样：<code>struct led_base</code> 里有一个 <code>ops</code> 指针，子类把自己 <code>init</code> 的时候把 <code>&amp;xxx_ops</code> 填进去，应用层一句 <code>led_on(me)</code> 就能 dispatch 到三种不同的实现。</p>
-<p>机制学透了。但工程上还差最后一步：怎么让这套机制在一个真实项目里跑起来。</p>
-<p>这一章解决这一步。</p>
-<h2 id="120-从-ch11-到-ch12base-已定型子类开始繁多"><a class="header" href="#120-从-ch11-到-ch12base-已定型子类开始繁多">12.0 从 ch11 到 ch12：base 已定型，子类开始繁多</a></h2>
-<p>第 10 章末尾 <code>struct led_base</code> 已经定型：</p>
-<pre><code class="language-c">/* ch10 / ch11 / ch12 起一致 */
-struct led_base {
-	const struct led_ops *ops;
-	const char           *name;
-	bool                  is_on;
-};
-</code></pre>
-<p>ch12 起这一份字段不再变。变化的是子类。ch11 之前只有一种 GPIO LED 来演化 ops 表机制；这一章子类扩成三种，每种硬件资源完全不同：</p>
-<pre><code class="language-c">struct led_gpio {
-	struct led_base base;
-	uint8_t         pin;
-	bool            on_level;
-};
-
-struct led_pwm {
-	struct led_base base;
-	uint8_t         channel;
-	uint8_t         duty;
-};
-
-struct led_i2c {
-	struct led_base base;
-	uint8_t         bus;
-	uint8_t         addr;
-};
-</code></pre>
-<p>GPIO LED 有 <code>pin</code>，PWM LED 有 <code>channel + duty</code>，I2C 扩展芯片 LED 有 <code>bus + addr</code>。这正是父类放共性、硬件字段下沉到子类的标准形态。这条纪律 ch12 起整本书都遵守。</p>
-<p>如果你跑过 ch11 的代码再来跑 ch12，把字段差异记一下：父类字段没动（ops / name / is_on），子类多了起来，骨架（嵌入式继承 + ops 表）一字不变。</p>
 <h2 id="121-上一章的代码里藏着一个秘密"><a class="header" href="#121-上一章的代码里藏着一个秘密">12.1 上一章的代码里藏着一个秘密</a></h2>
-<p>上一章你写过这样的调用：</p>
+<p>第 11 章末尾你写过这样的调用：</p>
 <pre><code class="language-c">struct led_gpio gpio_led;
 led_gpio_init(&amp;gpio_led, "ERR", 10, true);
 
 led_on(&amp;gpio_led.base);   /* 调过去 */
 led_off(&amp;gpio_led.base);
 </code></pre>
-<p>注意这个 <code>&amp;gpio_led.base</code>。</p>
+<p>注意这一行 <code>&amp;gpio_led.base</code>。</p>
 <p><code>led_on</code> 的参数类型是 <code>struct led_base *</code>。<code>gpio_led</code> 的类型是 <code>struct led_gpio</code>。你把一个 <code>led_gpio</code> 对象的 <code>base</code> 字段地址，当成 <code>led_base *</code> 传了进去。</p>
 <p>C 编译器一句话不说就让你过了。这个你一直在用但没仔细想过的事，今天揭穿。</p>
 <p><img src="../assets/ch12/slide1_问题展示.png" alt="上期写过的代码"></p>
@@ -316,13 +283,6 @@ static void network_heartbeat(void)
 	led_on(g_led_network);
 	led_off(g_led_network);
 }
-
-static void status_breathe(void)
-{
-	led_set_brightness(g_led_status, 30);
-	led_set_brightness(g_led_status, 80);
-	led_set_brightness(g_led_status,  0);
-}
 </code></pre>
 <p>打开终端：</p>
 <pre><code>grep -n "led_gpio\|led_pwm\|led_i2c" main.c       # 0 行
@@ -331,6 +291,7 @@ grep -n "pwm_\|i2c_\|0x20"           main.c       # 0 行
 </code></pre>
 <p>应用层一个硬件字样都没有。它不认识 GPIO、不认识 PWM、不认识 I2C。它只用句柄。</p>
 <p><img src="../assets/ch12/slide4_应用层威力.png" alt="应用层威力"></p>
+<p>应用层不认识硬件，硬件是谁它都不问。</p>
 <h2 id="126-换硬件改一行"><a class="header" href="#126-换硬件改一行">12.6 换硬件改一行</a></h2>
 <p>老板说：报警灯要能调光，从 GPIO 换成 PWM。</p>
 <p>打开 <code>board_init.c</code>，改一行。</p>
@@ -345,9 +306,9 @@ led_pwm_init(&amp;s_led_err, "ERR", 2, 80);
 g_led_error = &amp;s_led_err.base;
 </code></pre>
 <p>实际上是三行（实例化、init、绑定），都在同一个文件里，一处改完。</p>
-<p><code>main.c</code> 呢？打开 grep。<code>alarm_blink</code>、<code>network_heartbeat</code>、<code>status_breathe</code>，所有业务函数：0 行改动。</p>
+<p><code>main.c</code> 呢？打开 grep。<code>alarm_blink</code>、<code>network_heartbeat</code>、所有业务函数：0 行改动。</p>
 <p><img src="../assets/ch12/slide5_换硬件威力.png" alt="换硬件威力"></p>
-<p>这就是向上转型的工程化威力。应用层和硬件之间隔着一个 <code>struct led_base *</code> 句柄，硬件那头怎么换，句柄这头一律不知道。</p>
+<p>改 1 行，换一整套硬件。这就是向上转型的工程化威力。应用层和硬件之间隔着一个 <code>struct led_base *</code> 句柄，硬件那头怎么换，句柄这头一律不知道。</p>
 <h2 id="127-这个东西叫什么"><a class="header" href="#127-这个东西叫什么">12.7 这个东西叫什么</a></h2>
 <p>你刚才做的事，软件工程里有个名字。</p>
 <p>把派生类（<code>struct led_gpio</code>）的对象，当作基类（<code>struct led_base</code>）来引用、调用、传递，这叫 <strong>向上转型</strong>（upcasting）。</p>
@@ -378,21 +339,16 @@ LedBase *p      = &amp;gpio_led;      /* 编译器自动认 */
 	struct device dev;     /* 父类，但不在第一个位置 */
 };
 </code></pre>
-<p>也合法。但访问父类时只能写 <code>&amp;usb-&gt;dev</code>，不能强转。Linux 内核里这种安排到处都是，<code>container_of</code> 这个宏就是为它而生（第 13 章）。</p>
+<p>也合法。但访问父类时只能写 <code>&amp;usb-&gt;dev</code>，不能强转。Linux 内核里这种安排到处都是，下一章会专门讲怎么应付这种情况。</p>
 <h3 id="1283-句柄类型要不要-const"><a class="header" href="#1283-句柄类型要不要-const">12.8.3 句柄类型要不要 const</a></h3>
-<p><code>struct led_base *g_led_error;</code> 这一行有两个潜在改进：</p>
+<p><code>struct led_base *g_led_error;</code> 这一行有两个潜在写法：</p>
 <pre><code class="language-c">/* 方案 A */
 struct led_base *g_led_error;
 
 /* 方案 B */
 struct led_base * const g_led_error;   /* 不让别人重新指向 */
 </code></pre>
-<p>工程上一般写方案 A。原因有两个：</p>
-<ol>
-<li>真实项目里 <code>board_init</code> 之后偶尔需要重定向（比如热插拔、运行时切换备份硬件）。</li>
-<li>第 15 章会演化出 platform_ops 全局指针 <code>platform</code>，那一层确实是常量；句柄这一层倾向于灵活。</li>
-</ol>
-<p>如果你的项目永远不重定向，加 <code>const</code> 没毛病。</p>
+<p>工程上一般写方案 A。真实项目里 <code>board_init</code> 之后偶尔需要重定向（比如热插拔、运行时切换备份硬件），加 const 反而碍事。如果你的项目永远不重定向，加 <code>const</code> 没毛病。</p>
 <h3 id="1284-编译器拒绝的是什么"><a class="header" href="#1284-编译器拒绝的是什么">12.8.4 编译器拒绝的是什么</a></h3>
 <p>试一下这一行：</p>
 <pre><code class="language-c">g_led_error = &amp;s_led_err;     /* 类型不匹配 */
@@ -400,50 +356,10 @@ struct led_base * const g_led_error;   /* 不让别人重新指向 */
 <p><code>&amp;s_led_err</code> 的类型是 <code>struct led_gpio *</code>，<code>g_led_error</code> 的类型是 <code>struct led_base *</code>。这两个类型在 C 里完全独立，编译器报 <code>incompatible pointer types</code>。</p>
 <p>C++ 里编译器认识继承关系，会自动把 <code>LedGpio *</code> 收窄成 <code>LedBase *</code>。C 里编译器不认识，你必须主动告诉它“我要的是 base 那一段“，写成 <code>&amp;s_led_err.base</code>。</p>
 <p>这一行 <code>.base</code> 的本质，就是把 C++ 编译器藏起来的偏移计算（对 base 来说是 0），手动写出来。看上去多此一举，实际上是 C 比 C++ 透明的地方：偏移多少、转换发生在哪一步，全在你眼皮底下。</p>
-<h3 id="1285-这一招内存里发生了什么"><a class="header" href="#1285-这一招内存里发生了什么">12.8.5 这一招内存里发生了什么</a></h3>
-<pre><code class="language-c">g_led_error = &amp;s_led_err.base;
-</code></pre>
-<p>汇编层面（ARM Cortex-M，简化）：</p>
-<pre><code>LDR  r0, =s_led_err            ; r0 = s_led_err 的地址
-ADD  r0, r0, #0                ; r0 += offsetof(struct led_gpio, base) = 0
-STR  r0, =g_led_error          ; 存到 g_led_error
-</code></pre>
-<p><code>ADD r0, #0</code> 编译器多半优化掉。整段代码就是一次 LDR 一次 STR。零开销。</p>
-<p>如果有一天 base 不在第一个位置，编译器自动把那个 <code>#0</code> 改成对应的偏移量（比如 <code>#4</code>），代码逻辑还对。这就是为什么用 <code>&amp;xxx.base</code> 而不用强转：让编译器替你算偏移，永远是对的。</p>
-<h3 id="1286-应用层--基类--子类-一次完整调用"><a class="header" href="#1286-应用层--基类--子类-一次完整调用">12.8.6 应用层 → 基类 → 子类 一次完整调用</a></h3>
-<p>把整条调用链画在一起：</p>
-<pre><code class="language-c">/* 应用层 app.c */
-led_on(g_led_error);
-</code></pre>
-<p><code>g_led_error</code> 是 <code>struct led_base *</code>，指向 <code>s_led_err</code>（<code>struct led_gpio</code>）的 <code>base</code> 字段。<code>led_on</code> 这个函数定义在 <code>led.c</code>：</p>
-<pre><code class="language-c">int led_on(struct led_base *me)
-{
-	if (!me)
-		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
-	       "led_on: subclass must implement on()");
-	return me-&gt;ops-&gt;on(me);
-}
-</code></pre>
-<p>它从父类指针 <code>me</code> 取 <code>ops</code>，再取 <code>ops-&gt;on</code>。<code>ops</code> 这一字段在 init 期被填成 <code>&amp;led_ops_gpio</code>，<code>led_ops_gpio.on</code> 指向 <code>gpio_on</code> 这个子类函数。<code>on / off</code> 是 LED 的核心能力，子类必须实现，调试构建里 assert 抓到忘实现的子类立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
-<pre><code class="language-c">/* 子类 led.c */
-static int gpio_on(struct led_base *me)
-{
-	struct led_gpio *self = (struct led_gpio *)me;
-	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
-	me-&gt;is_on = true;
-	return 0;
-}
-</code></pre>
-<p>第一步 <code>(struct led_gpio *)me</code> 强转·从 base 反推回 gpio（ch12 的简单做法·依赖 base 在第 0 字段的不变量）。下一章会用 <code>container_of</code> 替换这一步·让位置无关。<code>self-&gt;pin</code> 这一字段在 <code>struct led_gpio</code> 里·父类指针 <code>me</code> 看不见 <code>pin</code>，但子类函数里反推后看见了。</p>
-<p>整条链：app → 父类 led_on → ops 表 dispatch → 子类 gpio_on → 子类字段。<strong>应用层从头到尾只见 <code>struct led_base *</code>。</strong> 这就是向上转型在工程里的“全链路效果“。</p>
-<h3 id="1287-abi-角度看向上转型"><a class="header" href="#1287-abi-角度看向上转型">12.8.7 ABI 角度看向上转型</a></h3>
-<p>向上转型在汇编层面发生在两个时机。</p>
-<p>第一是赋值：<code>g_led_error = &amp;s_led_err.base</code>。前面 12.8.5 讲过，编译期偏移是 0，汇编一句话不说就过了。</p>
-<p>第二是调用：<code>led_on(g_led_error)</code> 把 <code>g_led_error</code> 这个 <code>struct led_base *</code> 当第一个参数。ARM AAPCS 里第一个指针参数走 <code>r0</code> 寄存器。<code>g_led_error</code> 此时指向 <code>s_led_err</code> 的起点（base 在偏移 0），所以 <code>r0 = &amp;s_led_err</code>。<code>led_on</code> 函数体里 <code>me-&gt;ops</code> 这一行就是 <code>[r0 + 0]</code>，正好是 <code>s_led_err.base.ops</code>，没有偏移错位。</p>
-<p>如果某一天 base 不在第一个位置，第一个时机的赋值会自动 add 一个非零偏移到 <code>r0</code>，第二个时机的 <code>[r0 + 0]</code> 还是对的（已经偏过去了）。整套 ABI 在子类的内存布局上是透明的，编译器替你算偏移。</p>
-<p>C++ 编译器替你做的事和 C 完全一样。<code>LedBase *p = &amp;gpio_led</code> 这一行，C++ 编译期算出 base 字段在 <code>LedGpio</code> 里的偏移，把这个偏移加到 <code>&amp;gpio_led</code> 上。底层汇编一行不差。两边唯一的差别是“偏移谁来算“，C 里你写 <code>.base</code> 字段访问、编译器算；C++ 里你只写继承关系、编译器查继承表算。机器码同源。</p>
-<h3 id="1288-这一招在-linux-内核里的样子"><a class="header" href="#1288-这一招在-linux-内核里的样子">12.8.8 这一招在 Linux 内核里的样子</a></h3>
+<h3 id="1285-这一招在汇编层面零开销"><a class="header" href="#1285-这一招在汇编层面零开销">12.8.5 这一招在汇编层面零开销</a></h3>
+<p><code>g_led_error = &amp;s_led_err.base;</code> 这一行，<code>&amp;s_led_err.base</code> 在编译期被处理成“加上 base 的偏移“。base 在第 0 个位置，偏移就是 0，编译器一条加法指令都不会生成，机器码就是把 <code>s_led_err</code> 的地址直接搬过去。</p>
+<p>如果有一天 base 不在第一个位置，编译器自动把偏移改成对应数值（比如 4），代码逻辑还对。这就是为什么用 <code>&amp;xxx.base</code> 而不用强转：让编译器替你算偏移，永远是对的。</p>
+<h3 id="1286-这一招在-linux-内核里的样子"><a class="header" href="#1286-这一招在-linux-内核里的样子">12.8.6 这一招在 Linux 内核里的样子</a></h3>
 <p>打开 Linux 内核 <code>drivers/leds/led-class.c</code>，你会看到：</p>
 <pre><code class="language-c">struct led_classdev {
 	const char *name;
@@ -459,45 +375,101 @@ static int gpio_on(struct led_base *me)
 	/* ... */
 };
 </code></pre>
-<p>向上转型时写 <code>&amp;gpio_data-&gt;cdev</code>。整个 Linux LED 子系统就是这一招的工业级展开。第 16 章会展开 GPIO 子系统、第 17 章会展开 module_init 注册，它们都假定你已经会向上转型了。</p>
-<h2 id="129-你现在的代码在-stm32-上长什么样"><a class="header" href="#129-你现在的代码在-stm32-上长什么样">12.9 你现在的代码在 STM32 上长什么样</a></h2>
-<p>应用层 <code>main.c</code>、父类 <code>led.c</code>、板级 <code>board_init.c</code> 一字不改。<code>platform_ops_pc.c</code> 替换成 <code>platform_ops_stm32.c</code>：</p>
-<pre><code class="language-c">#include "platform_ops.h"
-#include "stm32f4xx_hal.h"
-
-static void stm32_gpio_write(uint8_t pin, bool value)
-{
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
-			  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
-
-/* ...省略 init / read... */
-
-static const struct platform_ops stm32_ops = {
-	.gpio_init  = stm32_gpio_init,
-	.gpio_write = stm32_gpio_write,
-	.gpio_read  = stm32_gpio_read,
+<p>向上转型时写 <code>&amp;gpio_data-&gt;cdev</code>。整个 Linux LED 子系统就是这一招的工业级展开。</p>
+<h3 id="1287-配套代码相对第-11-章的演化点"><a class="header" href="#1287-配套代码相对第-11-章的演化点">12.8.7 配套代码相对第 11 章的演化点</a></h3>
+<p>打开第 12 章配套代码 <code>oop-in-c/code/12-upcasting/</code>，跟第 11 章 <code>oop-in-c/code/11-polymorphism/</code> 对一下，会发现几处字段和签名变了。这些变化在主线叙事里没特别说，这里集中说一下。本章 § 12.1 引的 <code>led_gpio_init(&amp;gpio_led, "ERR", 10, true)</code> 和 § 12.2 画的 <code>struct led_gpio { base; pin; on_level; }</code>，都已经是下面这个 ch12 的形态。</p>
+<p><code>struct led_gpio</code> 加了 <code>on_level</code> 字段：</p>
+<pre><code class="language-c">/* ch11: */
+struct led_gpio {
+	struct led_base base;
+	uint8_t         pin;
 };
 
-const struct platform_ops *platform = &amp;stm32_ops;
+/* ch12: */
+struct led_gpio {
+	struct led_base base;
+	uint8_t         pin;
+	bool            on_level;     /* 高电平亮 = true，低电平亮 = false */
+};
 </code></pre>
-<p>所有上层代码（包括 <code>board_init</code> 里 PWM、I2C 那两路）一字不改。完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/stm32-snippet/"><code>oop-in-c/code/12-upcasting/stm32-snippet/</code></a>。</p>
+<p>不是所有 LED 都是高电平亮。GPIO 反向接法（共阳极接法）需要拉低电平才点亮。<code>on_level</code> 把这个硬件极性差异封装在子类里，应用层 <code>led_on(handle)</code> 不用知道具体是高还是低。</p>
+<p><code>led_gpio_init</code> 多了一个参数：</p>
+<pre><code class="language-c">/* ch11: */
+int led_gpio_init(struct led_gpio *me, const char *name, uint8_t pin);
+
+/* ch12: */
+void led_gpio_init(struct led_gpio *me, const char *name,
+                   uint8_t pin, bool on_level);
+</code></pre>
+<p>第四个参数对应新加的 <code>on_level</code> 字段。返回类型从 <code>int</code> 改成 <code>void</code>，因为子类 init 失败现在直接 panic（板级 init 失败应该立刻暴露，而不是让上层去判断错误码）。</p>
+<p><code>struct led_ops</code> 字段集收缩：</p>
+<pre><code class="language-c">/* ch11: */
+typedef int (*led_action_fn)(struct led_base *me);
+
+struct led_ops {
+	led_action_fn on;
+	led_action_fn off;
+	led_action_fn toggle;
+};
+
+/* ch12: */
+struct led_ops {
+	int (*on)(struct led_base *me);
+	int (*off)(struct led_base *me);
+};
+</code></pre>
+<p>第 12 章主题是向上转型，应用层只调 <code>led_on / led_off</code>，<code>toggle</code> 在这一章用不上，先收缩成两字段，让代码更聚焦。<code>led_action_fn</code> typedef 也跟着撤掉，改成内联函数指针类型。typedef 一旦字段集不再统一就没意义。第 13 章及以后会按需要再重新加字段。</p>
+<h2 id="129-你现在的代码在-stm32-上长什么样"><a class="header" href="#129-你现在的代码在-stm32-上长什么样">12.9 你现在的代码在 STM32 上长什么样</a></h2>
+<p>应用层 <code>main.c</code>、父类 <code>led.c</code>、板级 <code>board_init.c</code> 一字不改。<code>platform_pc.c</code> 替换成 <code>led_stm32.c</code>，里面是 <code>platform_gpio_xxx</code> 的真实 HAL 实现：</p>
+<pre><code class="language-c">#include "led.h"
+#include "stm32f4xx_hal.h"
+
+void platform_gpio_init(uint8_t pin, uint8_t mode)
+{
+	GPIO_InitTypeDef cfg = {0};
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
+	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
+	cfg.Pull  = GPIO_NOPULL;
+	cfg.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &amp;cfg);
+}
+
+void platform_gpio_write(uint8_t pin, bool value)
+{
+	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+/* ... deinit / read 同样直接调 HAL ... */
+</code></pre>
+<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/stm32-snippet/"><code>oop-in-c/code/12-upcasting/stm32-snippet/</code></a>。</p>
 <p>PWM 子类在真实硬件上会用 <code>HAL_TIM_PWM_Start</code> + <code>__HAL_TIM_SET_COMPARE</code>。I2C 子类会用 <code>HAL_I2C_Master_Transmit</code>。这两路不在本章 snippet 里，附录 B 有完整工程。</p>
+<p>本节展示的是 ch11 起整本书统一的函数式包装：<code>platform_gpio_init / platform_gpio_write / platform_gpio_deinit / platform_gpio_read</code> 四个函数声明在 <code>common/platform.h</code>，PC 上跑 printf 模拟，STM32 上跑真实 HAL。上层一字不改。</p>
 <h2 id="1210-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1210-你现在的代码在-linux-用户态长什么样">12.10 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>同样替换 <code>platform_ops_pc.c</code> 为 <code>platform_ops_linux.c</code>，sysfs 版本写文件：</p>
-<pre><code class="language-c">static void linux_gpio_write(uint8_t pin, bool value)
+<p>同样把 PC 版的 <code>platform_pc.c</code> 换成 <code>led_linux.c</code>，sysfs 版本写文件：</p>
+<pre><code class="language-c">#include "led.h"
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+void platform_gpio_write(uint8_t pin, bool value)
 {
 	char path[64];
 	snprintf(path, sizeof(path),
-		 "/sys/class/gpio/gpio%u/value", (unsigned)pin);
+	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
 	int fd = open(path, O_WRONLY);
 	if (fd &gt;= 0) {
 		write(fd, value ? "1" : "0", 1);
 		close(fd);
 	}
 }
+
+/* ... init / deinit / read 同样走 sysfs ... */
 </code></pre>
-<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/linux-snippet/"><code>oop-in-c/code/12-upcasting/linux-snippet/</code></a>。第 16 章会从内核态展开同一招。</p>
+<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/linux-snippet/"><code>oop-in-c/code/12-upcasting/linux-snippet/</code></a>。</p>
 <h2 id="1211-工业代码里的向上转型长什么样"><a class="header" href="#1211-工业代码里的向上转型长什么样">12.11 工业代码里的向上转型长什么样</a></h2>
 <p>工业控制板项目里，板级初始化是这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h（节选） */
@@ -531,421 +503,14 @@ void board_init(void)
 <pre><code class="language-c">led_on(green_led);
 led_off(red_led);
 </code></pre>
-<p><code>led_on()</code> 是 <code>led.c</code> 里的封装函数，内部走 <code>led-&gt;ops-&gt;on(led)</code> dispatch。应用层看不到这层细节，只调一个普通函数。应用层代码里 <code>grep led_gpio</code> / <code>grep led_pwm</code> 全部 0 行。换硬件方案、换板子型号，应用层一行不动。</p>
+<p>应用层代码里 <code>grep led_gpio</code> / <code>grep led_pwm</code> 全部 0 行。换硬件方案、换板子型号，应用层一行不动。</p>
 <p>这就是向上转型在真实工业项目里的最终形态。</p>
-<h2 id="1212-完整源码清单"><a class="header" href="#1212-完整源码清单">12.12 完整源码清单</a></h2>
-<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/pc/"><code>oop-in-c/code/12-upcasting/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
-<p><code>common/platform.h</code> 和 <code>common/platform_pc.c</code> 跟 ch01 一字不变，本章 Makefile 通过 <code>-I../../common</code> 引用。完整代码见 ch01 末尾完整源码清单。</p>
-<h3 id="文件-1mainc57-行"><a class="header" href="#文件-1mainc57-行">文件 1：<code>main.c</code>（57 行）</a></h3>
-<p>应用层。三个业务函数 alarm_blink / network_heartbeat / status_breathe，全部只用 <code>struct led_base *</code> 句柄，grep 不到任何硬件字样。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * main.c - 应用层
- *
- * 注意：这个文件里没有 led_gpio、led_pwm、led_i2c 任何字样。
- * 它只用三个 struct led_base * 句柄。
- *
- * grep gpio_write、grep pwm_、grep i2c_，结果都是 0。
- * 这就是向上转型在工程上的全部威力，硬件是谁，应用层不问。
- */
-
-#include "leds.h"
-#include &lt;stdio.h&gt;
-
-static void alarm_blink(void)
-{
-	printf("\n--- alarm_blink ---\n");
-	led_on(g_led_error);
-	led_off(g_led_error);
-}
-
-static void network_heartbeat(void)
-{
-	printf("\n--- network_heartbeat ---\n");
-	led_on(g_led_network);
-	led_off(g_led_network);
-}
-
-static void status_breathe(void)
-{
-	printf("\n--- status_breathe ---\n");
-	led_set_brightness(g_led_status, 30);
-	led_set_brightness(g_led_status, 80);
-	led_set_brightness(g_led_status,  0);
-}
-
-int main(void)
-{
-	printf("=========================================\n");
-	printf("  ch12 - upcasting\n");
-	printf("  one led_base * handle, any subclass\n");
-	printf("=========================================\n");
-
-	board_init();
-
-	alarm_blink();
-	network_heartbeat();
-	status_breathe();
-
-	printf("\n=========================================\n");
-	printf("  app layer: zero hardware reference\n");
-	printf("=========================================\n");
-
-	printf("\nPress Enter to exit...\n");
-	getchar();
-	return 0;
-}
-</code></pre>
-<h3 id="文件-2ledsh22-行"><a class="header" href="#文件-2ledsh22-行">文件 2：<code>leds.h</code>（22 行）</a></h3>
-<p>板级对外暴露的全局 LED 句柄声明。应用层只 include 这一个头文件，看到的全是 <code>struct led_base *</code>，看不到任何子类类型。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * leds.h - 板级对外暴露的全局 LED 句柄
- *
- * 应用层只 include 这一个文件。看到的是三个 struct led_base * 句柄，
- * 看不到任何子类类型。硬件细节锁在 board_init.c。
- *
- * 换硬件的时候，应用层 0 改动。
- */
-
-#ifndef LEDS_H
-#define LEDS_H
-
-#include "led.h"
-
-extern struct led_base *g_led_error;
-extern struct led_base *g_led_status;
-extern struct led_base *g_led_network;
-
-void board_init(void);
-
-#endif /* LEDS_H */
-</code></pre>
-<h3 id="文件-3board_initc41-行"><a class="header" href="#文件-3board_initc41-行">文件 3：<code>board_init.c</code>（41 行）</a></h3>
-<p>整个工程里唯一认识硬件的文件。三种子类对象在文件作用域定义，<code>board_init</code> 里跑各自构造函数 + 把 <code>&amp;xxx.base</code> 赋给全局父类句柄。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * board_init.c - 整个工程里唯一认识硬件的文件
- *
- * 应用层看到三个 struct led_base * 句柄，硬件配置全部锁在这里。
- * 三个句柄背后挂的可以是任意子类对象，应用层不知不觉。
- *
- * 这一节就是向上转型的工程化落地。
- */
-
-#include "leds.h"
-
-/* 子类对象。文件作用域，外部不可见 */
-static struct led_gpio s_led_err;
-static struct led_pwm  s_led_status;
-static struct led_i2c  s_led_net;
-
-/* 全局句柄。绑定动作在 board_init 里完成，这一行只是占位 */
-struct led_base *g_led_error;
-struct led_base *g_led_status;
-struct led_base *g_led_network;
-
-void board_init(void)
-{
-	/* 各自走自己的子类构造函数，把硬件资源传进去 */
-	led_gpio_init(&amp;s_led_err,    "ERR",  10, true);
-	led_pwm_init (&amp;s_led_status, "STAT",  1, 50);
-	led_i2c_init (&amp;s_led_net,    "NET",   0, 0x20);
-
-	/*
-	 * 关键三行：把子类对象的 base 地址，赋给父类指针句柄。
-	 * 这就是向上转型，子类对象当父类来用。
-	 *
-	 * 之所以合法，是因为 base 在子类的第 0 偏移；
-	 * 取 &amp;xxx.base 拿到的地址和取 &amp;xxx 是同一个数。
-	 */
-	g_led_error   = &amp;s_led_err.base;
-	g_led_status  = &amp;s_led_status.base;
-	g_led_network = &amp;s_led_net.base;
-}
-</code></pre>
-<h3 id="文件-4ledh72-行"><a class="header" href="#文件-4ledh72-行">文件 4：<code>led.h</code>（72 行）</a></h3>
-<p>LED 父类 + 三个子类的声明。父类 <code>struct led_base</code> 只放 ops / name / is_on 三个共性字段，子类各自把硬件资源（pin / channel / bus + addr）追加在 base 后面。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * led.h - LED 基类 + 子类抽象
- *
- * 本章是向上转型的高潮。
- *
- * 父类 struct led_base：所有 LED 共有的字段 + ops 指针。
- * 子类 struct led_gpio / led_pwm / led_i2c：把 base 嵌在第一个字段，
- * 后面追加自己独有的硬件资源。
- *
- * 关键不变量：base 永远在子类的第 0 偏移。这一条让
- *   struct led_base *handle = &amp;gpio_led.base;
- * 合法、安全、零开销。
- */
-
-#ifndef LED_H
-#define LED_H
-
-#include &lt;stdint.h&gt;
-#include &lt;stdbool.h&gt;
-
-struct led_base;
-
-struct led_ops {
-	int (*on)(struct led_base *me);
-	int (*off)(struct led_base *me);
-	int (*set_brightness)(struct led_base *me, uint8_t brightness);
-};
-
-struct led_base {
-	const struct led_ops *ops;
-	const char           *name;
-	bool                  is_on;
-};
-
-/* 应用层入口：所有调用都走 led_base 句柄 */
-int led_on(struct led_base *me);
-int led_off(struct led_base *me);
-int led_set_brightness(struct led_base *me, uint8_t brightness);
-
-/* ------- 子类一：GPIO LED ------- */
-struct led_gpio {
-	struct led_base base;
-	uint8_t         pin;
-	bool            on_level;   /* 1 = 高电平点亮，0 = 低电平点亮 */
-};
-
-void led_gpio_init(struct led_gpio *me, const char *name,
-		   uint8_t pin, bool on_level);
-
-/* ------- 子类二：PWM LED ------- */
-struct led_pwm {
-	struct led_base base;
-	uint8_t         channel;
-	uint8_t         duty;
-};
-
-void led_pwm_init(struct led_pwm *me, const char *name,
-		  uint8_t channel, uint8_t duty);
-
-/* ------- 子类三：I2C 扩展芯片 LED ------- */
-struct led_i2c {
-	struct led_base base;
-	uint8_t         bus;
-	uint8_t         addr;
-};
-
-void led_i2c_init(struct led_i2c *me, const char *name,
-		  uint8_t bus, uint8_t addr);
-
-#endif /* LED_H */
-</code></pre>
-<h3 id="文件-5ledc169-行"><a class="header" href="#文件-5ledc169-行">文件 5：<code>led.c</code>（169 行）</a></h3>
-<p>父类 <code>led_on / led_off / led_set_brightness</code> 的统一接口实现 + 三种子类（GPIO / PWM / I2C）的具体函数。子类实现里第一行用 <code>(struct led_xxx *)me</code> 强转回子类（这一招在 ch13 会替换成 container_of）。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * led.c - 父类统一接口 + 三种子类实现
- *
- * 父类的 led_on / led_off 通过 ops 表分发到子类实现。子类实现里第一行
- * 都是从 base 反推回自己的 struct（这一招在第 13 章会展开成 container_of）。
- *
- * 本章使用最简单的 "(struct led_xxx *)me" 强转回子类，前提是 base 是
- * 子类的第一个成员。第 13 章会把这一步替换成与位置无关的 container_of。
- *
- * 子类调用 platform 层的 platform_gpio_write / platform_gpio_init 等
- * 封装函数。这是工业代码里跨章节统一的接口形态：应用层和驱动层
- * 永远只见普通函数，不直接碰 ops 字段。
- */
-
-#include "led.h"
-#include "platform.h"
-#include &lt;assert.h&gt;
-#include &lt;stdio.h&gt;
-#include &lt;stddef.h&gt;
-
-/* ============== 父类统一接口 ============== */
-
-int led_on(struct led_base *me)
-{
-	if (!me)
-		return -1;
-	/* on 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到
-	 * 忘填的子类立刻 abort，Release 构建定义 NDEBUG 后 assert 整行
-	 * 消失，0 运行时开销。 */
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
-	       "led_on: subclass must implement on()");
-	return me-&gt;ops-&gt;on(me);
-}
-
-int led_off(struct led_base *me)
-{
-	if (!me)
-		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;off &amp;&amp;
-	       "led_off: subclass must implement off()");
-	return me-&gt;ops-&gt;off(me);
-}
-
-int led_set_brightness(struct led_base *me, uint8_t brightness)
-{
-	if (!me || !me-&gt;ops)
-		return -1;
-	if (!me-&gt;ops-&gt;set_brightness) {
-		/* set_brightness 是选填字段，子类没实现就走父类默认行为
-		 * （这里默认 = 安静返回 0）。第 14 章会展开必填 vs 选填。 */
-		return 0;
-	}
-	return me-&gt;ops-&gt;set_brightness(me, brightness);
-}
-
-/* ============== 子类一：GPIO LED ============== */
-
-static int gpio_on(struct led_base *me)
-{
-	struct led_gpio *self = (struct led_gpio *)me;
-	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
-	me-&gt;is_on = true;
-	printf("  [%s] GPIO Pin%u ON\n", me-&gt;name, (unsigned)self-&gt;pin);
-	return 0;
-}
-
-static int gpio_off(struct led_base *me)
-{
-	struct led_gpio *self = (struct led_gpio *)me;
-	platform_gpio_write(self-&gt;pin, !self-&gt;on_level);
-	me-&gt;is_on = false;
-	printf("  [%s] GPIO Pin%u OFF\n", me-&gt;name, (unsigned)self-&gt;pin);
-	return 0;
-}
-
-/* GPIO 灯不支持调光，set_brightness 故意不填。 */
-static const struct led_ops gpio_ops = {
-	.on  = gpio_on,
-	.off = gpio_off,
-};
-
-void led_gpio_init(struct led_gpio *me, const char *name,
-		   uint8_t pin, bool on_level)
-{
-	me-&gt;base.ops   = &amp;gpio_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;pin        = pin;
-	me-&gt;on_level   = on_level;
-
-	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
-	platform_gpio_write(pin, !on_level);
-}
-
-/* ============== 子类二：PWM LED ============== */
-
-static int pwm_on(struct led_base *me)
-{
-	struct led_pwm *self = (struct led_pwm *)me;
-	printf("  [%s] PWM ch%u duty=%u%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
-	me-&gt;is_on = true;
-	return 0;
-}
-
-static int pwm_off(struct led_base *me)
-{
-	struct led_pwm *self = (struct led_pwm *)me;
-	printf("  [%s] PWM ch%u duty=0%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel);
-	me-&gt;is_on = false;
-	return 0;
-}
-
-static int pwm_set_brightness(struct led_base *me, uint8_t brightness)
-{
-	struct led_pwm *self = (struct led_pwm *)me;
-	if (brightness &gt; 100)
-		brightness = 100;
-	self-&gt;duty = brightness;
-	printf("  [%s] PWM ch%u duty=%u%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)brightness);
-	me-&gt;is_on = (brightness &gt; 0);
-	return 0;
-}
-
-static const struct led_ops pwm_ops = {
-	.on             = pwm_on,
-	.off            = pwm_off,
-	.set_brightness = pwm_set_brightness,
-};
-
-void led_pwm_init(struct led_pwm *me, const char *name,
-		  uint8_t channel, uint8_t duty)
-{
-	me-&gt;base.ops   = &amp;pwm_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;channel    = channel;
-	me-&gt;duty       = duty;
-}
-
-/* ============== 子类三：I2C 扩展芯片 LED ============== */
-
-static int i2c_on(struct led_base *me)
-{
-	struct led_i2c *self = (struct led_i2c *)me;
-	printf("  [%s] I2C bus%u addr=0x%02X reg=0x01\n",
-	       me-&gt;name, (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
-	me-&gt;is_on = true;
-	return 0;
-}
-
-static int i2c_off(struct led_base *me)
-{
-	struct led_i2c *self = (struct led_i2c *)me;
-	printf("  [%s] I2C bus%u addr=0x%02X reg=0x00\n",
-	       me-&gt;name, (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
-	me-&gt;is_on = false;
-	return 0;
-}
-
-static const struct led_ops i2c_ops = {
-	.on  = i2c_on,
-	.off = i2c_off,
-};
-
-void led_i2c_init(struct led_i2c *me, const char *name,
-		  uint8_t bus, uint8_t addr)
-{
-	me-&gt;base.ops   = &amp;i2c_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;bus        = bus;
-	me-&gt;addr       = addr;
-}
-</code></pre>
-<h3 id="文件-6makefile20-行"><a class="header" href="#文件-6makefile20-行">文件 6：<code>Makefile</code>（20 行）</a></h3>
-<pre><code class="language-makefile"># Makefile - ch12 upcasting (PC)
-
-CC      = gcc
-CFLAGS  = -Wall -Wextra -std=c99 -I../../common
-TARGET  = demo
-
-SRCS    = main.c led.c board_init.c ../../common/platform_pc.c
-
-.PHONY: all clean run
-
-all: $(TARGET)
-
-$(TARGET): $(SRCS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
-
-run: $(TARGET)
-	./$(TARGET)
-
-clean:
-	rm -f $(TARGET) $(TARGET).exe
-</code></pre>
-<h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
-<pre><code class="language-bash">cd oop-in-c/code/12-upcasting/pc
+<h2 id="1212-跑一遍"><a class="header" href="#1212-跑一遍">12.12 跑一遍</a></h2>
+<pre><code>cd oop-in-c/code/12-upcasting/pc
 make
 ./demo
 </code></pre>
-<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
+<p>输出节选：</p>
 <pre><code>=========================================
   ch12 - upcasting
   one led_base * handle, any subclass
@@ -963,47 +528,12 @@ make
   [NET] I2C bus0 addr=0x20 reg=0x01
   [NET] I2C bus0 addr=0x20 reg=0x00
 
---- status_breathe ---
-  [STAT] PWM ch1 duty=30%
-  [STAT] PWM ch1 duty=80%
-  [STAT] PWM ch1 duty=0%
-
 =========================================
   app layer: zero hardware reference
 =========================================
-
-Press Enter to exit...
 </code></pre>
-<h2 id="1213-跑一遍"><a class="header" href="#1213-跑一遍">12.13 跑一遍</a></h2>
-<pre><code>cd oop-in-c/code/12-upcasting/pc
-make
-./demo
-</code></pre>
-<p>输出节选：</p>
-<pre><code>=========================================
-  ch12 - upcasting
-  one led_base * handle, any subclass
-=========================================
-[GPIO] Pin10 init as OUTPUT
-[GPIO] Pin10 -&gt; LOW
-
---- alarm_blink ---
-[GPIO] Pin10 -&gt; HIGH
-  [ERR] GPIO Pin10 ON
-[GPIO] Pin10 -&gt; LOW
-  [ERR] GPIO Pin10 OFF
-
---- network_heartbeat ---
-  [NET] I2C bus0 addr=0x20 reg=0x01
-  [NET] I2C bus0 addr=0x20 reg=0x00
-
---- status_breathe ---
-  [STAT] PWM ch1 duty=30%
-  [STAT] PWM ch1 duty=80%
-  [STAT] PWM ch1 duty=0%
-</code></pre>
-<p>三个业务函数，三种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
-<h2 id="1214-视频回放"><a class="header" href="#1214-视频回放">12.14 视频回放</a></h2>
+<p>两个业务函数，两种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
+<h2 id="1213-视频回放"><a class="header" href="#1213-视频回放">12.13 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1N6o4BFEvG/">《C 语言·向上转型｜一个指针指所有 LED·基类指针·设备句柄》</a></p>
 </blockquote>

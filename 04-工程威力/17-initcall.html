@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -456,30 +456,14 @@ LedDriver g_led_driver;   // 全局对象，构造函数 main 之前调
 <li>段名带点，自己在 .ld 里手写 <code>__my_initcall_start = .;</code> 标记。</li>
 </ol>
 <p>走哪条都行，习惯就好。</p>
-<h3 id="1794-级别level什么时候有用"><a class="header" href="#1794-级别level什么时候有用">17.9.4 级别（level）什么时候有用</a></h3>
+<h3 id="1794-级别level什么时候有用board--device--app-三档"><a class="header" href="#1794-级别level什么时候有用board--device--app-三档">17.9.4 级别（level）什么时候有用·BOARD / DEVICE / APP 三档</a></h3>
 <p>简单项目就一个级别够用，复杂项目分级别。例子：</p>
 <ul>
 <li>I2C 总线驱动必须在 I2C 设备驱动之前 init（不然设备 init 时找不到总线）。给总线 level=2，设备 level=4，启动期总线先跑。</li>
 </ul>
-<p>Linux 内核的 8 级（pure / core / postcore / arch / subsys / fs / device / late）和裸机 / RTOS 项目的 7 级是同一个思路在不同复杂度的版本：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>级别（工业 7 级）</th><th>段名</th><th>跑什么</th><th>Linux 内核对应</th></tr>
-</thead>
-<tbody>
-<tr><td>BOARD</td><td><code>INIT_BOARD_EXPORT</code></td><td>板级硬件配置（GPIO 复用、时钟、电源）</td><td>core / arch</td></tr>
-<tr><td>PREV_DEVICE</td><td><code>INIT_PREV_EXPORT</code></td><td>设备前置（总线、I2C 控制器、SPI 控制器）</td><td>postcore / subsys</td></tr>
-<tr><td>DEVICE</td><td><code>INIT_DEVICE_EXPORT</code></td><td>具体设备（LED、EEPROM、传感器、电机）</td><td>device</td></tr>
-<tr><td>COMPONENT</td><td><code>INIT_COMPONENT_EXPORT</code></td><td>组件级（文件系统、网络栈）</td><td>fs / device</td></tr>
-<tr><td>ENV</td><td><code>INIT_ENV_EXPORT</code></td><td>环境变量初始化（参数加载、上次断电恢复）</td><td>late</td></tr>
-<tr><td>APP</td><td><code>INIT_APP_EXPORT</code></td><td>应用层模块（业务状态机、任务）</td><td>(用户态 init)</td></tr>
-<tr><td>SYSTEM_READY</td><td><code>INIT_SYSREADY_EXPORT</code></td><td>全部就绪后的最后通知（喂狗、点亮 ready 灯）</td><td>(用户态 init)</td></tr>
-</tbody>
-</table>
-</div>
 <p>设计原理就一句：<strong>基础设施在前，上层依赖在后</strong>。GPIO 没初始化好的时候让 LED 驱动 probe 是会崩的，所以 LED 必须晚于 GPIO；I2C 控制器没初始化好的时候让 I2C 设备驱动 probe 也会崩，所以 I2C 设备必须晚于控制器。级别的存在就是把这种“前后依赖“显式写出来，不用驱动作者去 main 里手排顺序。</p>
-<p>裸机项目可以从简单 1 级版本起步（本章 PC demo 就是一级），项目复杂度起来再加级别。RT-Thread 那 6 级（board / prev / device / component / env / app）够多数嵌入式项目用。</p>
+<p>BOARD / DEVICE / APP 三档够多数项目用。Linux 内核 0-7 共 8 级（pure / core / postcore / arch / subsys / fs / device / late）。工业代码命名习惯不同，对应不严格，思路是一样的：基础设施在前，上层依赖在后。</p>
+<p>裸机项目可以从简单 1 级版本起步（本章 PC demo 就是一级），项目复杂度起来再加级别。</p>
 <h3 id="1795-同一级别内部的顺序"><a class="header" href="#1795-同一级别内部的顺序">17.9.5 同一级别内部的顺序</a></h3>
 <p>同级别内部的初始化顺序，由链接顺序决定（<code>.o</code> 文件在 <code>gcc xxx.c yyy.c zzz.c</code> 命令行里的顺序）。理论上不应该依赖这个顺序，同级别的驱动应该没有相互依赖。如果有，提级别。</p>
 <p>LTO 模式下编译器会换顺序，所以 Linux 内核 <code>include/linux/init.h</code> 里有专门的 <code>CONFIG_LTO_CLANG</code> 分支处理（第 223 行起），强制保序。</p>
@@ -550,20 +534,8 @@ static void my_init(void)
 </code></pre>
 <p>效果一样，机制同源。</p>
 <h2 id="1712-工业代码里的-initcall-长什么样"><a class="header" href="#1712-工业代码里的-initcall-长什么样">17.12 工业代码里的 initcall 长什么样</a></h2>
-<p>工业控制板项目用的就是 RT-Thread 风格的 initcall：</p>
-<pre><code class="language-c">/* drivers/led/led_main.c */
-static int led_main_init(void)
-{
-	register_led_handle("error",   &amp;led_err_chip);
-	register_led_handle("status",  &amp;led_status_chip);
-	register_led_handle("network", &amp;led_net_chip);
-	return 0;
-}
-INIT_DEVICE_EXPORT(led_main_init);
-</code></pre>
-<p>每个 driver 文件末尾一行 <code>INIT_DEVICE_EXPORT</code>。<code>main</code> 里只 <code>rt_components_init()</code> 调一次，全部驱动自动挂上。</p>
-<p>5 套产品共用一份驱动代码，每套产品只是 <code>board_init.c</code> 不同，这套机制让“共享驱动 + 独立板级“成为现实。整个项目几十个驱动模块，main 只有不到 100 行。</p>
-<p>这就是开闭原则的最终工业落地。</p>
+<p>工业控制板项目用的就是 RT-Thread 风格的 initcall：每个 driver 文件末尾一行 <code>INIT_DEVICE_EXPORT(xxx_init)</code>，<code>main</code> 里只 <code>rt_components_init()</code> 调一次，全部驱动自动挂上。多套产品共用一份驱动代码，每套产品只是板级初始化文件不同，这套机制让“共享驱动 + 独立板级“成为现实。</p>
+<p>工业实战的完整代码和踩坑细节放在第 19 章主控案例里展开，这里不重复。</p>
 <h2 id="1713-完整源码清单"><a class="header" href="#1713-完整源码清单">17.13 完整源码清单</a></h2>
 <p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/pc/"><code>oop-in-c/code/17-initcall/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
 <h3 id="文件-1mainc33-行"><a class="header" href="#文件-1mainc33-行">文件 1：<code>main.c</code>（33 行）</a></h3>
@@ -824,8 +796,7 @@ make
 <p>这才是真正的开闭原则，对扩展开放，对修改关闭。</p>
 <p><img src="../assets/ch17/slide8_金句.png" alt="金句"></p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
-<p>封装、继承、多态、向上转型、向下转型、纯虚 / 选填 / 接口、Platform 抽象、Linux 内核映射、链接自动初始化，18 章一路走下来，C 里做 OOP 的全套武器你都见过了。</p>
-<p>下一章不引入新概念。它把 19 期视频走过的路在书里串一遍，让你看清楚一颗 LED 是怎么从“三份重复代码“演化到“4000 万行内核都用同一套机制“的。</p>
+<p>链接自动初始化是这一段技术主线的最后一招。下一章把走过的路在书里串一遍。</p>
 <p>下一篇：<a href="18-全书地图.html">第 18 章 · 全书地图回顾 · 一颗 LED 走过的演化路径</a></p>
 
                     </main>

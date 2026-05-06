@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>ch15 换硬件不改应用 · Platform 抽象到底 - C 语言面向对象编程·嵌入式实战</title>
+        <title>ch15 换硬件不改应用 · OOP 完整框架 - C 语言面向对象编程·嵌入式实战</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,37 +180,28 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-15-章--换硬件不改应用--platform-抽象到底"><a class="header" href="#第-15-章--换硬件不改应用--platform-抽象到底">第 15 章 · 换硬件不改应用 · Platform 抽象到底</a></h1>
+                        <h1 id="第-15-章--换硬件不改应用--oop-完整框架"><a class="header" href="#第-15-章--换硬件不改应用--oop-完整框架">第 15 章 · 换硬件不改应用 · OOP 完整框架</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/15-platform/"><code>oop-in-c/code/15-platform/</code></a></p>
 <p>封装、继承、多态、向上转型、向下转型、纯虚 / 选填 / 接口，C 里做 OOP 的全部武器你都见过了。</p>
-<p>这一章不引入任何新概念。把武器全部组装起来，演示一套完整的 LED 框架。同一份应用代码，运行时切换 PC、STM32、Linux 三种 platform，零修改。</p>
-<p>这是 platform 层 ops 化的高潮章。</p>
+<p>这一章不引入任何新概念。把武器全部组装起来，演示一套完整的 LED 框架：父类 / 子类 / 板级 / 应用四层，每层一个职责，每层只调下一层。同一份应用代码挂着 GPIO + PWM + I2C 三种硬件混搭的 LED，应用层 grep 拿不到任何硬件字样。换硬件方案，应用 0 修改。</p>
+<p>最初你一份代码控一盏灯、三盏灯三份代码。现在 300 多行复制粘贴的代码，被压到应用层 60 行。一路走来，从一团乱麻到一套架构。</p>
 <h2 id="151-四层架构"><a class="header" href="#151-四层架构">15.1 四层架构</a></h2>
-<p>打开配套代码 <code>oop-in-c/code/15-platform/pc/</code> 你会看到这些文件：</p>
-<pre><code>pc/
-├── platform_ops.h, platform_ops_pc.c
-├── platform_ops_stm32_mock.c
-├── platform_ops_linux_mock.c
-├── led.h, led.c
-├── leds.h, board_init.c
-├── app.h, app.c
-├── main.c
-└── Makefile
+<p>打开配套代码 <code>oop-in-c/code/15-platform/pc/</code>，8 个文件按调用方向从上往下分四层：</p>
+<pre><code>应用层    app.h, app.c          alarm_blink / status_indicate / power_on_test
+子类层    led.c (子类那部分)    led_gpio / led_pwm / led_i2c, container_of 反推
+父类层    led.h, led.c (父类)   led_base + led_ops + 必填 / 选填分发
+板级层    leds.h, board_init.c  实例化 + 向上转型, 唯一认识硬件的文件
 </code></pre>
-<p>按调用方向从上往下分四层：</p>
-<pre><code>应用层      app.c          alarm_blink / status_breathe / power_on_test
-LED 驱动层  led.c          led_base + led_gpio / led_pwm / led_i2c
-板级层      board_init.c   实例化、绑定全局句柄
-平台层      platform_*.c   GPIO / I2C 物理操作
-</code></pre>
-<p>每一层只调用下一层。每一层只关心自己。</p>
+<p>底下还有一份 <code>common/platform_pc.c</code>，提供 4 个 GPIO 封装函数（<code>platform_gpio_init / write / read / deinit</code>），从 ch01 起整本书一字不变。STM32 / Linux 真机上换成对应实现，上面 4 层一字不动。</p>
+<p>每一层只关心自己。每一层只调下一层。</p>
 <p><img src="../assets/ch15/slide1_文件结构.png" alt="文件结构"></p>
 <h2 id="152-父类层led_base--必填选填"><a class="header" href="#152-父类层led_base--必填选填">15.2 父类层：led_base + 必填选填</a></h2>
-<p><code>led.h</code> / <code>led.c</code> 是父类层：</p>
+<p><code>led.h</code> 里定型整本书最终版的 <code>led_base</code>：</p>
 <pre><code class="language-c">struct led_ops {
-	int (*on)(struct led_base *me);
-	int (*off)(struct led_base *me);
-	int (*set_brightness)(struct led_base *me, uint8_t brightness);
+	int (*on)(struct led_base *me);              /* 必填 */
+	int (*off)(struct led_base *me);             /* 必填 */
+	int (*set_brightness)(struct led_base *me,   /* 选填 */
+			      uint8_t brightness);
 };
 
 struct led_base {
@@ -219,12 +210,13 @@ struct led_base {
 	bool                  is_on;
 };
 </code></pre>
-<p>统一接口分两种处理：</p>
+<p>三个字段：<code>name</code>（每盏灯一个字符串名字，打日志用）、<code>is_on</code>（当前开关状态，父类记账）、<code>ops</code>（指向子类的 ops 表）。这三个字段从 ch11 多态那一章定型之后再没动过。</p>
+<p><code>led.c</code> 的父类统一接口分两种处理：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {
 	if (!me)
 		return -1;
-	/* 必填：on 是 LED 的核心能力，子类必须实现 */
+	/* 必填: 子类必须实现 on. assert 抓到忘填的子类立刻 abort 给行号. */
 	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
 	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
@@ -234,21 +226,22 @@ int led_set_brightness(struct led_base *me, uint8_t b)
 {
 	if (!me || !me-&gt;ops)
 		return -1;
-	if (!me-&gt;ops-&gt;set_brightness) {     /* 选填，默认跳过 */
-		printf("  [%s] no dimming, skip\n", me-&gt;name);
+	if (!me-&gt;ops-&gt;set_brightness) {     /* 选填, 父类提供默认行为 */
+		printf("  [%s] no dimming, skip (brightness=%u)\n",
+		       me-&gt;name, (unsigned)b);
 		return 0;
 	}
 	return me-&gt;ops-&gt;set_brightness(me, b);
 }
 </code></pre>
-<p><code>on / off</code> 是必填，子类不实现就 assert 报错。<code>set_brightness</code> 是选填，子类不实现就走默认行为。</p>
+<p><code>on / off</code> 必填，对应 C++ 纯虚函数，子类不实现 <code>assert</code> 立刻报错。<code>set_brightness</code> 选填，对应 C++ 带默认行为的虚函数，子类不实现父类走默认（GPIO 灯没法调光）。同一个父类接口里，必填和选填两种做法同时出现。这就是 ch14 的精确兑现。</p>
 <p><img src="../assets/ch15/slide2_父类代码.png" alt="父类代码"></p>
 <h2 id="153-子类层三种硬件"><a class="header" href="#153-子类层三种硬件">15.3 子类层：三种硬件</a></h2>
-<p>子类把 base 嵌在第一个字段（或任意位置，配套代码 ch13 已经证明 container_of 不挑位置），后面追加自己的字段：</p>
+<p>子类把 <code>led_base</code> 嵌进自己的结构体（哪个位置都行，配套代码 ch13 已经证明 <code>container_of</code> 不挑位置）：</p>
 <pre><code class="language-c">struct led_gpio {
 	struct led_base base;
 	uint8_t         pin;
-	bool            on_level;
+	bool            on_level;       /* 0=低电平亮, 1=高电平亮 */
 };
 
 struct led_pwm {
@@ -263,7 +256,7 @@ struct led_i2c {
 	uint8_t         addr;
 };
 </code></pre>
-<p>每个子类的实现函数第一行都是 container_of：</p>
+<p>每个子类的实现函数第一行都是 <code>container_of</code>，从 base 反推回子类对象：</p>
 <pre><code class="language-c">static int gpio_on(struct led_base *me)
 {
 	struct led_gpio *self = container_of(me, struct led_gpio, base);
@@ -272,8 +265,7 @@ struct led_i2c {
 	return 0;
 }
 </code></pre>
-<p>注意 <code>platform_gpio_write</code>，子类不直接碰寄存器，调 platform 层的封装函数。封装函数内部走的是 ops 分发（下一节展开），但驱动层这里只见普通函数。</p>
-<p>GPIO 子类只填 <code>on / off</code>，<code>set_brightness</code> 留空，GPIO 灯没有调光能力。PWM 子类三件套全填。I2C 子类填 <code>on / off</code>。</p>
+<p>反推成功之后，就能访问 <code>self-&gt;pin</code> 和 <code>self-&gt;on_level</code> 这些子类自己的字段。<code>platform_gpio_write</code> 是 ch01 起就存在的封装函数，子类不直接碰寄存器，调下层一个普通 C 函数。</p>
 <pre><code class="language-c">static const struct led_ops gpio_ops = { .on = gpio_on, .off = gpio_off };
 
 static const struct led_ops pwm_ops = {
@@ -284,10 +276,40 @@ static const struct led_ops pwm_ops = {
 
 static const struct led_ops i2c_ops = { .on = i2c_on, .off = i2c_off };
 </code></pre>
+<p>GPIO 和 I2C 子类只填 <code>on / off</code>，<code>set_brightness</code> 留空（C 标准里静态存储未显式初始化的字段会被零初始化为 NULL，父类的选填默认行为会接住）。PWM 子类三件套全填。</p>
+<p>最后是参数化的子类构造函数：</p>
+<pre><code class="language-c">void led_gpio_init(struct led_gpio *me, const char *name,
+		   uint8_t pin, bool on_level)
+{
+	me-&gt;base.ops   = &amp;gpio_ops;
+	me-&gt;base.name  = name;
+	me-&gt;base.is_on = false;
+	me-&gt;pin        = pin;
+	me-&gt;on_level   = on_level;
+	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
+}
+</code></pre>
+<p>四个参数从外面传进来：对象指针、名字、引脚号、点亮电平。硬件资源不在子类定义里写死。这是 C 模拟构造函数的标准做法。</p>
+<p><code>led_pwm.c</code>、<code>led_i2c.c</code> 同套路：自己的字段、自己的 ops、自己的 init 构造函数。换一种硬件，再写一个子类文件，父类 / 板级 / 应用 一字不动。</p>
 <p><img src="../assets/ch15/slide3_子类代码.png" alt="子类代码"></p>
 <h2 id="154-板级层唯一认识硬件的文件"><a class="header" href="#154-板级层唯一认识硬件的文件">15.4 板级层：唯一认识硬件的文件</a></h2>
-<p><code>board_init.c</code>，整个工程里唯一认识硬件的文件：</p>
-<pre><code class="language-c">static struct led_gpio s_led_err;       /* 文件作用域，外部不可见 */
+<p><code>leds.h</code> 对外只暴露三个全局句柄 + <code>board_init</code> 入口：</p>
+<pre><code class="language-c">#ifndef LEDS_H
+#define LEDS_H
+
+#include "led.h"
+
+extern struct led_base *g_led_error;
+extern struct led_base *g_led_status;
+extern struct led_base *g_led_network;
+
+void board_init(void);
+
+#endif
+</code></pre>
+<p>句柄类型是父类指针 <code>struct led_base *</code>，不是具体子类。应用层 <code>#include "leds.h"</code> 拿到的就是这一组句柄，分不清底下挂的是 GPIO 还是 PWM 还是 I2C。</p>
+<p><code>board_init.c</code> 是整个工程里<strong>唯一</strong>认识硬件的文件：</p>
+<pre><code class="language-c">static struct led_gpio s_led_err;       /* 文件作用域, 外部不可见 */
 static struct led_pwm  s_led_status;
 static struct led_i2c  s_led_net;
 
@@ -306,11 +328,16 @@ void board_init(void)
 	g_led_network = &amp;s_led_net.base;
 }
 </code></pre>
-<p>报警灯用 GPIO，状态灯用 PWM，网络灯挂在 I2C 扩展芯片上。三种不同硬件，通过同一个 <code>struct led_base *</code> 对外暴露。</p>
+<p>报警灯用 GPIO 开关，最简单；状态灯用 PWM 呼吸，要能调亮度；网络灯挂在 I2C 扩展芯片上，是远程芯片上的灯。三种不同硬件，通过同一个 <code>struct led_base *</code> 接口对外暴露。</p>
+<p>实例化三行：三个子类对象都是空的，没赋任何值。硬件资源全部 <code>init</code> 的时候传进去。pin 编号、PWM 通道、I2C 地址这些常量集中在这一个文件里。</p>
+<p>最后三行绑定：每个子类对象取 <code>&amp;xxx.base</code> 拿到 base 字段地址，赋给对应的全局父类指针句柄。这一步就是把子类对象“当作“父类指针在用。<strong>向上转型</strong>（ch12 § 12.2）：因为 <code>base</code> 是子类的字段，C99 § 6.7.2.1 保证结构体字段的地址等于结构体加上偏移量后的地址，编译器替我们算偏移（base 在第一个字段时偏移是 0，一条 <code>ADD r0, #0</code> 就被优化掉了）。</p>
+<p>绑定完成后，全局句柄准备好了。应用层 <code>#include "leds.h"</code>，随便用。</p>
 <p><img src="../assets/ch15/slide4_板级代码.png" alt="板级代码"></p>
 <h2 id="155-应用层grep-零硬件字样"><a class="header" href="#155-应用层grep-零硬件字样">15.5 应用层：grep 零硬件字样</a></h2>
-<p><code>app.c</code>：</p>
+<p><code>app.c</code> 三个真实业务函数：</p>
 <pre><code class="language-c">#include "leds.h"
+#include "app.h"
+#include &lt;stdio.h&gt;
 
 void alarm_blink(void)
 {
@@ -318,11 +345,12 @@ void alarm_blink(void)
 	led_off(g_led_error);
 }
 
-void status_breathe(void)
+void status_indicate(int err_code)
 {
-	led_set_brightness(g_led_status, 30);
-	led_set_brightness(g_led_status, 80);
-	led_set_brightness(g_led_status,  0);
+	if (err_code == 0)
+		led_on(g_led_status);
+	else
+		led_on(g_led_error);
 }
 
 void power_on_test(void)
@@ -332,491 +360,155 @@ void power_on_test(void)
 	led_on(g_led_network);  led_off(g_led_network);
 }
 </code></pre>
-<p>打开终端：</p>
-<pre><code>grep -n "led_gpio\|led_pwm\|led_i2c"  app.c    # 0
-grep -n "gpio_write\|HAL_GPIO\|sysfs" app.c    # 0
-grep -n "BSRR\|0x[0-9A-F]"            app.c    # 0
+<p>不是一个 <code>test_led</code> 就完了，是三个业务函数：报警闪烁（一开一关）、状态指示（按错误码挑亮哪盏）、开机自检（三盏灯依次亮一遍）。十几处调用，全部只用 <code>g_led_*</code> 全局句柄。</p>
+<p>不信？打开终端：</p>
+<pre><code>$ grep -nE "led_gpio|led_pwm|led_i2c"  app.c
+$ grep -nE "gpio_write|HAL_GPIO|sysfs"  app.c
+$ grep -nE "BSRR|0x[0-9A-F]"            app.c
 </code></pre>
-<p>应用层一个硬件字样都没有。</p>
+<p>三条 grep 全部 0 命中。板级混搭了 GPIO、PWM、I2C 三种硬件，应用层一个都不认识。它只看到三个 <code>struct led_base *</code> 句柄，调 <code>led_on / led_off / led_set_brightness</code>。剩下的事，是哪种子类、走哪个 ops、哪个引脚、哪个总线，全部不关心。</p>
 <p><img src="../assets/ch15/slide5_应用层grep.png" alt="应用层 + grep"></p>
-<h2 id="156-platform-层的内部演化从直接实现到-ops-分发"><a class="header" href="#156-platform-层的内部演化从直接实现到-ops-分发">15.6 platform 层的内部演化：从直接实现到 ops 分发</a></h2>
-<p>到这里应用层、led 驱动层、板级层全部 ops 化了。还差一层：platform 层。</p>
-<p>ch01 到 ch10 platform 层是直接实现，没有 ops 表：</p>
-<pre><code class="language-c">/* common/platform.h - 对外接口 */
-void platform_gpio_init(uint8_t pin, uint8_t mode);
-void platform_gpio_write(uint8_t pin, bool value);
-bool platform_gpio_read(uint8_t pin);
-
-/* common/platform_pc.c - 直接实现 */
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	printf("[GPIO] Pin%u -&gt; %s\n", pin, value ? "HIGH" : "LOW");
-}
-</code></pre>
-<p>这一版有一个硬限制：链 <code>platform_pc.c</code> 这份目标文件就跑 PC 实现，链 <code>platform_stm32.c</code> 就跑 STM32 实现。运行时切换不了。</p>
-<p>但工业项目里有一个高频需求：<strong>同一个二进制文件，启动期或测试期决定用哪一套 GPIO 实现</strong>。比如 unit test 要在 CI 流水线里跑，模拟环境用 PC 实现，回到真机用 STM32 实现，源码 0 改、binary 0 改、只换一个全局指针。</p>
-<p>这一节就把 platform 层重新组织成 ops 分发版。</p>
-<h3 id="1561-关键不变量对外接口一字不改"><a class="header" href="#1561-关键不变量对外接口一字不改">15.6.1 关键不变量：对外接口一字不改</a></h3>
-<pre><code class="language-c">/* common/platform.h - 这一份从 ch01 到 ch20 一字不改 */
-void platform_gpio_init(uint8_t pin, uint8_t mode);
-void platform_gpio_write(uint8_t pin, bool value);
-bool platform_gpio_read(uint8_t pin);
-</code></pre>
-<p>驱动层、应用层调的就是这几个普通 C 函数。从 ch01 起到 ch15、到附录 B 的真实 STM32 工程，签名 0 变化。</p>
-<p>这是 SOLID 接口隔离原则在 platform 层的落地：上层不知道也不该知道下层是直接实现还是 ops 分发。</p>
-<h4 id="pin-编码把-port-藏进单参数"><a class="header" href="#pin-编码把-port-藏进单参数">pin 编码：把 port 藏进单参数</a></h4>
-<p><code>platform_gpio_write(uint8_t pin, bool value)</code> 这个签名只有一个 <code>pin</code> 参数。但真实 MCU 上 GPIO 是 port (A/B/C/D…) + 引脚号 (0-15) 两层结构。怎么用一个参数表达？</p>
-<p>工业代码里 <code>pin</code> 是个编码值。最简单的编码：</p>
-<pre><code class="language-c">/* 高 4 位放 port 索引（A=0, B=1, C=2, D=3, ...），低 4 位放引脚号 */
-#define PIN(port, num)   (((port) &lt;&lt; 4) | ((num) &amp; 0xF))
-#define PIN_PORT(pin)    (((pin) &gt;&gt; 4) &amp; 0xF)
-#define PIN_NUM(pin)     ((pin) &amp; 0xF)
-
-#define PORT_A  0
-#define PORT_B  1
-#define PORT_C  2
-#define PORT_D  3
-</code></pre>
-<p>调用方写：</p>
-<pre><code class="language-c">platform_gpio_write(PIN(PORT_D, 12), true);    /* PD12 高 */
-platform_gpio_write(PIN(PORT_A, 5),  false);   /* PA5 低 */
-</code></pre>
-<p>platform 层内部解码：</p>
-<pre><code class="language-c">static void stm32_gpio_write(uint8_t pin, bool value)
-{
-	GPIO_TypeDef *gpio = port_to_gpio(PIN_PORT(pin));   /* 0 -&gt; GPIOA */
-	uint16_t mask = (1u &lt;&lt; PIN_NUM(pin));
-	HAL_GPIO_WritePin(gpio, mask,
-			  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
-</code></pre>
-<p>这一招让接口<strong>永远只有一个 <code>pin</code> 参数</strong>，无论底下是单 port 的小芯片还是 12 个 port 的大芯片。port 信息只在 platform 层内部解码，上层完全感知不到。</p>
-<p>工业级落地：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>项目</th><th>接口签名</th><th>port 处理</th></tr>
-</thead>
-<tbody>
-<tr><td>本书 / 附录 B</td><td><code>platform_gpio_write(uint8_t pin, bool)</code></td><td><code>PIN(port, num)</code> 编码</td></tr>
-<tr><td>Linux 内核</td><td><code>gpio_set_value(unsigned int gpio, int)</code></td><td>gpio 是全局编号，gpiochip 注册时 base + offset</td></tr>
-<tr><td>工业控制板</td><td><code>platform_pin_write(int32_t pin, int32_t)</code></td><td><code>GET_PIN(PORTx, PIN)</code> 编码（位移 + 端口宏）</td></tr>
-<tr><td>Zephyr</td><td><code>gpio_pin_set_dt(spec, value)</code></td><td>spec 是设备树编译出的句柄，包含 port + pin</td></tr>
-<tr><td>STM32 HAL（反例）</td><td><code>HAL_GPIO_WritePin(GPIO_TypeDef*, uint16_t, ...)</code></td><td>暴露 GPIO_TypeDef 指针给驱动层</td></tr>
-</tbody>
-</table>
-</div>
-<p>前四个都把 port 藏起来了，HAL 是反例。这就是为什么直接基于 HAL 写驱动很难做跨芯片移植。这本书 + Linux + 工业控制板都站在“封装 port“这一边。</p>
-<h3 id="1562-platform-层内部三个文件"><a class="header" href="#1562-platform-层内部三个文件">15.6.2 platform 层内部三个文件</a></h3>
-<p>ch15 把 platform 层拆成三块：</p>
-<pre><code>platform_ops.h            内部 ops 表 + 三个 const 实例的声明
-platform_dispatch.c       封装函数实现（platform_gpio_xxx）+ 切换 API
-platform_ops_pc.c         PC 实例
-platform_ops_stm32_mock.c STM32 实例
-platform_ops_linux_mock.c Linux 实例
-</code></pre>
-<p><code>platform_ops.h</code> 是 platform 层<strong>内部</strong>头文件，只有 platform 层自己 include。驱动层永远 include <code>platform.h</code>（封装函数声明），永远不 include <code>platform_ops.h</code>。</p>
-<pre><code class="language-c">/* platform_ops.h - 只给 platform 层自己用 */
-struct platform_ops {
-	const char *name;
-	void (*gpio_init)(uint8_t pin, uint8_t mode);
-	void (*gpio_write)(uint8_t pin, bool value);
-	bool (*gpio_read)(uint8_t pin);
-	void (*gpio_deinit)(uint8_t pin);
-};
-
-extern const struct platform_ops platform_pc;
-extern const struct platform_ops platform_stm32_mock;
-extern const struct platform_ops platform_linux_mock;
-
-void platform_select(const struct platform_ops *p);
-const char *platform_name(void);
-</code></pre>
-<h3 id="1563-platform_dispatchc封装函数走-ops-分发"><a class="header" href="#1563-platform_dispatchc封装函数走-ops-分发">15.6.3 platform_dispatch.c：封装函数走 ops 分发</a></h3>
-<p><code>platform_dispatch.c</code> 维护 platform 层内部的 ops 指针，并实现对外的封装函数：</p>
-<pre><code class="language-c">/* platform_dispatch.c */
-#include "platform.h"
-#include "platform_ops.h"
-
-static const struct platform_ops *g_platform_ops = &amp;platform_pc;
-
-void platform_select(const struct platform_ops *p)
-{
-	if (p) {
-		g_platform_ops = p;
-		printf("&gt;&gt;&gt; platform switched to: %s\n", p-&gt;name);
-	}
-}
-
-const char *platform_name(void)
-{
-	return g_platform_ops ? g_platform_ops-&gt;name : "(unset)";
-}
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_write)
-		g_platform_ops-&gt;gpio_write(pin, value);
-}
-
-/* platform_gpio_init / read / deinit 同套路 */
-</code></pre>
-<p><code>g_platform_ops</code> 是 platform 层的私有状态，文件作用域，外部链接不到。换平台只改这一个指针。</p>
-<h3 id="1564-三个-ops-实例"><a class="header" href="#1564-三个-ops-实例">15.6.4 三个 ops 实例</a></h3>
-<p>ch15 同时编译进三个 <code>platform_ops</code> 实例。三份骨架完全一致，只是函数体不同。</p>
-<p>PC 版（<code>platform_ops_pc.c</code>）：</p>
-<pre><code class="language-c">static void pc_gpio_write(uint8_t pin, bool value)
-{
-	printf("    [PC]    Pin%u &lt;- %s\n", (unsigned)pin,
-	       value ? "HIGH" : "LOW");
-}
-
-const struct platform_ops platform_pc = {
-	.name       = "PC",
-	.gpio_init  = pc_gpio_init,
-	.gpio_write = pc_gpio_write,
-	.gpio_read  = pc_gpio_read,
-};
-</code></pre>
-<p>PC 实例文件里只定义这一个 const 实例，不维护任何全局状态。“默认指向 PC“这件事在 <code>platform_dispatch.c</code> 里完成（<code>g_platform_ops = &amp;platform_pc</code>）。</p>
-<p>STM32 mock 版（<code>platform_ops_stm32_mock.c</code>）打印 BSRR 寄存器写入动作：</p>
-<pre><code class="language-c">static void stm32_gpio_write(uint8_t pin, bool value)
-{
-	/* 真机上这里就是：
-	 *   GPIOA-&gt;BSRR = value ? (1u &lt;&lt; pin) : (1u &lt;&lt; (pin + 16));
-	 * BSRR 一次 32 位 store，原子。 */
-	printf("    [STM32] BSRR &lt;- 0x%08X (Pin%u %s)\n",
-	       value ? (1u &lt;&lt; pin) : (1u &lt;&lt; (pin + 16)),
-	       (unsigned)pin, value ? "HIGH" : "LOW");
-}
-
-const struct platform_ops platform_stm32_mock = {
-	.name       = "STM32",
-	.gpio_init  = stm32_gpio_init,
-	.gpio_write = stm32_gpio_write,
-	.gpio_read  = stm32_gpio_read,
-};
-</code></pre>
-<p>Linux mock 版（<code>platform_ops_linux_mock.c</code>）打印 sysfs 文件写入动作：</p>
-<pre><code class="language-c">static void linux_gpio_write(uint8_t pin, bool value)
-{
-	printf("    [LINUX] echo %d &gt; /sys/class/gpio/gpio%u/value\n",
-	       value ? 1 : 0, (unsigned)pin);
-}
-
-const struct platform_ops platform_linux_mock = {
-	.name       = "LINUX",
-	.gpio_init  = linux_gpio_init,
-	.gpio_write = linux_gpio_write,
-	.gpio_read  = linux_gpio_read,
-};
-</code></pre>
-<p>三个实例都是 <code>const</code>，存在 .rodata 段。运行时切换只是改 platform 层内部的 <code>g_platform_ops</code> 指针指向（<code>platform_select</code> 实现见 15.6.3）。</p>
-<h3 id="1565-工业纪律上层永远调封装函数"><a class="header" href="#1565-工业纪律上层永远调封装函数">15.6.5 工业纪律：上层永远调封装函数</a></h3>
-<p>回头看 led 子类的实现：</p>
-<pre><code class="language-c">static int gpio_on(struct led_base *me)
-{
-	struct led_gpio *self = container_of(me, struct led_gpio, base);
-	platform_gpio_write(self-&gt;pin, self-&gt;on_level);    /* 普通 C 函数调用 */
-	me-&gt;is_on = true;
-	return 0;
-}
-</code></pre>
-<p>驱动层调的是 <code>platform_gpio_write(pin, value)</code>，不是 <code>g_platform_ops-&gt;gpio_write(pin, value)</code>。封装函数内部走 ops 分发是 platform 层的实现细节，对驱动层不可见。</p>
-<p>这条纪律和 ch01 1.10 节 <code>led_on(green_led)</code> 同源：<strong>应用层永远只见普通函数，看不到 ops 表</strong>。两者放一起就是这本书的核心工业纪律：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>层</th><th>调用形态</th><th>内部</th></tr>
-</thead>
-<tbody>
-<tr><td>应用层</td><td><code>led_on(handle)</code></td><td>父类封装函数走 led ops 分发到子类</td></tr>
-<tr><td>驱动层</td><td><code>platform_gpio_write(pin, val)</code></td><td>platform 封装函数走 platform ops 分发到具体平台</td></tr>
-<tr><td>platform 层 / led 父类</td><td>内部维护 ops 指针 + dispatch</td><td>私有状态，外部链接不到</td></tr>
-<tr><td>ops 实例</td><td><code>const struct xxx_ops</code> 在 .rodata</td><td>直接实现，不再有第二层间接</td></tr>
-</tbody>
-</table>
-</div>
-<p>每一层只见下一层暴露的封装函数。ops 表只在自己这一层内部用，永远不跨层暴露。</p>
-<p>这是 SOLID 接口隔离（ISP）+ 依赖倒置（DIP）在 C 里的工程化表达。Linux 内核的 <code>gpio_request / gpio_set_value</code> / Linux drivers 的 <code>i2c_transfer</code> / Zephyr 的 <code>gpio_pin_set_dt</code> 全部是这个形态：对外是普通 C 函数，内部是各家芯片厂的 ops 实例。</p>
-<h2 id="157-mainc同一份业务跑三遍"><a class="header" href="#157-mainc同一份业务跑三遍">15.7 main.c：同一份业务跑三遍</a></h2>
-<pre><code class="language-c">int main(void)
-{
-	board_init();    /* 一次构造，三种 platform 通用 */
-
-	printf("\n========== run on PC ==========\n");
-	platform_select(&amp;platform_pc);
-	power_on_test();
-	alarm_blink();
-	status_breathe();
-
-	printf("\n========== run on STM32 ==========\n");
-	platform_select(&amp;platform_stm32_mock);
-	power_on_test();
-	alarm_blink();
-	status_breathe();
-
-	printf("\n========== run on LINUX ==========\n");
-	platform_select(&amp;platform_linux_mock);
-	power_on_test();
-	alarm_blink();
-	status_breathe();
-	return 0;
-}
-</code></pre>
-<p>输出节选：</p>
-<pre><code>========== run on PC ==========
-&gt;&gt;&gt; platform switched to: PC
-
---- alarm_blink ---
-    [PC]    Pin10 &lt;- HIGH
-  [ERR] led_on -&gt; platform=PC
-    [PC]    Pin10 &lt;- LOW
-
-========== run on STM32 ==========
-&gt;&gt;&gt; platform switched to: STM32
-
---- alarm_blink ---
-    [STM32] BSRR &lt;- 0x00000400 (Pin10 HIGH)
-  [ERR] led_on -&gt; platform=STM32
-    [STM32] BSRR &lt;- 0x04000000 (Pin10 LOW)
-
-========== run on LINUX ==========
-&gt;&gt;&gt; platform switched to: LINUX
-
---- alarm_blink ---
-    [LINUX] echo 1 &gt; /sys/class/gpio/gpio10/value
-  [ERR] led_on -&gt; platform=LINUX
-    [LINUX] echo 0 &gt; /sys/class/gpio/gpio10/value
-</code></pre>
-<p>应用层代码、led 驱动层代码、board 层代码，全部 0 修改。换的只有 platform 全局指针指向的那个 ops 实例。</p>
-<h2 id="158-换硬件-diff"><a class="header" href="#158-换硬件-diff">15.8 换硬件 diff</a></h2>
-<p>真实场景：周五下午老板进来，客户改要求，报警灯要能调光，从 GPIO 换成 PWM。</p>
+<h2 id="156-换硬件-diffboard_init-改三行appc-零改动"><a class="header" href="#156-换硬件-diffboard_init-改三行appc-零改动">15.6 换硬件 diff：board_init 改三行，app.c 零改动</a></h2>
+<p>真实场景：周五下午六点，老板进来。客户改要求：报警灯要能调光，从 GPIO 换成 PWM。</p>
 <p>打开 <code>board_init.c</code>，改 3 行：</p>
-<pre><code class="language-c">/* 改前 */
-static struct led_gpio s_led_err;
-led_gpio_init(&amp;s_led_err, "ERR", 10, true);
-g_led_error = &amp;s_led_err.base;
+<pre><code class="language-diff">-static struct led_gpio s_led_err;
++static struct led_pwm  s_led_err;
+ static struct led_pwm  s_led_status;
+ static struct led_i2c  s_led_net;
 
-/* 改后 */
-static struct led_pwm s_led_err;
-led_pwm_init(&amp;s_led_err, "ERR", 2, 80);
-g_led_error = &amp;s_led_err.base;
+ void board_init(void)
+ {
+-    led_gpio_init(&amp;s_led_err, "ERR", 10, true);
++    led_pwm_init (&amp;s_led_err, "ERR",  2, 80);
+     led_pwm_init (&amp;s_led_status, "STAT", 1, 50);
+     led_i2c_init (&amp;s_led_net,    "NET",  0, 0x20);
+
+     g_led_error   = &amp;s_led_err.base;
+     g_led_status  = &amp;s_led_status.base;
+     g_led_network = &amp;s_led_net.base;
+ }
 </code></pre>
-<p><code>app.c</code> 0 改动。<code>led.c</code> 0 改动。<code>platform_*.c</code> 0 改动。</p>
-<p>如果是换底层芯片（比如从 STM32 换到瑞萨 RA），<code>platform_ops_stm32.c</code> 替换成 <code>platform_ops_ra.c</code>，上面三层全部 0 改动。</p>
+<p>类型那行：<code>struct led_gpio</code> 改成 <code>struct led_pwm</code>。
+init 那行：<code>led_gpio_init</code> 换成 <code>led_pwm_init</code>，参数从“10 号引脚、高电平点亮“换成“2 号通道、80% 亮“。
+绑定那行：<code>&amp;s_led_err.base</code> 一字不动，<code>base</code> 这个字段名两个子类都有，绑定逻辑天然兼容。</p>
+<p>三行改动全部在 <code>board_init.c</code> 里面。<code>app.c</code>、<code>led.c</code>、<code>leds.h</code> 全部 0 改动。<code>alarm_blink</code>、<code>status_indicate</code>、<code>power_on_test</code> 三个业务函数一行不动。</p>
+<p>周五晚上回家吃饭。</p>
+<p>老板很高兴，顺手又塞了两个新需求过来。</p>
 <p><img src="../assets/ch15/slide6_换硬件diff.png" alt="换硬件 diff"></p>
-<h2 id="159-before--after"><a class="header" href="#159-before--after">15.9 Before / After</a></h2>
-<p>最初你的代码是这样：</p>
-<pre><code class="language-c">void red_led_on(void)  { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET); }
-void red_led_off(void) { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET); }
-void green_led_on(void)  { ... }
-void green_led_off(void) { ... }
-/* 8 个 LED 乘 4 个函数 = 32 个几乎一模一样的函数 */
+<h2 id="157-before--after300-行--60-行"><a class="header" href="#157-before--after300-行--60-行">15.7 Before / After：300 行 → 60 行</a></h2>
+<p>来看你走了多远。</p>
+<p><strong>最初</strong>（ch01 - ch04）：</p>
+<pre><code class="language-c">/* gpio_led.c, gpio_led_2.c, gpio_led_3.c — 三份独立代码 */
+void red_led_on(void)    { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);   }
+void red_led_off(void)   { HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET); }
+void green_led_on(void)  { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5,  GPIO_PIN_SET);   }
+void green_led_off(void) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5,  GPIO_PIN_RESET); }
+/* ... 8 颗 LED 乘 4 个函数 = 32 个几乎一模一样的函数, 300 多行 */
 </code></pre>
-<p>应用层和 HAL 库直接耦合。换硬件？认真考虑辞职。</p>
-<p>现在你的代码：</p>
+<p>应用层和 HAL 库直接耦合。改一个名字格式要改三个文件。换硬件？认真考虑辞职。</p>
+<p><strong>现在</strong>（ch15）：</p>
 <pre><code class="language-c">/* app.c */
 led_on(g_led_error);
 led_set_brightness(g_led_status, 80);
 </code></pre>
-<p>四层架构。每一层只关心自己。换硬件改 board_init 三行，应用 0 修改。</p>
-<p>代码行数从 300 多行（重复的 HAL 调用）压到应用层 60 行。</p>
-<p>但<strong>真正重要的不是行数少，是改一处全生效</strong>。</p>
+<p>四层架构：父类定义接口、子类实现接口、板级绑定硬件、应用层只用句柄。应用层 60 行。换硬件方案改 <code>board_init.c</code> 三行，应用 0 修改。</p>
+<p>代码从 300 多行压到 60 行。</p>
+<p>但<strong>真正重要</strong>的不是行数少，是改一处全生效。</p>
+<p>一路走来，从一团乱麻到一套架构。</p>
+<p>你学的不是语法，是管理复杂系统的思维方式。</p>
 <p><img src="../assets/ch15/slide7_BeforeAfter.png" alt="Before / After"></p>
-<h2 id="1510-视频里没讲透的几个细节"><a class="header" href="#1510-视频里没讲透的几个细节">15.10 视频里没讲透的几个细节</a></h2>
-<h3 id="15101-ops-分发版的间接代价"><a class="header" href="#15101-ops-分发版的间接代价">15.10.1 ops 分发版的间接代价</a></h3>
-<p>封装函数 <code>platform_gpio_write(pin, value)</code> 在 ch15 这一版的实现是：</p>
-<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
+<h2 id="158-一句金句"><a class="header" href="#158-一句金句">15.8 一句金句</a></h2>
+<blockquote>
+<p>好的架构不是让你写更多代码，是让你改更少代码。</p>
+</blockquote>
+<p><img src="../assets/ch15/slide8_金句.png" alt="金句"></p>
+<h2 id="159-视频里没讲透的几个细节"><a class="header" href="#159-视频里没讲透的几个细节">15.9 视频里没讲透的几个细节</a></h2>
+<h3 id="1591-应用层只-include-ledsh-不-include-led_gpioh-的纪律"><a class="header" href="#1591-应用层只-include-ledsh-不-include-led_gpioh-的纪律">15.9.1 应用层只 include leds.h 不 include led_gpio.h 的纪律</a></h3>
+<p><code>app.c</code> 顶上你看到的是：</p>
+<pre><code class="language-c">#include "leds.h"
+</code></pre>
+<p>不是：</p>
+<pre><code class="language-c">#include "led.h"          /* 不行: 暴露 struct led_gpio / led_pwm / led_i2c */
+#include "led_gpio.h"     /* 不行: 应用层就知道有 GPIO 这种东西了 */
+</code></pre>
+<p><code>leds.h</code> 里只 include <code>led.h</code>（拿 <code>struct led_base</code> 和父类接口声明），完全不暴露子类类型。这条纪律保证应用层 grep 不到任何硬件字样。</p>
+<p>工业项目里这一招会做得更彻底：连 <code>led.h</code> 都不让应用层看到，应用层只 include <code>leds.h</code>，而 <code>leds.h</code> 里把 <code>struct led_base</code> 做成不完整类型（forward declaration），只允许指针操作：</p>
+<pre><code class="language-c">/* leds.h - 工业版 */
+struct led_base;     /* 不完整类型, 应用层只能用指针 */
+extern struct led_base *g_led_error;
+int led_on(struct led_base *me);
+</code></pre>
+<p>应用层连 <code>struct led_base</code> 长什么样都不知道，更别提 <code>struct led_gpio</code>。本书早期章节为了演示方便没做到这么彻底，真实工业代码里“应用层连父类内部都看不见“是常态。</p>
+<h3 id="1592-全局句柄-vs-static--getter-的取舍"><a class="header" href="#1592-全局句柄-vs-static--getter-的取舍">15.9.2 全局句柄 vs static + getter 的取舍</a></h3>
+<p>ch15 用的是一组 <code>extern struct led_base *g_led_xxx</code> 全局句柄。简单直接，一行 <code>extern</code> 就能让应用层拿到。</p>
+<p>工业项目里另一种常见做法是 <code>static + getter</code>：</p>
+<pre><code class="language-c">/* board_init.c */
+static struct led_base *s_led_error;       /* static, 只这个文件可见 */
+
+struct led_base *led_error_get(void)        /* 暴露 getter */
 {
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_write)
-		g_platform_ops-&gt;gpio_write(pin, value);
+	return s_led_error;
 }
 </code></pre>
-<p>调用方调一次普通函数，函数体内多两次 load + 一次间接跳：</p>
-<pre><code>1. 取 g_platform_ops 全局变量的当前值（一次 load）
-2. 取 g_platform_ops-&gt;gpio_write 字段的值（一次 load）
-3. 间接跳到那个函数地址
-</code></pre>
-<p>ARM Cortex-M 上多两条指令，约 2 个周期。和 ch01 到 ch10 的“直接实现版“相比，单次调用慢 2 个周期。换到的是运行时切换平台 + 同一份 binary 跑测试 platform + 真机 platform 的能力。</p>
-<p>如果你的项目永远不切换平台，直接实现版也够用（ch01 到 ch10 一直在用）。但读到这一章的工程师多半不是教学项目，能在 CI 流水线里跑 unit test 会让你受益匪浅。</p>
-<h3 id="15102-platform_ops-一定要-const--rodata"><a class="header" href="#15102-platform_ops-一定要-const--rodata">15.10.2 platform_ops 一定要 const + .rodata</a></h3>
-<pre><code class="language-c">const struct platform_ops platform_pc = {
-	.gpio_init  = pc_gpio_init,
-	/* ... */
+<p>应用层调 <code>led_error_get()</code> 而不是直接读 <code>g_led_error</code>。代价是多一层函数调用，好处是：</p>
+<ul>
+<li>可以加 lazy init（第一次调用时才初始化）</li>
+<li>可以加访问日志 / 锁 / 引用计数</li>
+<li>可以在 getter 里做“未初始化检查“</li>
+</ul>
+<p>教学版用 extern 全局句柄因为最直观；工业版常见 getter，因为接口更稳定（句柄实现可换）。两种都见过你就够了。</p>
+<h3 id="1593-板级-mix-and-matchgpio--pwm--i2c-同时混搭的可读性"><a class="header" href="#1593-板级-mix-and-matchgpio--pwm--i2c-同时混搭的可读性">15.9.3 板级 mix-and-match：GPIO + PWM + I2C 同时混搭的可读性</a></h3>
+<p>ch15 <code>board_init.c</code> 同时实例化了 GPIO 灯、PWM 灯、I2C 灯。这是<strong>故意的</strong>。</p>
+<p>很多教学项目只敢做一种：要么全 GPIO，要么全 PWM。讲分层架构的书就栽在这里：读者看到三盏 LED 三个 <code>struct led_gpio</code>，会以为“分层只在同种硬件之间分层“。</p>
+<p>混搭演示的是另一件事：分层的真正威力是<strong>应用层不知道也不必知道每盏灯具体是哪种硬件</strong>。<code>alarm_blink</code> 调 <code>led_on(g_led_error)</code>，背后是 GPIO 拉高电平、PWM 设占空比、还是 I2C 发包，上层一字不知。</p>
+<p>工业项目里这种混搭是常态：一块板子上几十路输出，有的是 MCU 自己 GPIO，有的接 PWM 控制器，有的挂在 I2C 扩展芯片上。<code>board_init.c</code> 把这些差异全部吸收掉，应用层只见统一的 <code>led_base * </code>句柄。</p>
+<h3 id="1594-把换硬件-diff思路推广到-motor--sensor"><a class="header" href="#1594-把换硬件-diff思路推广到-motor--sensor">15.9.4 把“换硬件 diff“思路推广到 motor / sensor</a></h3>
+<p>LED 这一招完全可以复用到其他外设。Motor：</p>
+<pre><code class="language-c">struct motor_ops {
+	int (*set_speed)(struct motor *me, int rpm);
+	int (*get_position)(struct motor *me, int32_t *pos);
+	int (*stop)(struct motor *me);
 };
+
+struct motor {
+	const struct motor_ops *ops;
+	const char             *name;
+};
+
+/* 子类 */
+struct motor_pwm { struct motor base; uint8_t pwm_ch; };       /* 直流 PWM 调速 */
+struct motor_can { struct motor base; uint8_t can_id; };       /* 总线伺服 */
 </code></pre>
-<p><code>const</code> 让这个实例进 .rodata 段（只读）。两个理由：</p>
-<ol>
-<li><strong>崩溃定位</strong>：如果有错代码踩到这个实例（比如把 <code>gpio_write</code> 改成野指针），立刻段错误，比静默崩好。</li>
-<li><strong>平台并存</strong>：三个实例都在 .rodata 里，互不干扰。<code>platform_select</code> 只改 platform 层内部 <code>g_platform_ops</code> 指针的指向。</li>
-</ol>
-<h3 id="15103-子类层不知道-platform-是谁"><a class="header" href="#15103-子类层不知道-platform-是谁">15.10.3 子类层不知道 platform 是谁</a></h3>
-<p>注意 <code>gpio_on</code> 里这一行：</p>
-<pre><code class="language-c">platform_gpio_write(self-&gt;pin, self-&gt;on_level);
-</code></pre>
-<p>子类层调的是封装函数 <code>platform_gpio_write</code>，从来不引用 <code>platform_pc</code> / <code>platform_stm32</code> 等具体实例，也不知道封装函数内部走的是 ops 分发还是直接实现。子类只知道有一个名叫 <code>platform_gpio_write</code> 的普通 C 函数在 platform.h 里声明着，至于背后是谁、怎么实现，不关心。</p>
-<p>这一招不仅让 platform 可换，还让子类层自动跨平台。led_gpio.c 在 PC、STM32、Linux 上都能编译运行，源码 0 修改。</p>
-<h3 id="15104-板级初始化-vs-platform-选择的边界"><a class="header" href="#15104-板级初始化-vs-platform-选择的边界">15.10.4 板级初始化 vs platform 选择的边界</a></h3>
-<p><code>board_init.c</code> 决定 LED 接什么硬件（GPIO / PWM / I2C）。<code>platform_select</code> 决定 GPIO 物理操作落在哪里（PC printf / STM32 BSRR / Linux sysfs）。</p>
-<p>两个职责不重合：</p>
-<ul>
-<li>同一块板子（同一份 board_init），可以在 PC 跑测试、在 STM32 跑硬件版，只换 platform。</li>
-<li>同一个 platform（比如 STM32），可以服务多种板子（不同 board_init），多产品线共享一份 platform 层。</li>
-</ul>
-<p>这是 1×N 变 N+M 的关键。</p>
-<h3 id="15105-platform-切换的线程安全"><a class="header" href="#15105-platform-切换的线程安全">15.10.5 platform 切换的线程安全</a></h3>
-<p>如果项目里有多个线程同时调 <code>platform_gpio_write</code>，主线程突然 <code>platform_select(other)</code>，封装函数体里那一行 <code>g_platform_ops-&gt;gpio_write(...)</code> 会不会和别的线程的 <code>gpio_write</code> 调用打架？</p>
-<p>C 标准里指针赋值不保证原子（虽然在主流 32 位 / 64 位平台上对齐的指针读写都是原子的）。生产代码里要么：</p>
-<ol>
-<li>启动期一次性选定 platform，运行时不再换。</li>
-<li>加锁或用 <code>_Atomic</code>（C11）保护 <code>g_platform_ops</code> 指针。</li>
-</ol>
-<p>多数 RTOS 项目走方案 1：开机 platform 选定，之后整个项目不再切换。“运行时切换“主要是开发期 unit test 用（同一份代码在 PC 模拟环境和真机间切换）。</p>
-<h3 id="15106-1n-vs-nn-的算账"><a class="header" href="#15106-1n-vs-nn-的算账">15.10.6 1×N vs N×N 的算账</a></h3>
-<p>第 16 章会展开这个图，先放结论：</p>
-<ul>
-<li><strong>没有 platform 层</strong>：3 种设备驱动 × 5 家芯片 = 15 份代码。加一家芯片再写 3 份。</li>
-<li><strong>有 platform 层</strong>：3 种设备驱动 + 5 家 platform 适配 = 8 份代码。加一家芯片只写 1 份 platform 适配，驱动 0 改。</li>
-</ul>
-<p>乘法变加法。Linux 内核几万个驱动能在不同芯片上跑，就是这一招的工业级展开。</p>
-<h3 id="15107-板级配置文件设备树的雏形"><a class="header" href="#15107-板级配置文件设备树的雏形">15.10.7 板级配置文件：设备树的雏形</a></h3>
-<p><code>board_init.c</code> 这个文件回答的问题是：“这块板子上有几颗 LED？分别什么类型？接在哪个引脚？”</p>
-<p>把它的“硬件描述“部分单拎出来看：</p>
-<pre><code class="language-c">/* board_init.c 节选，硬件描述部分 */
-static struct led_gpio s_led_err;     /* 报警灯：GPIO 类型，pin 10 */
-static struct led_pwm  s_led_status;  /* 状态灯：PWM 类型，channel 1 */
-static struct led_i2c  s_led_net;     /* 网络灯：I2C，bus 0 addr 0x20 */
-</code></pre>
-<p>这些信息（“哪个角色挂哪个硬件”）有一个共性：和应用层无关，和 platform 层无关，只描述这块板子上插了什么。</p>
-<p>工业项目上做大了之后，这些信息会被抽到一个独立的“板级配置目录“：</p>
-<pre><code>component_cfg/
-├── led_cfg.h         /* LED 角色 → 硬件参数映射 */
-├── motor_cfg.h       /* Motor 角色 → 硬件参数映射 */
-├── sensor_cfg.h      /* 传感器角色 → 硬件参数映射 */
-└── board_init.c      /* 引用上面的 cfg 实例化 */
-</code></pre>
-<p>每块板子一份 <code>component_cfg/</code>。换板子（同 SoC、不同硬件方案），改 <code>component_cfg/</code> 这一个目录，其它代码 0 改。</p>
-<p>这就是 Linux / Zephyr 用的<strong>设备树（device tree）的雏形</strong>。设备树进一步把这些 cfg 信息从 C 代码挪到一个文本文件（<code>.dts</code>），编译期编进 ROM，启动期内核解析这棵树，逐节点找到驱动并挂上 ops。换硬件不改 C 代码、只改 .dts。这本书 ch16 会再展开一次。</p>
-<p>裸机或 RTOS 项目还没必要做到 dts 那么彻底，但“硬件描述独立成一个目录“这一招值得现在就开始。<code>component_cfg/</code> 是工程师能写出来的、最早一版“设备树“。</p>
-<h3 id="15108-设备的注册与查找platform_device_register--find"><a class="header" href="#15108-设备的注册与查找platform_device_register--find">15.10.8 设备的注册与查找：platform_device_register / find</a></h3>
-<p>ch12 / ch15 你写的 <code>g_led_error</code>、<code>g_led_status</code> 这种全局句柄，到了项目规模够大之后会变得难管：</p>
-<ul>
-<li>项目里有 50 个全局句柄，每个都得在 <code>leds.h</code> 里 <code>extern</code> 一份。</li>
-<li>加一个新设备就改 <code>leds.h</code>，<code>leds.h</code> 越来越胖。</li>
-<li>主从板项目里需要“运行时动态加挂设备“，全局句柄不够用。</li>
-</ul>
-<p>工业项目和 Linux 内核走的是另一条路：<strong>设备注册到一张表里，调用方按名字查找</strong>。</p>
-<pre><code class="language-c">/* drivers/led/led_register.h（伪代码风格） */
-int  led_register(const char *name, struct led_base *handle);
-struct led_base *led_find(const char *name);
-</code></pre>
-<p><code>board_init.c</code> 改成：</p>
-<pre><code class="language-c">void board_init(void)
+<p>Sensor 同理：温度传感器、压力传感器、IMU，每种都是一种子类。应用层调 <code>sensor_read(handle, &amp;val)</code>，背后是 ADC、是 I2C、是 SPI，无所谓。</p>
+<p>整本书 ch07 - ch14 学到的所有武器，每种外设都套得进去。LED 是教学线索，但这套思维方式是通用的。ch20 工业实战会再用一次：温度传感器 + 压力传感器 + 流量计混搭在同一个采集任务里。</p>
+<h2 id="1510-你现在的代码在-stm32-上长什么样"><a class="header" href="#1510-你现在的代码在-stm32-上长什么样">15.10 你现在的代码在 STM32 上长什么样</a></h2>
+<p><code>stm32-snippet/led_stm32.c</code> 是真实硬件版的 4 个 platform 封装函数：</p>
+<pre><code class="language-c">#include "platform.h"
+#include "stm32f4xx_hal.h"
+
+void platform_gpio_init(uint8_t pin, uint8_t mode)
 {
-	led_gpio_init(&amp;s_led_err,    "ERR",  10, true);
-	led_pwm_init (&amp;s_led_status, "STAT",  1, 50);
-	led_i2c_init (&amp;s_led_net,    "NET",   0, 0x20);
-
-	led_register("error",   &amp;s_led_err.base);
-	led_register("status",  &amp;s_led_status.base);
-	led_register("network", &amp;s_led_net.base);
+	GPIO_InitTypeDef cfg = {0};
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
+	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
+	cfg.Pull  = GPIO_NOPULL;
+	cfg.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &amp;cfg);
 }
-</code></pre>
-<p>应用层不再需要 extern 任何句柄：</p>
-<pre><code class="language-c">/* app.c */
-struct led_base *led = led_find("error");
-if (led) led_on(led);
-</code></pre>
-<p>按名字而非全局变量取设备，这是 Linux 内核 <code>platform_device_register</code> / <code>device_find_child_by_name</code> / <code>bus_find_device_by_name</code> 这一族 API 的精神。一张设备注册表，按字符串 key 查询。</p>
-<p>代价是多了一层间接（每次调用前先 find 一次），多数项目把 find 结果缓存在静态变量里抹平这个开销。</p>
-<p>何时升级到这一招？项目里全局句柄超过 20 个、或者设备需要运行时动态加挂（USB 设备热插拔、I2C 探测）的时候。本书早期章节用全局句柄，是教学简化。真实工业代码里 <code>led_register / led_find</code> 风格更常见。</p>
-<h3 id="15109-设备驱动--中间件四层之间还有一层"><a class="header" href="#15109-设备驱动--中间件四层之间还有一层">15.10.9 设备驱动 + 中间件：四层之间还有一层</a></h3>
-<p>到目前为止你看到的四层是“应用 / LED 驱动 / 板级 / Platform“。但工业项目里“驱动“和“应用“之间通常还有一层：<strong>中间件</strong>（middleware）。</p>
-<p>例子：</p>
-<ul>
-<li><strong>状态指示器中间件</strong>：报警灯、状态灯、网络灯三盏 LED 的高级行为（呼吸、闪烁、组合编码），不是直接在 app.c 里写 <code>led_on(g_led_error); sleep(100); led_off(g_led_error);</code>，而是放进 <code>indicator/</code>：</li>
-</ul>
-<pre><code class="language-c">/* middleware/indicator/indicator.h */
-void indicator_set_alarm(enum alarm_state state);   /* OK / WARN / ERROR / FAULT */
-void indicator_set_network(bool connected);
-void indicator_run_self_test(void);
-</code></pre>
-<p><code>indicator.c</code> 内部知道要操作哪些 LED、什么节奏、用 PWM 还是 GPIO。app.c 调用的是“业务语义“（“报警”、“网络断连”），不是“硬件操作“（“点亮 / 熄灭”）。</p>
-<ul>
-<li><strong>存储中间件</strong>：<code>storage_write(key, value)</code> 内部决定写到 EEPROM 还是 SPI Flash 还是文件系统。</li>
-<li><strong>通讯中间件</strong>：<code>comm_send(msg)</code> 内部决定走 UART 还是 CAN 还是 Ethernet。</li>
-</ul>
-<p>中间件层的存在让分层完整：</p>
-<pre><code>应用层      app.c             业务流程，决策"什么时候报警"
-中间件层    indicator.c       业务到硬件的桥梁，决策"报警 = 红灯 PWM 50% 1Hz 闪烁"
-LED 驱动层  led.c             多态 dispatch，操作单颗 LED
-板级层      board_init.c      实例化、注册
-Platform 层 platform_*.c      物理操作
-</code></pre>
-<p>5 层。每一层只调下一层。这就是工业代码里“业务和硬件解耦得彻底“的做法。</p>
-<p>中间件不是凭空多出来的“过度设计“。它的判据是：<strong>当业务语义和硬件操作不是一对一映射的时候</strong>，中间件就值得引入。“报警 → 三盏灯协同（红灯主报、绿灯熄灭、蜂鸣器响 1 秒）“是一对多映射，写在 app 里 app 就有了硬件知识，写在 led.c 里 led.c 就有了业务知识，都不对。中间件吸收这个错配。</p>
-<p>ch15 的配套代码没有中间件层（教学简化）。ch19 的工业实战章会列出主控板用到的几个中间件库（环形缓冲、shell、日志、按键），看一眼工业代码里这一层是什么形态。</p>
-<h3 id="151010-platform_ops-的字段规模"><a class="header" href="#151010-platform_ops-的字段规模">15.10.10 platform_ops 的字段规模</a></h3>
-<p>本章 platform_ops 只有 4 个字段（init / write / read / name）。真实工业项目里规模大很多：</p>
-<pre><code class="language-c">struct platform_ops {
-	const char *name;
 
-	/* GPIO */
-	void (*gpio_init)(uint8_t pin, uint8_t mode);
-	void (*gpio_write)(uint8_t pin, bool value);
-	bool (*gpio_read)(uint8_t pin);
-
-	/* I2C */
-	int (*i2c_transfer)(uint8_t bus, uint8_t addr,
-			    const uint8_t *tx, size_t tx_len,
-			    uint8_t *rx, size_t rx_len);
-
-	/* SPI */
-	int (*spi_transfer)(uint8_t bus, const uint8_t *tx,
-			    uint8_t *rx, size_t len);
-
-	/* UART */
-	int (*uart_write)(uint8_t port, const uint8_t *buf, size_t len);
-	int (*uart_read)(uint8_t port, uint8_t *buf, size_t max);
-
-	/* PWM */
-	void (*pwm_set_duty)(uint8_t channel, uint8_t duty);
-
-	/* ADC */
-	int (*adc_read)(uint8_t channel, uint16_t *value);
-
-	/* timing */
-	void (*delay_us)(uint32_t us);
-	uint32_t (*get_tick_ms)(void);
-};
-</code></pre>
-<p>20-30 个字段。每家芯片提供一份完整实现。</p>
-<p>字段太多了拆不拆？看你项目。SOLID 接口隔离原则会建议拆成 <code>gpio_ops / i2c_ops / spi_ops / ...</code> 多个小表。Linux 内核走的就是这条路（没有一个大 platform_ops，而是一堆 subsystem 各自的 ops 表）。本书 ch16 会展开 Linux 的两组典型 ops 表（<code>gpio_chip</code> / <code>file_operations</code>）。</p>
-<h2 id="1511-你现在的代码在-stm32-上长什么样"><a class="header" href="#1511-你现在的代码在-stm32-上长什么样">15.11 你现在的代码在 STM32 上长什么样</a></h2>
-<p><code>stm32-snippet/platform_ops_stm32.c</code> 是真实硬件版的 <code>platform_ops</code> 实例：</p>
-<pre><code class="language-c">static void stm32_gpio_write(uint8_t pin, bool value)
+void platform_gpio_write(uint8_t pin, bool value)
 {
 	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
-			  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
-
-const struct platform_ops platform_stm32 = {
-	.name       = "STM32-real",
-	.gpio_init  = stm32_gpio_init,
-	.gpio_write = stm32_gpio_write,
-	.gpio_read  = stm32_gpio_read,
-};
 </code></pre>
-<p>启动期 <code>main</code> 调一次 <code>platform_select(&amp;platform_stm32)</code>，platform 层内部 <code>g_platform_ops</code> 指向这个实例，之后所有 <code>platform_gpio_write(...)</code> 调用都落到 <code>stm32_gpio_write</code>。</p>
-<p><code>HAL_GPIO_WritePin</code> 调到底就是写 BSRR 寄存器：</p>
-<pre><code class="language-c">GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin;          /* SET */
-GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
-</code></pre>
-<p>应用层、led 驱动层、board 层一字不改。封装函数 <code>platform_gpio_write</code> 的签名一字不改。</p>
-<h2 id="1512-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1512-你现在的代码在-linux-用户态长什么样">15.12 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p><code>linux-snippet/platform_ops_linux.c</code> 是真实 Linux 用户态版本，sysfs 写文件：</p>
-<pre><code class="language-c">static void linux_gpio_write(uint8_t pin, bool value)
+<p>子类里 <code>platform_gpio_write(self-&gt;pin, self-&gt;on_level)</code> 在 STM32 上调到底就是 <code>HAL_GPIO_WritePin → GPIOx-&gt;BSRR = (1u &lt;&lt; pin)</code>，一次 32 位 store，原子。</p>
+<p>应用层 <code>app.c</code> / 父类 <code>led.c</code> / 板级 <code>board_init.c</code> 一字不改。封装函数 <code>platform_gpio_write</code> 的签名一字不改。换的就是这一份 <code>led_stm32.c</code>。</p>
+<h2 id="1511-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1511-你现在的代码在-linux-用户态长什么样">15.11 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p><code>linux-snippet/led_linux.c</code> 走 sysfs 文件读写：</p>
+<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
 {
 	char path[64];
 	snprintf(path, sizeof(path),
@@ -827,98 +519,81 @@ GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
 		close(fd);
 	}
 }
+</code></pre>
+<p>子类 <code>gpio_on</code> 调 <code>platform_gpio_write(self-&gt;pin, self-&gt;on_level)</code>，最终走到 <code>echo 1 &gt; /sys/class/gpio/gpioN/value</code>，触发内核 gpiolib 操作物理引脚。更现代的做法是 libgpiod，附录 C 会展开。</p>
+<p>同样，应用层 / 父类 / 板级一字不改。</p>
+<h2 id="1512-工业代码里的换硬件-diff长什么样"><a class="header" href="#1512-工业代码里的换硬件-diff长什么样">15.12 工业代码里的“换硬件 diff“长什么样</a></h2>
+<p>工业项目里这一章的精神已经渗透到每个层级。挑一个真实场景：报警子系统。</p>
+<p>需求：板子上有 8 路报警输出。客户 A 用 LED 灯提示，客户 B 接蜂鸣器，客户 C 接外接报警柱（24V 信号）。三家客户买的是同一个主控板，只有“报警这一路“硬件不同。</p>
+<p>工业代码里 <code>board_init.c</code> 长这样：</p>
+<pre><code class="language-c">/* board_init_customerA.c - 8 路全 LED */
+static struct led_gpio s_alarm[8];
 
-const struct platform_ops platform_linux = {
-	.name       = "LINUX-real",
-	/* ... */
-};
+void board_init(void)
+{
+	led_gpio_init(&amp;s_alarm[0], "ALM_0", 10, true);
+	/* ... 7 个 ... */
+	for (int i = 0; i &lt; 8; i++)
+		g_alarm[i] = &amp;s_alarm[i].base;
+}
 </code></pre>
-<p>启动期 <code>main</code> 调 <code>platform_select(&amp;platform_linux)</code> 选定即可。更现代的方案是 libgpiod，附录 C 会展开。</p>
-<h2 id="1513-工业代码里的-platform-层长什么样"><a class="header" href="#1513-工业代码里的-platform-层长什么样">15.13 工业代码里的 platform 层长什么样</a></h2>
-<p>工业控制板项目里 platform 层就是 ops 分发，跨 5 套产品共用一份抽象。对外暴露的是普通封装函数：</p>
-<pre><code class="language-c">/* drivers/platform/platform.h - 上层只 include 这一份 */
-void platform_gpio_init(uint8_t pin, const struct gpio_cfg *cfg);
-void platform_gpio_write(uint8_t pin, bool value);
-bool platform_gpio_read(uint8_t pin);
-int  platform_i2c_transfer(uint8_t bus, uint8_t addr,
-			   const uint8_t *tx, size_t tx_len,
-			   uint8_t *rx, size_t rx_len);
-int  platform_adc_read(uint8_t channel, uint16_t *value);
-uint32_t platform_get_tick_ms(void);
+<pre><code class="language-c">/* board_init_customerB.c - 8 路全蜂鸣器 (PWM 控频率) */
+static struct led_pwm s_alarm[8];
+
+void board_init(void)
+{
+	led_pwm_init(&amp;s_alarm[0], "ALM_0", 1, 50);
+	/* ... 7 个 ... */
+	for (int i = 0; i &lt; 8; i++)
+		g_alarm[i] = &amp;s_alarm[i].base;
+}
 </code></pre>
-<p>ops 表是 platform 层内部细节，放在 platform 自己的 internal 头里：</p>
-<pre><code class="language-c">/* drivers/platform/platform_ops.h - 只给 platform 层自己用 */
-struct platform_ops {
-	void (*gpio_init)(uint8_t pin, const struct gpio_cfg *cfg);
-	void (*gpio_write)(uint8_t pin, bool value);
-	bool (*gpio_read)(uint8_t pin);
-	int  (*i2c_transfer)(uint8_t bus, uint8_t addr,
-			     const uint8_t *tx, size_t tx_len,
-			     uint8_t *rx, size_t rx_len);
-	int  (*adc_read)(uint8_t channel, uint16_t *value);
-	uint32_t (*get_tick_ms)(void);
-	/* ... */
-};
+<pre><code class="language-c">/* board_init_customerC.c - 8 路全外接报警柱 (I2C 扩展芯片) */
+static struct led_i2c s_alarm[8];
+
+void board_init(void)
+{
+	led_i2c_init(&amp;s_alarm[0], "ALM_0", 0, 0x20);
+	/* ... 7 个 ... */
+	for (int i = 0; i &lt; 8; i++)
+		g_alarm[i] = &amp;s_alarm[i].base;
+}
 </code></pre>
-<p>每一款主控芯片提供一份 platform 实现：</p>
-<pre><code>drivers/platform/
-├── platform.h               /* 对外封装函数声明 */
-├── platform_ops.h           /* 内部 ops 结构 + 实例 extern */
-├── platform_dispatch.c      /* 封装函数实现，内部走 ops 分发 */
-├── stm32f4/platform_stm32f4.c       /* 一款主控的 ops 实例 */
-├── stm32h7/platform_stm32h7.c       /* 另一款主控的 ops 实例 */
-└── pc_sim/platform_pc.c             /* PC 单元测试用 */
+<p>三家客户三份 <code>board_init_*.c</code>，编译期挑一份链进去。应用层报警逻辑（<code>alarm_trigger / alarm_clear / alarm_run_self_test</code>）一份代码三家共用。这就是“产品角色 → 硬件映射“的工程化形态：业务代码完全不知道客户 A B C 之间的硬件差异，硬件差异全部锁在 <code>board_init</code> 这一个文件里。</p>
+<p>ch19 / ch20 工业实战会展开真实主控板项目里的板级文件，看看一份 <code>board_init.c</code> 怎么管 30+ 路硬件。</p>
+<h2 id="1513-完整源码清单--跑一遍"><a class="header" href="#1513-完整源码清单--跑一遍">15.13 完整源码清单 + 跑一遍</a></h2>
+<p>把下面的代码块分别保存到对应文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/15-platform/pc/"><code>oop-in-c/code/15-platform/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
+<p>8 个文件：</p>
+<pre><code>pc/
+├── main.c             主程序入口
+├── app.h, app.c       应用层 - 三个业务函数
+├── leds.h             板级对外暴露的 g_led_xxx 句柄声明
+├── board_init.c       板级 - 唯一认识硬件的文件
+├── led.h, led.c       父类 + 三个子类
+├── container_of.h     与 ch13 同款 (最小可用版)
+└── Makefile           链接 ../../common/platform_pc.c
 </code></pre>
-<p>5 套产品（不同板型）、3 款主控芯片，driver 模块（led / motor / encoder / sensor / eeprom）写一遍跨产品共享。换板子换芯片只改 platform 这一层的 ops 实例。</p>
-<p>这是 platform 抽象在工业项目里的最终形态：<strong>对外是普通 C 函数，对内是 ops 分发，平台 + 业务双向解耦</strong>。</p>
-<h2 id="1514-完整源码清单"><a class="header" href="#1514-完整源码清单">15.14 完整源码清单</a></h2>
-<p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/15-platform/pc/"><code>oop-in-c/code/15-platform/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
-<p>本章引入了三个 <code>platform_ops</code> 实例 + <code>platform_dispatch.c</code> 封装函数 + <code>platform_ops.h</code> 内部头文件，全部 11 个文件贴齐。</p>
-<h3 id="文件-1mainc49-行"><a class="header" href="#文件-1mainc49-行">文件 1：<code>main.c</code>（49 行）</a></h3>
-<p>应用层入口。<code>board_init</code> 调一次，三种 platform（PC / STM32 mock / Linux mock）轮流跑同一份业务流。</p>
+<h3 id="文件-1mainc"><a class="header" href="#文件-1mainc">文件 1：<code>main.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * main.c - 运行时切换 platform 演示
- *
- * 同一份业务代码，跑三次，分别在 PC / STM32 / Linux 三种 platform 下执行。
- * 应用层、led 驱动层、board 层一字不改，只换 platform 全局指针。
- *
- * 这是 ch15 的核心：分层抽象的高潮。
- */
-
 #include "app.h"
 #include "leds.h"
-#include "platform_ops.h"
 #include &lt;stdio.h&gt;
 
 int main(void)
 {
 	printf("=========================================\n");
-	printf("  ch15 - platform abstraction climax\n");
+	printf("  ch15 - OOP complete framework demo\n");
 	printf("=========================================\n");
 
-	board_init();    /* 一次构造，三种 platform 通用 */
+	board_init();
 
-	printf("\n========== run on PC ==========\n");
-	platform_select(&amp;platform_pc);
 	power_on_test();
 	alarm_blink();
-	status_breathe();
-
-	printf("\n========== run on STM32 ==========\n");
-	platform_select(&amp;platform_stm32_mock);
-	power_on_test();
-	alarm_blink();
-	status_breathe();
-
-	printf("\n========== run on LINUX ==========\n");
-	platform_select(&amp;platform_linux_mock);
-	power_on_test();
-	alarm_blink();
-	status_breathe();
+	status_indicate(0);   /* 正常 -&gt; 状态灯 */
+	status_indicate(1);   /* 故障 -&gt; 报警灯 */
 
 	printf("\n=========================================\n");
-	printf("  same app/led/board, 3 platforms\n");
+	printf("  app.c never named any hardware type\n");
 	printf("=========================================\n");
 
 	printf("\nPress Enter to exit...\n");
@@ -926,29 +601,21 @@ int main(void)
 	return 0;
 }
 </code></pre>
-<h3 id="文件-2apph9-行"><a class="header" href="#文件-2apph9-行">文件 2：<code>app.h</code>（9 行）</a></h3>
-<p>应用层三个业务函数声明。</p>
+<h3 id="文件-2apph"><a class="header" href="#文件-2apph">文件 2：<code>app.h</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
 #ifndef APP_H
 #define APP_H
 
 void alarm_blink(void);
-void status_breathe(void);
+void status_indicate(int err_code);
 void power_on_test(void);
 
 #endif
 </code></pre>
-<h3 id="文件-3appc34-行"><a class="header" href="#文件-3appc34-行">文件 3：<code>app.c</code>（34 行）</a></h3>
-<p>三个业务函数实现。grep 这一份文件 gpio_write / pwm_ / i2c_ / HAL_ / sysfs，结果都是 0。</p>
+<h3 id="文件-3appc"><a class="header" href="#文件-3appc">文件 3：<code>app.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * app.c - 应用层
- *
- * 三个业务函数。整个文件里 grep gpio_write / pwm_ / i2c_ / HAL_ / sysfs：
- * 全部 0。应用层不认识硬件，硬件是谁它都不问。
- */
-
 #include "leds.h"
+#include "app.h"
 #include &lt;stdio.h&gt;
 
 void alarm_blink(void)
@@ -958,12 +625,13 @@ void alarm_blink(void)
 	led_off(g_led_error);
 }
 
-void status_breathe(void)
+void status_indicate(int err_code)
 {
-	printf("\n--- status_breathe ---\n");
-	led_set_brightness(g_led_status, 30);
-	led_set_brightness(g_led_status, 80);
-	led_set_brightness(g_led_status,  0);
+	printf("\n--- status_indicate(err_code=%d) ---\n", err_code);
+	if (err_code == 0)
+		led_on(g_led_status);
+	else
+		led_on(g_led_error);
 }
 
 void power_on_test(void)
@@ -974,8 +642,7 @@ void power_on_test(void)
 	led_on(g_led_network);  led_off(g_led_network);
 }
 </code></pre>
-<h3 id="文件-4ledsh13-行"><a class="header" href="#文件-4ledsh13-行">文件 4：<code>leds.h</code>（13 行）</a></h3>
-<p>板级对外暴露的全局 LED 句柄声明。</p>
+<h3 id="文件-4ledsh"><a class="header" href="#文件-4ledsh">文件 4：<code>leds.h</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
 #ifndef LEDS_H
 #define LEDS_H
@@ -990,15 +657,8 @@ void board_init(void);
 
 #endif
 </code></pre>
-<h3 id="文件-5board_initc28-行"><a class="header" href="#文件-5board_initc28-行">文件 5：<code>board_init.c</code>（28 行）</a></h3>
-<p>整个工程里唯一认识硬件的文件。三种 LED 子类对象在文件作用域定义，<code>board_init</code> 跑各自构造函数 + 把 <code>&amp;xxx.base</code> 赋给全局父类句柄。</p>
+<h3 id="文件-5board_initc"><a class="header" href="#文件-5board_initc">文件 5：<code>board_init.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * board_init.c - 板级硬件配置
- *
- * 唯一认识硬件的文件。三种子类混搭。
- */
-
 #include "leds.h"
 
 static struct led_gpio s_led_err;
@@ -1020,18 +680,8 @@ void board_init(void)
 	g_led_network = &amp;s_led_net.base;
 }
 </code></pre>
-<h3 id="文件-6ledh62-行"><a class="header" href="#文件-6ledh62-行">文件 6：<code>led.h</code>（62 行）</a></h3>
-<p>LED 父类 + 三个子类的声明。这一版字段定型，整本书 ch12+ 都用这一版。</p>
+<h3 id="文件-6ledh"><a class="header" href="#文件-6ledh">文件 6：<code>led.h</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * led.h - LED 驱动层（ch15 完整版）
- *
- * 应用层只用 led_base 句柄。led_gpio / led_pwm / led_i2c 是子类。
- * 子类实现里调 platform_gpio_xxx 封装函数，从来不直接碰寄存器。
- *
- * 这一层只关心"GPIO 能写吗、I2C 能传吗"，硬件细节交给 platform 层。
- */
-
 #ifndef LED_H
 #define LED_H
 
@@ -1041,9 +691,10 @@ void board_init(void)
 struct led_base;
 
 struct led_ops {
-	int (*on)(struct led_base *me);
-	int (*off)(struct led_base *me);
-	int (*set_brightness)(struct led_base *me, uint8_t brightness);
+	int (*on)(struct led_base *me);                 /* 必填 */
+	int (*off)(struct led_base *me);                /* 必填 */
+	int (*set_brightness)(struct led_base *me,      /* 选填 */
+			      uint8_t brightness);
 };
 
 struct led_base {
@@ -1056,7 +707,6 @@ int led_on(struct led_base *me);
 int led_off(struct led_base *me);
 int led_set_brightness(struct led_base *me, uint8_t brightness);
 
-/* GPIO 子类 */
 struct led_gpio {
 	struct led_base base;
 	uint8_t         pin;
@@ -1065,7 +715,6 @@ struct led_gpio {
 void led_gpio_init(struct led_gpio *me, const char *name,
 		   uint8_t pin, bool on_level);
 
-/* PWM 子类 */
 struct led_pwm {
 	struct led_base base;
 	uint8_t         channel;
@@ -1074,7 +723,6 @@ struct led_pwm {
 void led_pwm_init(struct led_pwm *me, const char *name,
 		  uint8_t channel, uint8_t duty);
 
-/* I2C 子类 */
 struct led_i2c {
 	struct led_base base;
 	uint8_t         bus;
@@ -1083,41 +731,22 @@ struct led_i2c {
 void led_i2c_init(struct led_i2c *me, const char *name,
 		  uint8_t bus, uint8_t addr);
 
-#endif /* LED_H */
+#endif
 </code></pre>
-<h3 id="文件-7ledc172-行"><a class="header" href="#文件-7ledc172-行">文件 7：<code>led.c</code>（172 行）</a></h3>
-<p>LED 驱动层实现。父类必填 + 选填 + 三个子类。子类只调 <code>platform_gpio_xxx</code> 等封装函数，从来不引用 <code>g_platform_ops</code> 内部指针。日志里 <code>platform_name()</code> 让你看到“同一行业务代码、三种 platform 出三种格式“。</p>
+<h3 id="文件-7ledc"><a class="header" href="#文件-7ledc">文件 7：<code>led.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * led.c - LED 驱动层实现
- *
- * 注意：这一层永远只调 platform 层的封装函数（platform_gpio_write /
- * platform_gpio_init 等）。从来不直接碰 platform_ops 字段。
- *
- * 切换平台的能力由 platform 层内部完成（platform_dispatch.c 的
- * g_platform_ops 指针），驱动层一字不知。这一层在 PC、STM32、Linux
- * 上都能编译运行，源码 0 修改。
- *
- * 这是工业代码里"对外稳定、对内可换"的纪律：上层永远调封装函数，
- * 内部分发是 platform 层的实现细节。
- */
-
 #include "led.h"
 #include "container_of.h"
 #include "platform.h"
-#include "platform_ops.h"
 #include &lt;assert.h&gt;
 #include &lt;stdio.h&gt;
 
-/* ============== 父类统一接口（必填 + 选填） ============== */
+/* 父类统一接口 */
 
 int led_on(struct led_base *me)
 {
 	if (!me)
 		return -1;
-	/* on 是必填：子类必须实现。调试构建里 assert 抓到忘填的子类
-	 * 立刻 abort 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，
-	 * 零运行时开销。 */
 	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
 	       "led_on: subclass must implement on()");
 	return me-&gt;ops-&gt;on(me);
@@ -1132,25 +761,27 @@ int led_off(struct led_base *me)
 	return me-&gt;ops-&gt;off(me);
 }
 
-int led_set_brightness(struct led_base *me, uint8_t brightness)
+int led_set_brightness(struct led_base *me, uint8_t b)
 {
 	if (!me || !me-&gt;ops)
 		return -1;
 	if (!me-&gt;ops-&gt;set_brightness) {
-		printf("  [%s] no dimming, skip\n", me-&gt;name);
+		printf("  [%s] no dimming, skip (brightness=%u)\n",
+		       me-&gt;name, (unsigned)b);
 		return 0;
 	}
-	return me-&gt;ops-&gt;set_brightness(me, brightness);
+	return me-&gt;ops-&gt;set_brightness(me, b);
 }
 
-/* ============== GPIO 子类 ============== */
+/* GPIO 子类 */
 
 static int gpio_on(struct led_base *me)
 {
 	struct led_gpio *self = container_of(me, struct led_gpio, base);
 	platform_gpio_write(self-&gt;pin, self-&gt;on_level);
 	me-&gt;is_on = true;
-	printf("  [%s] led_on -&gt; platform=%s\n", me-&gt;name, platform_name());
+	printf("  [%s] led_on  -&gt; GPIO Pin%u\n",
+	       me-&gt;name, (unsigned)self-&gt;pin);
 	return 0;
 }
 
@@ -1159,12 +790,13 @@ static int gpio_off(struct led_base *me)
 	struct led_gpio *self = container_of(me, struct led_gpio, base);
 	platform_gpio_write(self-&gt;pin, !self-&gt;on_level);
 	me-&gt;is_on = false;
+	printf("  [%s] led_off -&gt; GPIO Pin%u\n",
+	       me-&gt;name, (unsigned)self-&gt;pin);
 	return 0;
 }
 
 static const struct led_ops gpio_ops = {
-	.on  = gpio_on,
-	.off = gpio_off,
+	.on = gpio_on, .off = gpio_off,
 };
 
 void led_gpio_init(struct led_gpio *me, const char *name,
@@ -1178,495 +810,71 @@ void led_gpio_init(struct led_gpio *me, const char *name,
 	platform_gpio_init(pin, GPIO_MODE_OUTPUT);
 }
 
-/* ============== PWM 子类 ============== */
-
-static int pwm_on(struct led_base *me)
-{
-	struct led_pwm *self = container_of(me, struct led_pwm, base);
-	printf("  [%s] led_on -&gt; platform=%s, pwm ch%u duty=%u%%\n",
-	       me-&gt;name, platform_name(),
-	       (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
-	me-&gt;is_on = true;
-	return 0;
-}
-
-static int pwm_off(struct led_base *me)
-{
-	struct led_pwm *self = container_of(me, struct led_pwm, base);
-	printf("  [%s] led_off -&gt; platform=%s, pwm ch%u duty=0%%\n",
-	       me-&gt;name, platform_name(), (unsigned)self-&gt;channel);
-	me-&gt;is_on = false;
-	return 0;
-}
-
-static int pwm_set_brightness(struct led_base *me, uint8_t brightness)
-{
-	struct led_pwm *self = container_of(me, struct led_pwm, base);
-	if (brightness &gt; 100)
-		brightness = 100;
-	self-&gt;duty = brightness;
-	printf("  [%s] set_brightness -&gt; platform=%s, pwm ch%u duty=%u%%\n",
-	       me-&gt;name, platform_name(),
-	       (unsigned)self-&gt;channel, (unsigned)brightness);
-	me-&gt;is_on = (brightness &gt; 0);
-	return 0;
-}
-
-static const struct led_ops pwm_ops = {
-	.on             = pwm_on,
-	.off            = pwm_off,
-	.set_brightness = pwm_set_brightness,
-};
-
-void led_pwm_init(struct led_pwm *me, const char *name,
-		  uint8_t channel, uint8_t duty)
-{
-	me-&gt;base.ops   = &amp;pwm_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;channel    = channel;
-	me-&gt;duty       = duty;
-}
-
-/* ============== I2C 子类 ============== */
-
-static int i2c_on(struct led_base *me)
-{
-	struct led_i2c *self = container_of(me, struct led_i2c, base);
-	printf("  [%s] led_on -&gt; platform=%s, i2c bus%u addr=0x%02X\n",
-	       me-&gt;name, platform_name(),
-	       (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
-	me-&gt;is_on = true;
-	return 0;
-}
-
-static int i2c_off(struct led_base *me)
-{
-	struct led_i2c *self = container_of(me, struct led_i2c, base);
-	printf("  [%s] led_off -&gt; platform=%s, i2c bus%u addr=0x%02X\n",
-	       me-&gt;name, platform_name(),
-	       (unsigned)self-&gt;bus, (unsigned)self-&gt;addr);
-	me-&gt;is_on = false;
-	return 0;
-}
-
-static const struct led_ops i2c_ops = {
-	.on  = i2c_on,
-	.off = i2c_off,
-};
-
-void led_i2c_init(struct led_i2c *me, const char *name,
-		  uint8_t bus, uint8_t addr)
-{
-	me-&gt;base.ops   = &amp;i2c_ops;
-	me-&gt;base.name  = name;
-	me-&gt;base.is_on = false;
-	me-&gt;bus        = bus;
-	me-&gt;addr       = addr;
-}
+/* PWM 子类 (三件套全填) + I2C 子类 (只填 on/off): 见配套源码. */
 </code></pre>
-<h3 id="文件-8container_ofh11-行"><a class="header" href="#文件-8container_ofh11-行">文件 8：<code>container_of.h</code>（11 行）</a></h3>
-<p>container_of 宏的最小可用版。和 ch13 / ch14 同源。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-#ifndef MY_CONTAINER_OF_H
-#define MY_CONTAINER_OF_H
-
-#include &lt;stddef.h&gt;
-
-#define container_of(ptr, type, member)					\
-	((type *)((char *)(ptr) - offsetof(type, member)))
-
-#endif
-</code></pre>
-<h3 id="文件-9platform_opsh44-行"><a class="header" href="#文件-9platform_opsh44-行">文件 9：<code>platform_ops.h</code>（44 行）</a></h3>
-<p>platform 层内部头文件。<code>struct platform_ops</code> 定义、三个实例的 extern 声明、<code>platform_select</code> / <code>platform_name</code> 切换 + 查询 API。驱动层不 include 这一份，只 platform 层自己 include。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * platform_ops.h - platform 层内部 ops 表
- *
- * 这一份是 platform 层的内部细节，对外不暴露给驱动层。驱动层只调
- *   platform_gpio_init / platform_gpio_write / platform_gpio_read
- * 这一组封装函数（在 platform.h 里声明）。
- *
- * 三个 platform_ops 实例（PC 模拟 / STM32 模拟 / Linux 模拟）共存，
- * 启动期或测试期通过 platform_select(&amp;platform_xxx) 切换内部 ops 指针。
- * 封装函数体内部走 ops dispatch，自动落到当前选定的实现。
- *
- * 这是 ch11 之后 platform 层"内部"演化的最终形态。对外接口（封装函数
- * 的签名）从 ch01 起没动过，这是工业代码里"对外稳定、对内可换"的
- * 标准做法。
- */
-
-#ifndef PLATFORM_OPS_H
-#define PLATFORM_OPS_H
-
-#include &lt;stdint.h&gt;
-#include &lt;stdbool.h&gt;
-
-struct platform_ops {
-	const char *name;
-	void (*gpio_init)(uint8_t pin, uint8_t mode);
-	void (*gpio_write)(uint8_t pin, bool value);
-	bool (*gpio_read)(uint8_t pin);
-	void (*gpio_deinit)(uint8_t pin);
-};
-
-/* 三个具体实例（在各自的实现文件里定义） */
-extern const struct platform_ops platform_pc;
-extern const struct platform_ops platform_stm32_mock;
-extern const struct platform_ops platform_linux_mock;
-
-/* 切换内部 ops 实例 */
-void platform_select(const struct platform_ops *p);
-
-/* 当前 platform 名字（封装函数，给日志打印用） */
-const char *platform_name(void);
-
-#endif /* PLATFORM_OPS_H */
-</code></pre>
-<h3 id="文件-10platform_dispatchc69-行"><a class="header" href="#文件-10platform_dispatchc69-行">文件 10：<code>platform_dispatch.c</code>（69 行）</a></h3>
-<p>platform 层封装函数实现 + 内部 ops 分发。<code>g_platform_ops</code> 是文件作用域的内部指针，外部链接不到。<code>platform_select</code> 切换它指向哪个实例。<code>platform_gpio_xxx</code> 封装函数内部走 ops dispatch，自动落到当前选定平台。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * platform_dispatch.c - platform 层封装函数 + 内部 ops 分发
- *
- * 这个文件做两件事：
- *
- *   1. 实现 common/platform.h 里声明的封装函数：
- *        platform_gpio_init / platform_gpio_write /
- *        platform_gpio_read / platform_gpio_deinit
- *      封装函数体内部走 g_platform_ops-&gt;xxx(...) dispatch，自动落到
- *      当前选定的平台实现。
- *
- *   2. 实现 platform_ops.h 里声明的切换 + 查询 API：
- *        platform_select / platform_name
- *
- * 驱动层、应用层永远只调封装函数，看不到 g_platform_ops 这个内部指针。
- * 这是工业代码里的标准做法："对外是普通 C 函数，对内可以是任何实现"。
- */
-
-#include "platform.h"
-#include "platform_ops.h"
-#include &lt;stdio.h&gt;
-
-/*
- * 内部 ops 指针。文件作用域，外部不可见。默认指向 PC 实例，
- * main.c 启动后通过 platform_select 切换。
- */
-static const struct platform_ops *g_platform_ops = &amp;platform_pc;
-
-void platform_select(const struct platform_ops *p)
-{
-	if (p) {
-		g_platform_ops = p;
-		printf("&gt;&gt;&gt; platform switched to: %s\n", p-&gt;name);
-	}
-}
-
-const char *platform_name(void)
-{
-	return g_platform_ops ? g_platform_ops-&gt;name : "(unset)";
-}
-
-/* ============== 封装函数：内部走 ops dispatch ============== */
-
-void platform_gpio_init(uint8_t pin, uint8_t mode)
-{
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_init)
-		g_platform_ops-&gt;gpio_init(pin, mode);
-}
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_write)
-		g_platform_ops-&gt;gpio_write(pin, value);
-}
-
-bool platform_gpio_read(uint8_t pin)
-{
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_read)
-		return g_platform_ops-&gt;gpio_read(pin);
-	return false;
-}
-
-void platform_gpio_deinit(uint8_t pin)
-{
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_deinit)
-		g_platform_ops-&gt;gpio_deinit(pin);
-}
-</code></pre>
-<h3 id="文件-11platform_ops_pcc42-行"><a class="header" href="#文件-11platform_ops_pcc42-行">文件 11：<code>platform_ops_pc.c</code>（42 行）</a></h3>
-<p>PC 模拟版 platform_ops 实例。打印动作到屏幕，标记 [PC]。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * platform_ops_pc.c - PC 模拟版 platform_ops 实例
- *
- * 这个文件只定义一个 const 实例，不维护任何全局状态。切换实例的逻辑
- * 在 platform_dispatch.c 里。这是 ch15 的"对外封装、对内 ops"分层。
- */
-
-#include "platform_ops.h"
-#include &lt;stdio.h&gt;
-
-static void pc_gpio_init(uint8_t pin, uint8_t mode)
-{
-	const char *s = (mode == 0) ? "OUTPUT" : "INPUT";
-	printf("    [PC]    Pin%u init as %s\n", (unsigned)pin, s);
-}
-
-static void pc_gpio_write(uint8_t pin, bool value)
-{
-	printf("    [PC]    Pin%u &lt;- %s\n", (unsigned)pin,
-	       value ? "HIGH" : "LOW");
-}
-
-static bool pc_gpio_read(uint8_t pin)
-{
-	(void)pin;
-	return false;
-}
-
-static void pc_gpio_deinit(uint8_t pin)
-{
-	printf("    [PC]    Pin%u released\n", (unsigned)pin);
-}
-
-const struct platform_ops platform_pc = {
-	.name        = "PC",
-	.gpio_init   = pc_gpio_init,
-	.gpio_write  = pc_gpio_write,
-	.gpio_read   = pc_gpio_read,
-	.gpio_deinit = pc_gpio_deinit,
-};
-</code></pre>
-<h3 id="文件-12platform_ops_stm32_mockc52-行"><a class="header" href="#文件-12platform_ops_stm32_mockc52-行">文件 12：<code>platform_ops_stm32_mock.c</code>（52 行）</a></h3>
-<p>STM32 平台的“假装版“。在 PC 上为了演示运行时切换，只打印 BSRR 寄存器写入动作（真机上这一步就是 <code>GPIOA-&gt;BSRR = (1u &lt;&lt; pin)</code>）。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * platform_ops_stm32_mock.c - STM32 平台的"假装版"
- *
- * 真正 STM32 上这一份会调 HAL_GPIO_WritePin。在 PC 上为了演示
- * "运行时切换平台"，它只是把动作打到屏幕，标记 [STM32]。
- *
- * 真实 STM32 工程的对应版本见 stm32-snippet/。两份的接口完全一样，
- * 应用层 / led 层 / board 层一字不改。
- */
-
-#include "platform_ops.h"
-#include &lt;stdio.h&gt;
-
-static void stm32_gpio_init(uint8_t pin, uint8_t mode)
-{
-	const char *s = (mode == 0) ? "OUTPUT" : "INPUT";
-	printf("    [STM32] Pin%u init as %s (config GPIOA MODER)\n",
-	       (unsigned)pin, s);
-}
-
-static void stm32_gpio_write(uint8_t pin, bool value)
-{
-	/*
-	 * 真机上这里就是：
-	 *   GPIOA-&gt;BSRR = value ? (1u &lt;&lt; pin) : (1u &lt;&lt; (pin + 16));
-	 * BSRR 一次 32 位 store，原子。
-	 */
-	printf("    [STM32] BSRR &lt;- 0x%08X (Pin%u %s)\n",
-	       value ? (1u &lt;&lt; pin) : (1u &lt;&lt; (pin + 16)),
-	       (unsigned)pin, value ? "HIGH" : "LOW");
-}
-
-static bool stm32_gpio_read(uint8_t pin)
-{
-	(void)pin;
-	return false;
-}
-
-static void stm32_gpio_deinit(uint8_t pin)
-{
-	printf("    [STM32] Pin%u config back to analog\n", (unsigned)pin);
-}
-
-const struct platform_ops platform_stm32_mock = {
-	.name        = "STM32",
-	.gpio_init   = stm32_gpio_init,
-	.gpio_write  = stm32_gpio_write,
-	.gpio_read   = stm32_gpio_read,
-	.gpio_deinit = stm32_gpio_deinit,
-};
-</code></pre>
-<h3 id="文件-13platform_ops_linux_mockc48-行"><a class="header" href="#文件-13platform_ops_linux_mockc48-行">文件 13：<code>platform_ops_linux_mock.c</code>（48 行）</a></h3>
-<p>Linux 用户态“假装版“。在 PC 上打印 sysfs 文件写入动作（真机上这一步就是 <code>echo 1 &gt; /sys/class/gpio/gpioN/value</code>）。</p>
-<pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-/*
- * platform_ops_linux_mock.c - Linux 用户态"假装版"
- *
- * 真机上这一份会写 /sys/class/gpio/gpioN/value。在 PC 上为了演示
- * "运行时切换平台"，它只是把动作打到屏幕，标记 [LINUX]。
- *
- * 真实 Linux 工程的对应版本见 linux-snippet/。
- */
-
-#include "platform_ops.h"
-#include &lt;stdio.h&gt;
-
-static void linux_gpio_init(uint8_t pin, uint8_t mode)
-{
-	const char *dir = (mode == 0) ? "out" : "in";
-	printf("    [LINUX] echo %u &gt; /sys/class/gpio/export\n",
-	       (unsigned)pin);
-	printf("    [LINUX] echo %s &gt; /sys/class/gpio/gpio%u/direction\n",
-	       dir, (unsigned)pin);
-}
-
-static void linux_gpio_write(uint8_t pin, bool value)
-{
-	printf("    [LINUX] echo %d &gt; /sys/class/gpio/gpio%u/value\n",
-	       value ? 1 : 0, (unsigned)pin);
-}
-
-static bool linux_gpio_read(uint8_t pin)
-{
-	(void)pin;
-	return false;
-}
-
-static void linux_gpio_deinit(uint8_t pin)
-{
-	printf("    [LINUX] echo %u &gt; /sys/class/gpio/unexport\n",
-	       (unsigned)pin);
-}
-
-const struct platform_ops platform_linux_mock = {
-	.name        = "LINUX",
-	.gpio_init   = linux_gpio_init,
-	.gpio_write  = linux_gpio_write,
-	.gpio_read   = linux_gpio_read,
-	.gpio_deinit = linux_gpio_deinit,
-};
-</code></pre>
-<h3 id="文件-14makefile21-行"><a class="header" href="#文件-14makefile21-行">文件 14：<code>Makefile</code>（21 行）</a></h3>
-<p>注意 ch15 不再链接 <code>common/platform_pc.c</code>。本章 platform 层完全自己实现（<code>platform_dispatch.c</code> + 三个 ops 实例文件），编进的就是这一套。<code>common/platform.h</code> 还在被 include（提供封装函数声明 + GPIO_MODE_OUTPUT 等常量）。</p>
-<pre><code class="language-makefile"># Makefile - ch15 platform climax (PC)
-
-CC      = gcc
+<h3 id="文件-8makefile"><a class="header" href="#文件-8makefile">文件 8：<code>Makefile</code></a></h3>
+<pre><code class="language-makefile">CC      = gcc
 CFLAGS  = -Wall -Wextra -std=c99 -I../../common
 TARGET  = demo
-SRCS    = main.c app.c led.c board_init.c \
-          platform_dispatch.c \
-          platform_ops_pc.c platform_ops_stm32_mock.c platform_ops_linux_mock.c
+SRCS    = main.c app.c led.c board_init.c ../../common/platform_pc.c
 
 .PHONY: all clean run
-
 all: $(TARGET)
-
 $(TARGET): $(SRCS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
-
 run: $(TARGET)
 	./$(TARGET)
-
 clean:
 	rm -f $(TARGET) $(TARGET).exe
 </code></pre>
 <h3 id="跑一遍"><a class="header" href="#跑一遍">跑一遍</a></h3>
-<pre><code class="language-bash">cd oop-in-c/code/15-platform/pc
-make
-./demo
-</code></pre>
-<h3 id="期望输出"><a class="header" href="#期望输出">期望输出</a></h3>
-<pre><code>=========================================
-  ch15 - platform abstraction climax
-=========================================
-    [PC]    Pin10 init as OUTPUT
-
-========== run on PC ==========
-&gt;&gt;&gt; platform switched to: PC
-
---- power_on_test ---
-    [PC]    Pin10 &lt;- HIGH
-  [ERR] led_on -&gt; platform=PC
-    [PC]    Pin10 &lt;- LOW
-  [STAT] led_on -&gt; platform=PC, pwm ch1 duty=50%
-  [STAT] led_off -&gt; platform=PC, pwm ch1 duty=0%
-  [NET] led_on -&gt; platform=PC, i2c bus0 addr=0x20
-  [NET] led_off -&gt; platform=PC, i2c bus0 addr=0x20
-
---- alarm_blink ---
-    [PC]    Pin10 &lt;- HIGH
-  [ERR] led_on -&gt; platform=PC
-    [PC]    Pin10 &lt;- LOW
-
---- status_breathe ---
-  [STAT] set_brightness -&gt; platform=PC, pwm ch1 duty=30%
-  [STAT] set_brightness -&gt; platform=PC, pwm ch1 duty=80%
-  [STAT] set_brightness -&gt; platform=PC, pwm ch1 duty=0%
-
-========== run on STM32 ==========
-&gt;&gt;&gt; platform switched to: STM32
-
---- power_on_test ---
-    [STM32] BSRR &lt;- 0x00000400 (Pin10 HIGH)
-  [ERR] led_on -&gt; platform=STM32
-    [STM32] BSRR &lt;- 0x04000000 (Pin10 LOW)
-  [STAT] led_on -&gt; platform=STM32, pwm ch1 duty=0%
-  [STAT] led_off -&gt; platform=STM32, pwm ch1 duty=0%
-  [NET] led_on -&gt; platform=STM32, i2c bus0 addr=0x20
-  [NET] led_off -&gt; platform=STM32, i2c bus0 addr=0x20
-
---- alarm_blink ---
-    [STM32] BSRR &lt;- 0x00000400 (Pin10 HIGH)
-  [ERR] led_on -&gt; platform=STM32
-    [STM32] BSRR &lt;- 0x04000000 (Pin10 LOW)
-
---- status_breathe ---
-  [STAT] set_brightness -&gt; platform=STM32, pwm ch1 duty=30%
-  [STAT] set_brightness -&gt; platform=STM32, pwm ch1 duty=80%
-  [STAT] set_brightness -&gt; platform=STM32, pwm ch1 duty=0%
-
-========== run on LINUX ==========
-&gt;&gt;&gt; platform switched to: LINUX
-
---- power_on_test ---
-    [LINUX] echo 1 &gt; /sys/class/gpio/gpio10/value
-  [ERR] led_on -&gt; platform=LINUX
-    [LINUX] echo 0 &gt; /sys/class/gpio/gpio10/value
-  [STAT] led_on -&gt; platform=LINUX, pwm ch1 duty=0%
-  [STAT] led_off -&gt; platform=LINUX, pwm ch1 duty=0%
-  [NET] led_on -&gt; platform=LINUX, i2c bus0 addr=0x20
-  [NET] led_off -&gt; platform=LINUX, i2c bus0 addr=0x20
-
---- alarm_blink ---
-    [LINUX] echo 1 &gt; /sys/class/gpio/gpio10/value
-  [ERR] led_on -&gt; platform=LINUX
-    [LINUX] echo 0 &gt; /sys/class/gpio/gpio10/value
-
---- status_breathe ---
-  [STAT] set_brightness -&gt; platform=LINUX, pwm ch1 duty=30%
-  [STAT] set_brightness -&gt; platform=LINUX, pwm ch1 duty=80%
-  [STAT] set_brightness -&gt; platform=LINUX, pwm ch1 duty=0%
-
-=========================================
-  same app/led/board, 3 platforms
-=========================================
-
-Press Enter to exit...
-</code></pre>
-<h2 id="1515-跑一遍"><a class="header" href="#1515-跑一遍">15.15 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/15-platform/pc
 make
 ./demo
 </code></pre>
-<p>输出会看到三段：PC、STM32、LINUX，每段跑一次完整业务流。应用层代码 / led 驱动 / board 层完全相同。</p>
-<h2 id="1516-视频回放"><a class="header" href="#1516-视频回放">15.16 视频回放</a></h2>
+<p>期望输出（节选）：</p>
+<pre><code>=========================================
+  ch15 - OOP complete framework demo
+=========================================
+[GPIO] Pin10 init as OUTPUT
+
+--- power_on_test ---
+[GPIO] Pin10 -&gt; HIGH (ON)
+  [ERR] led_on  -&gt; GPIO Pin10
+[GPIO] Pin10 -&gt; LOW (OFF)
+  [ERR] led_off -&gt; GPIO Pin10
+  [STAT] led_on  -&gt; PWM ch1 duty=50%
+  [STAT] led_off -&gt; PWM ch1 duty=0%
+  [NET] led_on  -&gt; I2C bus0 addr=0x20
+  [NET] led_off -&gt; I2C bus0 addr=0x20
+
+--- alarm_blink ---
+[GPIO] Pin10 -&gt; HIGH (ON)
+  [ERR] led_on  -&gt; GPIO Pin10
+[GPIO] Pin10 -&gt; LOW (OFF)
+  [ERR] led_off -&gt; GPIO Pin10
+
+--- status_indicate(err_code=0) ---
+  [STAT] led_on  -&gt; PWM ch1 duty=50%
+
+--- status_indicate(err_code=1) ---
+[GPIO] Pin10 -&gt; HIGH (ON)
+  [ERR] led_on  -&gt; GPIO Pin10
+
+=========================================
+  app.c never named any hardware type
+=========================================
+</code></pre>
+<p><code>[ERR] led_on  -&gt; GPIO Pin10</code> 这一行打的就是子类层在做的事：同一句 <code>led_on(g_led_error)</code>，对 ERR 落到 GPIO 拉高电平、对 STAT 落到 PWM 设占空比、对 NET 落到 I2C 发包。应用层一字不知。</p>
+<h2 id="1514-视频回放"><a class="header" href="#1514-视频回放">15.14 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1Zpo9BxEYG/">《C 语言·换硬件不改应用｜OOP 完整框架·全系列工具组装》</a></p>
 </blockquote>
-<h2 id="一句金句"><a class="header" href="#一句金句">一句金句</a></h2>
-<p>好的架构不是让你写更多代码，是让你改更少代码。</p>
-<p><img src="../assets/ch15/slide8_金句.png" alt="金句"></p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
-<p>LED 框架隔离了主板的变化（同一份应用，不同板型）。Platform 层隔离了芯片的变化（同一份 driver，不同芯片）。</p>
-<p>但这一招的威力远不止这两层。Linux 内核就是这一招放大几万倍的产物，所以人们说“Linux 复杂“，实际上是因为不知道它就用了这几招。</p>
-<p>下一章揭穿：为什么 Linux 一点都不难。</p>
+<p>你的框架完整了。但它只隔离了主板的变化（同一份应用，三种 LED 硬件混搭）。</p>
+<p>子类里这一行 <code>platform_gpio_write(self-&gt;pin, self-&gt;on_level)</code> 落到底，还是 STM32 的 BSRR、Linux 的 sysfs、瑞萨的 DR 寄存器。硬件名字一变，这一行就要重写。</p>
+<p>主板的变化，LED 层隔离了。芯片的变化，谁来隔离？</p>
+<p>下一章揭穿。同一招用第二次。</p>
 <p>下一篇：<a href="16-Linux不难.html">第 16 章 · 为什么 Linux 一点都不难</a></p>
 
                     </main>

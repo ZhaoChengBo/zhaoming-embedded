@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,129 +182,347 @@
                     <main>
                         <h1 id="第-18-章--全书地图回顾--一颗-led-走过的演化路径"><a class="header" href="#第-18-章--全书地图回顾--一颗-led-走过的演化路径">第 18 章 · 全书地图回顾 · 一颗 LED 走过的演化路径</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/18-roadmap/"><code>oop-in-c/code/18-roadmap/</code></a></p>
-<p>ch01 到 ch17 走完了。这一章不引入任何新概念，只做一件事，把一颗 LED 走过的演化路径在书里串一遍。</p>
-<h2 id="181-三层缝在一起"><a class="header" href="#181-三层缝在一起">18.1 三层缝在一起</a></h2>
-<p>市面上讲 C 语法的书不少，讲 C++ 面向对象的也很多，讲 Linux 内核的也有。单独都能找到。</p>
-<p>但<strong>真正讲透 C 怎么实现 OOP 底层机制的，我看到的不多</strong>。把这套机制和 C++ 编译器自动帮你做的对应起来，更少。再和 Linux 内核驱动模型里的真实使用对应起来，我个人是真没找到合适的。</p>
-<p>这本书想做的是把这三件事缝在一起：</p>
-<pre><code>C 怎么手写 OOP 底层
-        ↓ 一一对应
-C++ 编译器自动帮你做的
-        ↓ 一一对应
-Linux 内核里的真实使用
-</code></pre>
-<p>从一颗 LED 一路推到内核。</p>
-<p><img src="../assets/ch18/slide0_三层对应.png" alt="三层对应"></p>
-<h2 id="182-为什么是一颗-led-讲-18-章"><a class="header" href="#182-为什么是一颗-led-讲-18-章">18.2 为什么是一颗 LED 讲 18 章</a></h2>
-<p>LED 简单，门槛低。但它足够完整，从一个寄存器，能一路走到 Linux 内核。</p>
-<p>每一章你拿到的不是我自己想出来的东西，都是我在 Linux 内核、一线工业项目里长期看到的共通做法，用一颗 LED 串起来。</p>
-<p>学完这本书你同时拿到 3 样东西：</p>
-<p><strong>第一·Linux 内核的设计思想</strong>。ops 表、container_of、Platform 驱动、分层架构、module_init 模块自注册，这些都是内核里反复使用的招。</p>
-<p><strong>第二·面向对象的核心原则</strong>。封装、继承、多态、向上转型、向下转型、虚函数 / 纯虚 / 接口，C 语言也能做，而且做得很干净。</p>
-<p><strong>第三·C 底层实现 + C++ 语法糖对应</strong>。每一章末尾都给了对应的 C++ 写法。头文件拆分对应接口隔离。static 对应 private。函数指针对应虚函数。ops 表对应 vtable。ops 指针随身带对应 vptr。container_of 对应 dynamic_cast。</p>
-<p>C 里亲手推一遍的，C++ 一个语法糖自动帮你做。一颗 LED，C 和 C++ 同时掌握。</p>
-<p><img src="../assets/ch18/slide1_一个LED讲3件事.png" alt="一颗 LED 讲 3 件事"></p>
-<h2 id="183-演化路径全景"><a class="header" href="#183-演化路径全景">18.3 演化路径全景</a></h2>
-<p>回头看走过的路。</p>
-<h3 id="第一阶段封装篇ch01---ch05"><a class="header" href="#第一阶段封装篇ch01---ch05">第一阶段：封装篇（ch01 - ch05）</a></h3>
-<pre><code>ch01  三份函数 → struct + me 指针         封装的最朴素形态
-ch02  struct 字段从 .h 移到 .c            信息隐藏 / static
-ch03  led_init / led_deinit 命名前缀      手搓 class
-ch04  数据三级分类（auto/static/heap）    数据归位
-ch05  HAL 库源码漫游                      验证课，看真实 HAL 是同一招
-</code></pre>
-<p>到 ch05，你已经知道：你写过 <code>int sum(int *arr, int len)</code>，你就在做封装。封装不是高级特性，是你已经在做的事。</p>
-<h3 id="第二阶段继承篇ch06"><a class="header" href="#第二阶段继承篇ch06">第二阶段：继承篇（ch06）</a></h3>
-<pre><code>ch06  共性提取 → struct led_base { name, is_on }
-       struct led_gpio { struct led_base base; uint8_t pin; ... };
-</code></pre>
-<p>把所有 LED 共有的“状态层“字段（<code>name</code>、<code>is_on</code>）抽到一个共同基类，硬件字段（<code>pin</code> 等）下沉到子类。继承在 C 里就是 “把基类当字段嵌进子类”。</p>
-<h3 id="第三阶段多态篇ch07---ch11"><a class="header" href="#第三阶段多态篇ch07---ch11">第三阶段：多态篇（ch07 - ch11）</a></h3>
-<pre><code>ch07  函数指针入门：变量存函数地址
-ch08  函数指针传参：注册 / 拆解 callback
-ch09  ops 表：struct led_ops { on / off / toggle }
-ch10  ops 放进对象：const struct led_ops *ops 字段
-ch11  多态完整：led-&gt;ops-&gt;on(led) runtime dispatch
-</code></pre>
-<p>到 ch11 末尾，<code>struct led_base</code> 长这样：</p>
-<pre><code class="language-c">struct led_base {
-	const struct led_ops *ops;    /* 虚函数表指针 */
-	const char           *name;
-	bool                  is_on;
+<p>ch01 到 ch17 走完了。这一章不引入任何新概念，只做一件事：把你写过的 LED 代码，跟 Linux 内核里的真实代码摆在一起看。</p>
+<p>终章不教新东西。全部是回顾，是映射，是 C 对比 C++ 的代码对照，是工业级数据，是 Linus 的一句金句。</p>
+<h2 id="181-file_operations--是不是很眼熟"><a class="header" href="#181-file_operations--是不是很眼熟">18.1 file_operations · 是不是很眼熟</a></h2>
+<p>Linux 内核里有一个结构体，叫 <code>file_operations</code>。</p>
+<p>打开文件调 open。读文件调 read。写文件调 write。关文件调 release。</p>
+<pre><code class="language-c">struct file_operations {
+    ssize_t (*read)(struct file *, char __user *, size_t, loff_t *);
+    ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *);
+    int     (*open)(struct inode *, struct file *);
+    int     (*release)(struct inode *, struct file *);
+    /* ... 更多函数指针 */
 };
 </code></pre>
-<h3 id="第四阶段工程威力篇ch12---ch17"><a class="header" href="#第四阶段工程威力篇ch12---ch17">第四阶段：工程威力篇（ch12 - ch17）</a></h3>
-<pre><code>ch12  向上转型：struct led_base * 句柄，应用层零硬件字样
-ch13  向下转型：container_of 反推子类，编译期算偏移
-ch14  必填 / 选填 / 接口：纯虚、虚、interface 的 C 实现
-ch15  Platform 抽象：3 个 platform_ops 实例运行时切换
-ch16  Linux 内核映射：file_operations / gpio_chip / i2c_algorithm 同源
-ch17  链接自动初始化：MODULE_INIT 一行，main 不动
+<p>是不是很眼熟。</p>
+<p>它就是你学的 ops 表。一个 struct，里面全是函数指针。</p>
+<p>同一个 read，不同的文件系统有不同的实现。ext4 有 ext4 的 read，socket 有 socket 的 read，pipe 有 pipe 的 read。这不就是你学的那条 <code>base-&gt;ops-&gt;on(base)</code> 调用链吗。</p>
+<p>你写的 <code>LedOps</code>，跟内核的 <code>file_operations</code>，是同一个模式。</p>
+<p><img src="../assets/ch18/slide1_file_operations.png" alt="file_operations"></p>
+<p>但这只是冰山一角。来看一个更完整的。</p>
+<h2 id="182-你的-led-代码-vs-linux-i2c-完整链路"><a class="header" href="#182-你的-led-代码-vs-linux-i2c-完整链路">18.2 你的 LED 代码 vs Linux I2C 完整链路</a></h2>
+<p>你用过 I2C 吧。读传感器、写 EEPROM，都是 I2C。</p>
+<p>Linux 内核的 I2C 子系统，跟你的 LED 代码，一模一样的四层架构。</p>
+<p><strong>第一层 · 应用层</strong>。你的 <code>led_on(me)</code>，内核叫 <code>i2c_transfer(adap, msgs, num)</code>。对上一个口子，不关心硬件长什么样。</p>
+<p><strong>第二层 · 抽象层</strong>。你的 <code>LedBase</code> 里塞个 ops 指针，<code>LedOps</code> 装函数指针。内核里 <code>i2c_adapter</code> 塞 algo 指针，<code>i2c_algorithm</code> 装函数指针。一个负责传输，一个报告能力。adapter 就是 I2C 控制器对象，algo 这个名字是 Linux 内核的历史叫法，你就当它是 ops 表。这一层定义“必须实现什么“。</p>
+<p><strong>第三层 · 实现层</strong>。你的 <code>gpio_on(me)</code>，内核叫 <code>rk3x_i2c_xfer(adap, ...)</code>。Rockchip 的 I2C 传输实现，对下操作硬件寄存器。</p>
+<p><strong>第四层 · 注册层</strong>。你以前要在 main 里手动调 init，内核用 <code>module_platform_driver</code> 一行宏，启动时系统自动找到你的驱动。</p>
+<p>同一条调用链，上下完全对应：</p>
+<pre><code>你的 LED:    led_on(me)        →  me-&gt;ops-&gt;on(me)         →  gpio_on(me)
+Linux I2C:   i2c_transfer(adap)→  adap-&gt;algo-&gt;xfer(adap)  →  rk3x_i2c_xfer(adap)
 </code></pre>
-<h3 id="第五阶段终章本章"><a class="header" href="#第五阶段终章本章">第五阶段：终章（本章）</a></h3>
-<p>ch18 不引入新概念。把走过的路在书里 replay 一遍。</p>
-<p><img src="../assets/ch18/slide3_三阶版图.png" alt="三阶版图"></p>
-<h2 id="184-演化路径-replay一颗-led-的简史"><a class="header" href="#184-演化路径-replay一颗-led-的简史">18.4 演化路径 replay：一颗 LED 的简史</a></h2>
-<p>配套代码 <code>oop-in-c/code/18-roadmap/pc/main.c</code> 把这条路在屏幕上 replay 一遍。</p>
-<h3 id="stage-1三份独立函数"><a class="header" href="#stage-1三份独立函数">Stage 1：三份独立函数</a></h3>
+<p>跟你的 LED 从头到尾，一模一样的四层。</p>
+<p><img src="../assets/ch18/slide2_I2C完整链路.png" alt="I2C 完整链路"></p>
+<h2 id="183-真实内核代码--四层一一对应"><a class="header" href="#183-真实内核代码--四层一一对应">18.3 真实内核代码 · 四层一一对应</a></h2>
+<p>来看真实的内核代码，按四层一一对应。代码来自 Linux 内核 <code>drivers/i2c/busses/i2c-rk3x.c</code>。</p>
+<p><strong>第一层 · 接口层</strong>。<code>i2c_algorithm</code> 真实定义。两个函数指针，一个负责传输，一个报告能力。跟你的 <code>LedOps</code> 一模一样：</p>
+<pre><code class="language-c">struct i2c_algorithm {
+    int (*xfer)(struct i2c_adapter *adap,
+                struct i2c_msg *msgs, int num);
+    u32 (*functionality)(struct i2c_adapter *);
+};
+</code></pre>
+<p><strong>第二层 · 实现层</strong>。<code>rk3x_i2c_algorithm</code>，把 Rockchip 自己的传输函数填进去。跟你在 <code>gpio_init</code> 里填 <code>gpio_ops</code>，一模一样：</p>
+<pre><code class="language-c">static const struct i2c_algorithm rk3x_i2c_algorithm = {
+    .xfer          = rk3x_i2c_xfer,
+    .functionality = rk3x_i2c_func,
+};
+</code></pre>
+<p><strong>第三层 · 绑定层</strong>。probe 函数里把这张表的地址绑到 adapter 上。跟你把 ops 放进 <code>LedBase</code>，一模一样：</p>
+<pre><code class="language-c">static int rk3x_i2c_probe(struct platform_device *pdev)
+{
+    /* 分配对象 */
+    i2c_dev = devm_kzalloc(&amp;pdev-&gt;dev, ...);
+
+    /* 绑定 ops 表 */
+    adap-&gt;algo = &amp;rk3x_i2c_algorithm;
+
+    /* 注册到 I2C 总线 */
+    i2c_add_adapter(adap);
+}
+</code></pre>
+<p><strong>第四层 · 启动层</strong>。<code>module_platform_driver</code> 一个宏告诉内核：我是一个 I2C 平台驱动，启动时自动找到我。</p>
+<pre><code class="language-c">static struct platform_driver rk3x_i2c_driver = {
+    .driver = { .name = "rk3x-i2c", .of_match_table = ..., .pm = ... },
+    .probe  = rk3x_i2c_probe,
+    .remove = rk3x_i2c_remove,
+};
+
+module_platform_driver(rk3x_i2c_driver);
+</code></pre>
+<p>每一行你都见过。不是教学案例，是真实世界的骨架。</p>
+<p><img src="../assets/ch18/slide3_真实内核代码.png" alt="真实内核代码"></p>
+<h2 id="184-到处都是-ops"><a class="header" href="#184-到处都是-ops">18.4 到处都是 ops</a></h2>
+<p>不只是 I2C。</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>子系统 ops 表</th><th>用途</th><th>关键函数指针</th></tr>
+</thead>
+<tbody>
+<tr><td><code>file_operations</code></td><td>文件系统 · 读 / 写 / 打开 / 关闭</td><td><code>.read</code> <code>.write</code> <code>.open</code></td></tr>
+<tr><td><code>i2c_algorithm</code></td><td>I2C 总线 · 数据传输</td><td><code>.xfer</code></td></tr>
+<tr><td><code>spi_controller</code></td><td>SPI 控制器 · 数据传输</td><td><code>.transfer_one</code></td></tr>
+<tr><td><code>gpio_chip</code></td><td>GPIO 控制器 · 引脚操作</td><td><code>.get</code> <code>.set</code> <code>.direction</code></td></tr>
+<tr><td><code>net_device_ops</code></td><td>网络设备 · 发包 / 收包</td><td><code>.ndo_start_xmit</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>内核到处都是这个模式。一个 struct 装函数指针，不同的驱动填不同的实现。</p>
+<p>你学的那套东西，不是教学案例，是真实世界的骨架。</p>
+<p><img src="../assets/ch18/slide4_到处都是ops.png" alt="到处都是 ops"></p>
+<h2 id="185-全系列概念到-linux-内核映射总表"><a class="header" href="#185-全系列概念到-linux-内核映射总表">18.5 全系列概念到 Linux 内核映射总表</a></h2>
+<p>把每一章学到的招，映射到 Linux 内核里的对应物。</p>
+<p>先看顶上这一行：应用层、抽象层、实现层、注册层。所有内核子系统都是这四层。</p>
+<pre><code>①  应用层    led_on  ·  vfs_read  ·  i2c_transfer
+       ↓
+②  抽象层    LedOps  ·  file_operations  ·  i2c_algorithm
+       ↓
+③  实现层    gpio_on  ·  ext4_read  ·  rk3x_i2c_xfer
+       ↓
+④  注册层    main  ·  module_init  ·  module_platform_driver
+</code></pre>
+<p>往下看每一项：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>概念</th><th>你写的（LED）</th><th>Linux 内核</th><th>系列阶段</th></tr>
+</thead>
+<tbody>
+<tr><td>struct 封装数据</td><td><code>LedGpio { pin, ... }</code></td><td>到处是 struct</td><td>封装</td></tr>
+<tr><td>me 指针</td><td><code>LedGpio *me</code></td><td><code>struct device</code> · <code>i2c_client</code> · <code>spi_device</code> · <code>platform_device</code></td><td>封装</td></tr>
+<tr><td>static 信息隐藏</td><td><code>static void gpio_on</code></td><td>本地用 static · 跨模块用 EXPORT_SYMBOL</td><td>信息隐藏</td></tr>
+<tr><td>前缀命名</td><td><code>led_</code> · <code>gpio_</code> · <code>led_gpio_</code></td><td><code>i2c_</code> · <code>spi_</code> · <code>gpio_</code> · <code>vfs_</code></td><td>命名</td></tr>
+<tr><td>init / deinit</td><td><code>led_gpio_init</code> / <code>led_gpio_deinit</code></td><td><code>probe</code> / <code>remove</code></td><td>构造析构</td></tr>
+<tr><td>模块自动注册</td><td><code>main()</code> 手动调 init</td><td><code>module_init</code> · <code>.initcall</code> · <code>do_initcalls</code></td><td>链接初始化</td></tr>
+<tr><td>全局设备句柄</td><td><code>LedBase *g_led_error</code></td><td><code>struct device *</code>（内核） · <code>/dev/xxx</code>（用户层）</td><td>向上转型</td></tr>
+<tr><td>struct 嵌套继承</td><td><code>LedGpio { LedBase base }</code></td><td><code>struct i2c_client { struct device }</code></td><td>继承</td></tr>
+<tr><td>函数指针 + ops 表</td><td><code>LedOps { on, off }</code></td><td><code>file_operations</code> · <code>gpio_chip</code> · <code>i2c_algorithm { xfer, functionality }</code></td><td>函数指针</td></tr>
+<tr><td>统一接口 + dispatch</td><td><code>led_on() → base-&gt;ops-&gt;on</code></td><td><code>vfs_read() → fops-&gt;read</code></td><td>多态</td></tr>
+<tr><td>向下转型</td><td><code>container_of(base, LedGpio, base)</code></td><td>出现数万次</td><td>向下转型</td></tr>
+<tr><td>纯虚 / 虚函数 / 接口</td><td>NULL 检查 / 默认实现 / 全必填</td><td><code>file_operations</code> 混合模式</td><td>虚函数</td></tr>
+</tbody>
+</table>
+</div>
+<p>每一行你学过的东西，内核里都有对应。分层一模一样。每一项一模一样。</p>
+<p><img src="../assets/ch18/slide5_映射总表.png" alt="映射总表"></p>
+<h2 id="186-c-对比-c-三组代码对照"><a class="header" href="#186-c-对比-c-三组代码对照">18.6 C 对比 C++ 三组代码对照</a></h2>
+<p>接下来把你 18 章写的 C 代码，跟 C++ 的写法摆一起看。每一对，C++ 都帮你做了你亲手做的事。</p>
+<p>挑了三组最有戏的：多态 dispatch、向下转型、模块自动注册。</p>
+<h3 id="1861-多态-dispatch"><a class="header" href="#1861-多态-dispatch">18.6.1 多态 dispatch</a></h3>
+<p>先看多态 dispatch。</p>
+<p><strong>左边是 C</strong>。一个 <code>LedOps</code> 结构体装两个函数指针 on 和 off。<code>LedBase</code> 里有一个 ops 指针。<code>led_on</code> 调用 <code>base-&gt;ops-&gt;on(base)</code>，两次跳转：</p>
+<pre><code class="language-c">typedef struct {
+    void (*on)(LedBase *);
+    void (*off)(LedBase *);
+} LedOps;
+
+struct LedBase {
+    LedOps *ops;     /* 对象身上的 ops 指针 */
+};
+
+void led_on(LedBase *base)
+{
+    base-&gt;ops-&gt;on(base);    /* 两次跳转 */
+}
+
+led_on(red);   /* 调用方写法 */
+</code></pre>
+<p><strong>右边是 C++</strong>。<code>class LedBase</code> 里两个 virtual 函数。一个基类引用 red 绑到 led_gpio，直接调 <code>red.on()</code>。编译器悄悄查 vptr、查 vtable、找到 on 函数。也是两次跳转：</p>
+<pre><code class="language-cpp">class LedBase {
+public:
+    virtual void on()  = 0;
+    virtual void off() = 0;
+};
+/* 编译器自动加 vptr · 自动建 vtable */
+
+LedBase &amp;red = led_gpio;   /* 基类引用 → 子类对象 */
+red.on();                  /* virtual 调用 */
+</code></pre>
+<p>底层完全一样：</p>
+<pre><code>base-&gt;ops-&gt;on(base)   ≡   red.on()
+</code></pre>
+<p><code>LedOps</code> 就是 vtable。ops 指针就是 vptr。<code>base-&gt;ops-&gt;on</code> 就是 <code>red.on</code>。</p>
+<p>C 你亲手做，C++ 编译器替你做。</p>
+<p><img src="../assets/ch18/slide6a_多态dispatch代码对比.png" alt="多态 dispatch 代码对比"></p>
+<h3 id="1862-向下转型"><a class="header" href="#1862-向下转型">18.6.2 向下转型</a></h3>
+<p>向下转型这一对最有戏。</p>
+<p><strong>左边是 C 的 <code>container_of</code></strong>。一个宏：拿当前指针，减去成员在 struct 里的偏移量，得到外层 struct 的起始地址。一行宏，编译期算偏移，运行时就一条减法指令。零开销。</p>
+<pre><code class="language-c">#define container_of(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
+
+void led_handle(LedBase *base)
+{
+    LedGpio *me = container_of(base, LedGpio, base);
+    gpio_set(me-&gt;pin);
+}
+/* 编译期 · 一条减法指令 · 零运行时开销 */
+</code></pre>
+<p><strong>右边是 C++ 的 <code>dynamic_cast</code></strong>。RTTI 运行时类型识别。每个含 virtual 的类都带 <code>type_info</code>，<code>dynamic_cast</code> 跑一次去查这张表，确认指针的真实类型再返回。运行时有开销。</p>
+<pre><code class="language-cpp">/* 编译器生成 RTTI 信息 · 每个 virtual 类带 type_info */
+
+void led_handle(LedBase *base)
+{
+    LedGpio *me = dynamic_cast&lt;LedGpio *&gt;(base);
+    if (me) gpio_set(me-&gt;pin);
+}
+/* 运行时 · 查 type_info 表 · 有性能开销 */
+</code></pre>
+<p>同样是“基类指针反推子类“，C 在编译期就算完了。C++ 运行时算。</p>
+<p><code>container_of</code> 一旦编译完，就是一条减法指令。</p>
+<p>这是 C 在嵌入式不输 C++ 的关键：零运行时代价做完同样的事。</p>
+<p><img src="../assets/ch18/slide6b_向下转型代码对比.png" alt="向下转型代码对比"></p>
+<h3 id="1863-模块自动注册"><a class="header" href="#1863-模块自动注册">18.6.3 模块自动注册</a></h3>
+<p>最后这一对。上一章讲到 main 函数一行不改，模块自己挂上来。</p>
+<p><strong>左边是 C</strong>。<code>led_gpio_init</code> 是初始化函数，加一个 <code>module_init</code> 宏。宏展开把这个函数地址塞进一个特殊 section，叫 <code>.initcall6.init</code>。链接器把所有 <code>.initcall</code> 段合并成一片，启动时 <code>do_initcalls</code> 遍历这一片，挨个调用：</p>
+<pre><code class="language-c">static int led_gpio_init(void)
+{
+    /* 注册 LED 驱动 */
+    return 0;
+}
+module_init(led_gpio_init);
+
+/* 宏展开（链接器自动收集） */
+__attribute__((section(".initcall6.init")))
+static initcall_t __initcall_led_gpio_init = led_gpio_init;
+
+/* 启动时 do_initcalls() 遍历段 · 自动调用所有 initcall */
+</code></pre>
+<p><strong>右边是 C++</strong>。一个 <code>LedGpio</code> 类，它的全局对象 <code>g_led_gpio</code>，构造函数里做注册。但是 main 没有手动调它的构造，靠的是编译器把这个全局对象的构造函数地址，自动塞进 <code>.init_array</code> 段。crt0 启动代码遍历 <code>.init_array</code>，挨个调用所有构造函数：</p>
+<pre><code class="language-cpp">class LedGpio : public LedBase {
+public:
+    LedGpio() {           /* ← 构造函数 */
+        /* 注册 LED 驱动 */
+    }                     /* = 你的 init */
+};
+
+static LedGpio g_led_gpio;   /* 全局对象 */
+
+/* 编译器把 g_led_gpio 的构造函数地址 · 自动塞进 .init_array 段 */
+/* crt0 启动时遍历段 · 挨个调用所有构造函数 */
+</code></pre>
+<p>同一招：把“启动时要做的事“塞进特殊 section，启动代码遍历执行。</p>
+<pre><code>.initcall6.init   =  .init_array
+module_init       =  全局对象构造函数
+do_initcalls      =  crt0
+</code></pre>
+<p>你以为 C++ 全局对象自动构造是黑魔法。你写过 <code>module_init</code> 你就明白：底下就是这一招。</p>
+<p><img src="../assets/ch18/slide6c_模块注册代码对比.png" alt="模块自动注册代码对比"></p>
+<h2 id="187-c-vs-c-全套总表"><a class="header" href="#187-c-vs-c-全套总表">18.7 C vs C++ 全套总表</a></h2>
+<p>来看全貌。C 你亲手做的每一件事，C++ 都有对应的语法糖。</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>概念</th><th>C 语言（你写的）</th><th>C++（编译器帮你写）</th></tr>
+</thead>
+<tbody>
+<tr><td>封装</td><td>struct + 函数（me 指针）</td><td>class + 成员函数（this）</td></tr>
+<tr><td>信息隐藏</td><td>static / .h 不暴露</td><td>private / protected</td></tr>
+<tr><td>构造 / 析构</td><td><code>xxx_init</code> / <code>xxx_deinit</code></td><td>构造函数 / 析构函数</td></tr>
+<tr><td>继承</td><td>struct 嵌套 LedBase</td><td><code>class : public LedBase</code></td></tr>
+<tr><td>基类初始化</td><td>调 <code>led_base_init()</code></td><td>初始化列表自动调基类构造</td></tr>
+<tr><td>行为继承</td><td><code>led_get_name(&amp;x.base)</code></td><td><code>x.getName()</code>（自动查基类）</td></tr>
+<tr><td>虚函数表</td><td><code>LedOps</code> struct（手动）</td><td>vtable（编译器自动生成）</td></tr>
+<tr><td>ops 指针随身带</td><td><code>base.ops = &amp;gpio_ops</code>（手动）</td><td>含 virtual 的类 · 编译器自动加 vptr</td></tr>
+<tr><td>多态 dispatch</td><td><code>base-&gt;ops-&gt;on(base)</code></td><td><code>base-&gt;on()</code>（virtual）</td></tr>
+<tr><td>向上转型</td><td><code>&amp;gpio_led.base</code>（取 base 地址）</td><td><code>LedBase *p = &amp;gpio_led</code>（隐式）</td></tr>
+<tr><td>向下转型</td><td>container_of（编译期减法）</td><td><code>dynamic_cast&lt;T *&gt;</code>（运行时 · RTTI）</td></tr>
+<tr><td>纯虚 / 虚函数 / 接口</td><td>NULL 检查 / 默认实现 / 全必填</td><td><code>= 0</code> / <code>virtual { }</code> / 全纯虚 class</td></tr>
+<tr><td>模块自动注册</td><td><code>module_init</code> · section 手动挂</td><td>全局对象 · <code>.init_array</code> 自动挂</td></tr>
+</tbody>
+</table>
+</div>
+<p>每一对，C++ 编译器自动做的，你亲手推了一遍。</p>
+<p>你不再是背面向对象的名词。你知道底下发生了什么。</p>
+<p><img src="../assets/ch18/slide6d_CvsCpp总表summary.png" alt="C vs C++ 全套总表"></p>
+<h2 id="188-全系列学习旅程"><a class="header" href="#188-全系列学习旅程">18.8 全系列学习旅程</a></h2>
+<p>看看你走过的路。</p>
+<pre><code>封装 5 期      struct + me  ·  三份代码  ·  static 隐藏  ·  前缀+init  ·  数据归位
+验证 1 期      HAL 库源码漫游  ·  源码映射
+继承 1 期      struct 嵌套  ·  数据 + 行为共享
+函数指针 3 期  函数有地址  ·  延迟绑定  ·  ops 表 (typedef + 打包)
+多态 2 期      ops 随身带（vptr） ·  多态 dispatch（vcall）
+向上转型 1 期  全局句柄 + 应用层零感知
+向下转型 1 期  container_of 成员地址反推
+虚函数接口 1 期 纯虚 / 虚函数 / 接口
+完整框架 1 期  换硬件不改应用 · 全系列工具组装
+分层设计 1 期  Platform 层 · 芯片层隔离
+链接初始化 1 期 module_init · section 自动挂载 · main 一行不改
+终章 1 期      Linux 内核映射 · 四千万行代码的骨架
+</code></pre>
+<p>19 期。从一个 LED 开始。</p>
+<blockquote>
+<p><strong>面向对象不是语言特性，是思维方式。</strong></p>
+</blockquote>
+<p><img src="../assets/ch18/slide7_学习旅程.png" alt="全系列学习旅程"></p>
+<h2 id="189-4000-万行的骨架--你能读了"><a class="header" href="#189-4000-万行的骨架--你能读了">18.9 4000 万行的骨架 · 你能读了</a></h2>
+<p>Linux 内核 4000 万行代码，骨架就是这几招：</p>
+<ol>
+<li><strong>struct 装数据</strong>（<code>struct led</code> / <code>struct file</code> / <code>struct device</code>）</li>
+<li><strong>函数指针装行为（ops 表）</strong>（<code>LedOps</code> / <code>file_operations</code> / <code>gpio_chip</code>）</li>
+<li><strong>嵌入式继承</strong>（子类把父类放在第一个或任意字段，C 没有 <code>extends</code> 关键字，靠字段嵌入）</li>
+<li><strong>container_of 反推</strong>（成员地址 - offsetof = 外层 struct 起点）</li>
+<li><strong>多态 dispatch</strong>（<code>me-&gt;ops-&gt;op(me)</code>，一行 dispatch 到具体子类实现）</li>
+<li><strong>必填 + 选填 + 接口策略</strong>（assert NULL / 父类提供默认 / 全 op 必填的接口）</li>
+<li><strong>板级初始化分离硬件配置</strong>（component_cfg + board_init.c，硬件描述独立成目录，往设备树演化）</li>
+<li><strong>Platform 抽象隔离芯片变化</strong>（一份 driver + N 份 platform 适配 = N+M 不再 N×M）</li>
+<li><strong>链接自动初始化</strong>（<code>__attribute__((section()))</code> + 链接器收集 + 启动期遍历，加新驱动 main 一字不动）</li>
+</ol>
+<p>剩下的 3999 万行？是各种设备、各种协议、各种场景。但骨架，就是你学的这几招。</p>
+<p>19 期前你打开内核源码，看到的是天书。</p>
+<p>今天你打开同一段代码，你看到的是 struct，是 ops 表，是 container_of。</p>
+<p>你能读了。</p>
+<p>不是代码变简单了，是你变强了。</p>
+<p>不是因为你聪明，是因为它就用了这几招。</p>
+<p>面向对象，从来不是 class，不是 virtual，不是语法。是你看待问题的方式。</p>
+<p>C 语言能做面向对象，是因为面向对象，从来就不在语言里，在你脑子里。</p>
+<h2 id="1810-演化路径-replay--一颗-led-的简史"><a class="header" href="#1810-演化路径-replay--一颗-led-的简史">18.10 演化路径 replay · 一颗 LED 的简史</a></h2>
+<p>回头看走过的路。配套代码 <code>oop-in-c/code/18-roadmap/pc/main.c</code> 把这条路在屏幕上 replay 一遍。</p>
+<h3 id="stage-1三份独立函数ch01"><a class="header" href="#stage-1三份独立函数ch01">Stage 1：三份独立函数（ch01）</a></h3>
 <pre><code class="language-c">static void s1_red_on(void)   { write_reg(13, 1); }
 static void s1_green_on(void) { write_reg(14, 1); }
 static void s1_blue_on(void)  { write_reg(15, 1); }
 </code></pre>
-<p>3 个 LED，3 份代码。每个函数体 1 行，但有 3 份。加 5 个 LED？复制 5 遍。痛点的起点。</p>
-<h3 id="stage-2struct--me-指针"><a class="header" href="#stage-2struct--me-指针">Stage 2：struct + me 指针</a></h3>
+<p>3 个 LED，3 份代码。每个函数体 1 行，但有 3 份。加 5 个 LED，复制 5 遍。痛点的起点。</p>
+<h3 id="stage-2struct--me-指针ch01"><a class="header" href="#stage-2struct--me-指针ch01">Stage 2：struct + me 指针（ch01）</a></h3>
 <pre><code class="language-c">struct s2_led {
-	uint8_t pin;
-	bool    is_on;
+    uint8_t pin;
+    bool    is_on;
 };
 
 static void s2_led_on(struct s2_led *me)
 {
-	me-&gt;is_on = true;
-	write_reg(me-&gt;pin, 1);
+    me-&gt;is_on = true;
+    write_reg(me-&gt;pin, 1);
 }
 </code></pre>
 <p>3 个 LED 共用一份 <code>s2_led_on</code>，传不同的 me 指针。封装最朴素的形态。</p>
-<h3 id="stage-3继承--ops-表--多态"><a class="header" href="#stage-3继承--ops-表--多态">Stage 3：继承 + ops 表 + 多态</a></h3>
+<h3 id="stage-3继承--ops-表--多态ch06---ch11"><a class="header" href="#stage-3继承--ops-表--多态ch06---ch11">Stage 3：继承 + ops 表 + 多态（ch06 - ch11）</a></h3>
 <pre><code class="language-c">struct s3_led_ops {
-	void (*on)(struct s3_led_base *me);
+    void (*on)(struct s3_led_base *me);
 };
 
 struct s3_led_base {
-	const struct s3_led_ops *ops;
-	const char              *name;
+    const struct s3_led_ops *ops;
+    const char              *name;
 };
 
 struct s3_led_gpio {
-	struct s3_led_base base;
-	uint8_t            pin;
+    struct s3_led_base base;
+    uint8_t            pin;
 };
 
 struct s3_led_pwm {
-	struct s3_led_base base;
-	uint8_t            channel;
-	uint8_t            duty;
+    struct s3_led_base base;
+    uint8_t            channel;
+    uint8_t            duty;
 };
 
 /* 父类统一接口：一行 dispatch */
 static void s3_led_on(struct s3_led_base *me)
 {
-	me-&gt;ops-&gt;on(me);    /* 多态 dispatch */
-}
-
-/* 两种子类各自的 on 实现 */
-static void s3_gpio_on(struct s3_led_base *me)
-{
-	struct s3_led_gpio *self = (struct s3_led_gpio *)me;
-	printf("    s3_gpio_on  [%s]: write reg(%u) = 1\n",
-	       me-&gt;name, (unsigned)self-&gt;pin);
-}
-
-static void s3_pwm_on(struct s3_led_base *me)
-{
-	struct s3_led_pwm *self = (struct s3_led_pwm *)me;
-	printf("    s3_pwm_on   [%s]: PWM ch=%u duty=%u%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel, (unsigned)self-&gt;duty);
+    me-&gt;ops-&gt;on(me);    /* 多态 dispatch */
 }
 
 /* 两份 ops 表，一份服务 GPIO 子类，一份服务 PWM 子类 */
@@ -312,7 +530,7 @@ static const struct s3_led_ops gpio_ops = { .on = s3_gpio_on };
 static const struct s3_led_ops pwm_ops  = { .on = s3_pwm_on  };
 </code></pre>
 <p>GPIO 灯和 PWM 灯共享 <code>s3_led_on</code> 接口，背后走不同的实现。多态通过 ops 表实现。</p>
-<h3 id="stage-4向上转型--全局句柄"><a class="header" href="#stage-4向上转型--全局句柄">Stage 4：向上转型 + 全局句柄</a></h3>
+<h3 id="stage-4向上转型--全局句柄ch12---ch15"><a class="header" href="#stage-4向上转型--全局句柄ch12---ch15">Stage 4：向上转型 + 全局句柄（ch12 - ch15）</a></h3>
 <pre><code class="language-c">static struct s3_led_gpio g_gpio;
 static struct s3_led_pwm  g_pwm;
 static struct s3_led_base *g_led_red;
@@ -320,40 +538,39 @@ static struct s3_led_base *g_led_status;
 
 static void board_init(void)
 {
-	/* 子类对象构造：填 ops 字段 + 自己的硬件参数 */
-	g_gpio.base.ops  = &amp;gpio_ops;
-	g_gpio.base.name = "RED";
-	g_gpio.pin       = 13;
+    /* 子类对象构造：填 ops 字段 + 自己的硬件参数 */
+    g_gpio.base.ops  = &amp;gpio_ops;
+    g_gpio.base.name = "RED";
+    g_gpio.pin       = 13;
 
-	g_pwm.base.ops   = &amp;pwm_ops;
-	g_pwm.base.name  = "STAT";
-	g_pwm.channel    = 1;
-	g_pwm.duty       = 100;
+    g_pwm.base.ops   = &amp;pwm_ops;
+    g_pwm.base.name  = "STAT";
+    g_pwm.channel    = 1;
+    g_pwm.duty       = 100;
 
-	g_led_red    = &amp;g_gpio.base;     /* 向上转型 */
-	g_led_status = &amp;g_pwm.base;
+    g_led_red    = &amp;g_gpio.base;     /* 向上转型 */
+    g_led_status = &amp;g_pwm.base;
 }
 
-/* 应用层调用 */
 s3_led_on(g_led_red);      /* 走 s3_gpio_on */
 s3_led_on(g_led_status);   /* 走 s3_pwm_on */
 </code></pre>
 <p>应用层只见 <code>struct s3_led_base *</code> 句柄，调同一个 <code>s3_led_on(handle)</code>。换硬件改 board_init 里那几行字段赋值，应用 0 修改。</p>
-<h3 id="stage-5链接自动注册"><a class="header" href="#stage-5链接自动注册">Stage 5：链接自动注册</a></h3>
+<h3 id="stage-5链接自动注册ch17"><a class="header" href="#stage-5链接自动注册ch17">Stage 5：链接自动注册（ch17）</a></h3>
 <pre><code class="language-c">/* drv_led.c */
 static int led_init(void)
 {
-	printf("    [led]    led_init: register LED driver\n");
-	return 0;
+    /* 注册 LED 驱动 */
+    return 0;
 }
 MODULE_INIT(led_init);     /* 一行宏代替 main 里的手写调用 */
 
 /* MODULE_INIT 宏的实现（来自 ch17）：
  * 把 fn 的地址塞进 .my_initcall 段，链接器自动收集。
  */
-#define MODULE_INIT(fn)							\
-	static initcall_t __initcall_##fn				\
-		__attribute__((used, section("my_initcall"))) = fn
+#define MODULE_INIT(fn)                              \
+    static initcall_t __initcall_##fn                \
+        __attribute__((used, section("my_initcall"))) = fn
 
 /* 启动代码遍历该段 */
 extern initcall_t __start_my_initcall[];
@@ -361,19 +578,18 @@ extern initcall_t __stop_my_initcall[];
 
 void do_initcalls(void)
 {
-	for (initcall_t *fn = __start_my_initcall;
-	     fn &lt; __stop_my_initcall; fn++)
-		(*fn)();
+    for (initcall_t *fn = __start_my_initcall;
+         fn &lt; __stop_my_initcall; fn++)
+        (*fn)();
 }
 
-/* main.c 里 */
 int main(void)
 {
-	do_initcalls();      /* 不知道有哪些 init，但都会被调到 */
-	while (1) { /* 业务循环 */ }
+    do_initcalls();      /* 不知道有哪些 init，但都会被调到 */
+    while (1) { /* 业务循环 */ }
 }
 </code></pre>
-<p>main 函数 0 引用 <code>led_init</code>。链接器收集所有 MODULE_INIT 段，启动期遍历。加新驱动写一行宏，main 不动。这就是 ch17 的完整 demo。</p>
+<p>main 函数 0 引用 <code>led_init</code>。链接器收集所有 <code>MODULE_INIT</code> 段，启动期遍历。加新驱动写一行宏，main 不动。这就是 ch17 的完整 demo。</p>
 <p>跑 <code>oop-in-c/code/18-roadmap/pc/demo</code>：</p>
 <pre><code>[stage 1] ch01 - 3 LEDs, 3 copies
     s1_red_on: write reg(13) = 1
@@ -397,123 +613,61 @@ int main(void)
     main never references *_init, drivers register themselves
 </code></pre>
 <p>一颗 LED，5 个阶段，5 行代码风格的演化。一路走到 Linux 内核风格的全套架构。</p>
-<h2 id="185-全系列概念到-linux-内核的映射"><a class="header" href="#185-全系列概念到-linux-内核的映射">18.5 全系列概念到 Linux 内核的映射</a></h2>
-<p>把每一章学到的招，映射到 Linux 内核里的对应物：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>你学过的</th><th>Linux 内核里</th></tr>
-</thead>
-<tbody>
-<tr><td><code>struct led_base</code></td><td><code>struct device</code> / <code>struct file</code></td></tr>
-<tr><td><code>me</code> 指针</td><td><code>dev</code> / <code>file</code> / <code>i2c_client</code> / <code>spi_device</code> 等指针参数</td></tr>
-<tr><td>static 信息隐藏</td><td>内核函数大量 <code>static</code>，跨文件用 EXPORT_SYMBOL</td></tr>
-<tr><td>命名前缀 <code>led_</code></td><td>内核子系统前缀 <code>gpio_</code> / <code>i2c_</code> / <code>dev_</code></td></tr>
-<tr><td>init / deinit</td><td><code>probe</code> / <code>remove</code></td></tr>
-<tr><td><code>struct led_base</code> 嵌入子类</td><td><code>struct gpio_chip</code> 嵌入 driver-private 结构</td></tr>
-<tr><td><code>struct led_ops</code></td><td><code>struct file_operations</code> / <code>struct gpio_chip</code> 字段</td></tr>
-<tr><td><code>me-&gt;ops-&gt;on(me)</code></td><td><code>f_op-&gt;read(file, ...)</code> / <code>gc-&gt;set(gc, offset, value)</code></td></tr>
-<tr><td>container_of</td><td>container_of（同名同源）</td></tr>
-<tr><td>必填 + 选填 + 接口</td><td>file_operations 混合策略，read/write 必填，ioctl 选填</td></tr>
-<tr><td>全局句柄</td><td><code>extern struct device *some_device;</code></td></tr>
-<tr><td><code>board_init</code></td><td><code>arch_init_call</code> / device tree</td></tr>
-<tr><td>Platform 抽象</td><td><code>struct platform_driver</code> / <code>platform_device</code></td></tr>
-<tr><td><code>MODULE_INIT(fn)</code></td><td><code>module_init(fn)</code> / <code>device_initcall(fn)</code></td></tr>
-<tr><td>链接器自动收集</td><td><code>__attribute__((__section__(".initcall6.init")))</code></td></tr>
-<tr><td><code>do_initcalls()</code></td><td><code>do_initcalls()</code>（同名）</td></tr>
-</tbody>
-</table>
-</div>
-<p>每一行你学过的东西，内核里都有对应。分层一模一样，每一项一模一样。</p>
-<h2 id="186-c-对比-c-的全套对照"><a class="header" href="#186-c-对比-c-的全套对照">18.6 C 对比 C++ 的全套对照</a></h2>
-<p>每一章末尾给了 C 对比 C++ 的局部对照。这里把全套放一起：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>C（你亲手写）</th><th>C++（编译器替你做）</th></tr>
-</thead>
-<tbody>
-<tr><td><code>struct led { ... }</code> + <code>int led_on(struct led *me)</code></td><td><code>class Led { void on(); }</code></td></tr>
-<tr><td><code>me</code> 指针</td><td><code>this</code> 指针</td></tr>
-<tr><td>头文件拆 .h / .c</td><td>private / public 关键字</td></tr>
-<tr><td><code>struct led_base</code> 嵌入子类</td><td><code>class Led : public LedBase {}</code> 继承</td></tr>
-<tr><td><code>struct led_ops</code></td><td>vtable</td></tr>
-<tr><td><code>const struct led_ops *ops</code> 字段</td><td>vptr</td></tr>
-<tr><td><code>me-&gt;ops-&gt;on(me)</code></td><td><code>me-&gt;on()</code></td></tr>
-<tr><td><code>&amp;gpio_led.base</code></td><td>隐式 LedBase * 转换</td></tr>
-<tr><td><code>container_of</code></td><td><code>dynamic_cast</code></td></tr>
-<tr><td>统一接口里 assert NULL</td><td>纯虚函数 <code>virtual void on() = 0</code></td></tr>
-<tr><td>统一接口里走默认</td><td>虚函数有默认实现</td></tr>
-<tr><td>全 ops 必填</td><td>全纯虚抽象类（接口）</td></tr>
-<tr><td><code>MODULE_INIT(fn)</code></td><td>全局对象构造函数</td></tr>
-<tr><td><code>__section__("my_initcall")</code></td><td><code>.init_array</code> 段</td></tr>
-<tr><td><code>do_initcalls()</code></td><td>crt0 启动代码</td></tr>
-</tbody>
-</table>
-</div>
-<p>每一对，C++ 编译器自动做的，你亲手推了一遍。</p>
-<p>你不再是背面向对象的名词。你知道底下发生了什么。</p>
-<h2 id="187-4000-万行的骨架"><a class="header" href="#187-4000-万行的骨架">18.7 4000 万行的骨架</a></h2>
-<p>Linux 内核 4000 万行代码，骨架就是这几招：</p>
-<ol>
-<li><strong>struct 装数据</strong>（<code>struct led</code> / <code>struct file</code> / <code>struct device</code>）</li>
-<li><strong>函数指针装行为（ops 表）</strong>（<code>struct led_ops</code> / <code>struct file_operations</code> / <code>struct gpio_chip</code>）</li>
-<li><strong>嵌入式继承</strong>（子类把父类放在第一个或任意字段，C 没有 <code>extends</code> 关键字，靠字段嵌入）</li>
-<li><strong>container_of 反推</strong>（成员地址 - offsetof = 外层 struct 起点）</li>
-<li><strong>多态 dispatch</strong>（<code>me-&gt;ops-&gt;op(me)</code>，一行 dispatch 到具体子类实现）</li>
-<li><strong>必填 + 选填 + 接口策略</strong>（assert NULL / 父类提供默认 / 全 op 必填的接口）</li>
-<li><strong>板级初始化分离硬件配置</strong>（component_cfg + board_init.c，硬件描述独立成目录，往设备树演化）</li>
-<li><strong>Platform 抽象隔离芯片变化</strong>（一份 driver + N 份 platform 适配 = N+M 不再 N×M）</li>
-<li><strong>链接自动初始化</strong>（<code>__attribute__((section()))</code> + 链接器收集 + 启动期遍历，加新驱动 main 一字不动）</li>
-</ol>
-<p>剩下的 3999 万行？是各种设备、各种协议、各种场景，但骨架，就是你学的这九招。</p>
-<p>19 期前你打开内核源码，看到的是天书。</p>
-<p>今天你打开同一段代码，你看到的是 struct，是 ops 表，是 container_of。</p>
-<p>你能读了。</p>
-<p>不是代码变简单了，是你变强了。</p>
-<p>不是因为你聪明，是因为它就用了这几招。</p>
-<h2 id="188-oop-三种能力"><a class="header" href="#188-oop-三种能力">18.8 OOP 三种能力</a></h2>
-<p>学完这本书你带走的不只是 OOP 的几个名词，是 3 种能力：</p>
-<p><strong>第一·看代码的眼睛</strong>。打开 Linux 源码，能把“原理“和“实现“分开看。</p>
-<p><strong>第二·提问的能力</strong>。你能问“这里为什么这样设计“，而不是只能问“这个函数怎么用“。</p>
-<p><strong>第三·迁移的能力</strong>。LED 里的 container_of，你在 Linux 网络栈里能认出来，在文件系统里能认出来，在驱动子系统里也能认出来。</p>
-<p>这一本书之后，你带走的不只是 OOP 的几个概念，是一种看代码的方式。</p>
-<p><img src="../assets/ch18/slide2_3种能力.png" alt="3 种能力"></p>
-<h2 id="189-工程师版图你停在哪一层"><a class="header" href="#189-工程师版图你停在哪一层">18.9 工程师版图：你停在哪一层</a></h2>
-<pre><code>第一层 · 普通工程师    写功能、调 bug、配寄存器
-第二层 · 高级工程师    写架构、识别屎山、主导设计
-第三层 · 技术领导      定方向、给规范、影响团队
+<h2 id="1811-视频合集封面墙"><a class="header" href="#1811-视频合集封面墙">18.11 视频合集封面墙</a></h2>
+<p>视频版的 OOP 系列从第一期一路走到终章，每一期对应这本书的一个章节。</p>
+<p><img src="../assets/ch18/slide7_18期封面墙.png" alt="合集封面墙"></p>
+<h2 id="1812-不止于这-18-章--工业级架构还有几座山"><a class="header" href="#1812-不止于这-18-章--工业级架构还有几座山">18.12 不止于这 18 章 · 工业级架构还有几座山</a></h2>
+<p>封装、继承、多态。这本书 18 章 OOP 主体是面向对象的基本功。</p>
+<p>工业级嵌入式架构还有几座山：分层架构、层次化状态机、事件驱动 + 发布订阅、非阻塞驱动框架。</p>
+<p>市面上讲 C 语法的书不少，讲 C++ 面向对象的也很多，讲 Linux 内核的也有，单独都能找到。但<strong>真正讲透 C 怎么实现 OOP 底层机制的，我看到的不多</strong>。把这套机制和 C++ 编译器自动帮你做的对应起来，更少。再和 Linux 内核驱动模型里的真实使用对应起来，<strong>我个人是真没找到合适的</strong>。</p>
+<p>这本书想做的是把这三件事缝在一起：</p>
+<pre><code>C 怎么手写 OOP 底层
+        ↓ 一一对应
+C++ 编译器自动帮你做的
+        ↓ 一一对应
+Linux 内核里的真实使用
 </code></pre>
-<p>这本书能帮你从第一层往第二层走。这一步跨起来挺难的，但走完这本书，你会有路径感。</p>
-<h2 id="1810-为什么不直接讲-c"><a class="header" href="#1810-为什么不直接讲-c">18.10 为什么不直接讲 C++</a></h2>
-<p>你可能问，为什么花这么多篇幅用 C 推 OOP，不直接讲 C++ 一了百了？</p>
-<p>C++ 我项目里也在用，应用层很顺手。但<strong>用 C 讲 OOP</strong>，有它自己的理由。</p>
-<p>直接上 C++、Java、Python，你能用，但你看不见底层。虚函数怎么实现的、多态怎么调度，这些在 C++ 里都被语法糖盖住了。用 C 手推一遍，你能拆开看见每一个齿轮，回头再用 C++，那些“魔法“你心里都有数。</p>
-<p>更关键的一点，嵌入式里几个绕不开的大块头：<strong>Linux 内核、Zephyr、RT-Thread</strong>，全是 C 写的。你不懂 C 怎么做 OOP，打开源码看到 ops 表、看到 container_of，只能照抄，不知道为什么这么设计。</p>
-<p>而嵌入式工程师有一个天然的优势，汇编、计算机原理、编译器和链接器、操作系统底层，这些上层语言出身的工程师摸不到的东西，你都能从底往上串成一条线。</p>
-<p>这本书是从底往上推。等你看明白底层，C++ 那些机制只是把你手推的东西换了语法糖。</p>
-<h2 id="1811-ai-时代"><a class="header" href="#1811-ai-时代">18.11 AI 时代</a></h2>
-<p>AI 时代了，写代码这件事确实越来越快。</p>
-<p>但能不能给 AI 一个好骨架，让它一直能写下去，这是工程师的事。</p>
-<p>AI 帮你写代码，参考的就是你项目里已有的代码，你写得清楚，AI 才能写得清楚；你给一坨屎山，它就接着生一坨屎山。</p>
-<p>这就是 AI 时代你的核心竞争力，你的架构能力，决定了 AI 能帮你放大多少。</p>
-<h2 id="1812-一句金句"><a class="header" href="#1812-一句金句">18.12 一句金句</a></h2>
-<p>19 章讲了一件事，但有一句话比我讲得更好。是 Linus Torvalds 说的，Linux 内核的作者：</p>
+<p>但这只是入门。后面的几座山再往上走。</p>
+<p>我做产品做了几年，把数据拉出来给你看一组。</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>工业级数据</th><th>数值</th></tr>
+</thead>
+<tbody>
+<tr><td>业务代码</td><td>11.2 万行</td></tr>
+<tr><td>业务文件</td><td>625 个</td></tr>
+<tr><td>事件驱动模块</td><td>8 个</td></tr>
+<tr><td>事件发布点</td><td>144 个</td></tr>
+<tr><td>硬件抽象接口</td><td>8 种（adc / eeprom / rtc / i2c / spi / uart …）</td></tr>
+<tr><td>最深状态嵌套</td><td>8 层</td></tr>
+<tr><td>跨项目共享 Platform</td><td>5 套产品 · 一套抽象层</td></tr>
+</tbody>
+</table>
+</div>
+<p>换主控芯片，业务代码零修改。换电机，业务零修改。换协议，业务零修改。</p>
+<p>这些不只是数据。是每天的开发体验。</p>
+<p>加新功能几乎都是「加一个文件」，老代码很少动。加一个新外设，驱动层加一个文件。换主控芯片，platform 层加一个文件。换整块主板方案，platform 层加几个文件，应用层不知不觉。加一个新功能，加一个层次化状态机，订阅事件。</p>
+<p>全是「加」，不是「改」。每一层只关心自己。应用层 11 万行，一行不动。</p>
+<p>普通嵌入式代码里那种全局 flag 一堆、if 嵌套五层、大脑根本追不下去的代码，我们的产品里很少出现。复杂逻辑交给层次化状态机。跨模块协调交给事件订阅。模块之间不互相调用，只通过事件通信。</p>
+<p>举个真实的例子。项目早期屏幕方案还没定下来。屏幕的用户输入，我们用 shell 命令模拟；屏幕要显示什么，我们直接 printf 打到终端上。业务逻辑全部跑通，一行没动。后来屏幕方案选定，我们加了一个 UI 状态机，订阅同样的事件。命令行 UI 不用拆，业务逻辑也完全不用动。UI 和业务彻底解耦。</p>
+<p>分层架构、层次化状态机、事件驱动 + 发布订阅，这些不是 PPT 上的名词。是真正能让 11 万行业务代码保持清醒的工具。</p>
+<p>而这 18 章只是这套思想的入门。后面的山一座一座去做，做好了在 GitHub Issues 或 Gitee Issues 第一时间告诉你。</p>
+<p><img src="../assets/ch18/slide8_工业级架构数据.png" alt="工业级架构数据"></p>
+<h2 id="1813-一句金句--linus-torvalds"><a class="header" href="#1813-一句金句--linus-torvalds">18.13 一句金句 · Linus Torvalds</a></h2>
+<p>19 期讲了一件事，但有一句话比我讲得更好。是 Linus Torvalds 说的，Linux 内核的作者：</p>
 <blockquote>
 <p>Bad programmers worry about the code.
 Good programmers worry about data structures and their relationships.</p>
 <p>差的程序员琢磨代码。好的程序员琢磨数据结构，和它们之间的关系。</p>
 <p>Linus Torvalds, Git mailing list, 2006</p>
 </blockquote>
-<p>整本书 17 章一直在写 struct，也一直在画 struct 之间的关系。</p>
+<p>整本书 18 章一直在写 struct，也一直在画 struct 之间的关系。</p>
 <p>把这句话截图保存吧。</p>
 <p><img src="../assets/ch18/slide9_Linus金句.png" alt="Linus 金句"></p>
-<h2 id="1813-18-期合集封面墙"><a class="header" href="#1813-18-期合集封面墙">18.13 18 期合集封面墙</a></h2>
-<p>视频版的合集走过 18 期，每一期对应这本书的一个章节（ch01-ch17 + 终章）。</p>
-<p><img src="../assets/ch18/slide7_18期封面墙.png" alt="18 期封面墙"></p>
-<h2 id="1814-完整源码清单"><a class="header" href="#1814-完整源码清单">18.14 完整源码清单</a></h2>
+<h2 id="1814-配套代码"><a class="header" href="#1814-配套代码">18.14 配套代码</a></h2>
 <p>把下面的代码块分别保存到对应的文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/18-roadmap/pc/"><code>oop-in-c/code/18-roadmap/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
-<p>本章配套代码不引入新机制，只把 ch01 → ch17 一颗 LED 走过的演化路径在屏幕上 replay 一遍。一份 <code>main.c</code> 包揽全部 5 个阶段的代码（每段对应书里的一个章节，前面 18.4 节里贴的就是它的片段）。</p>
+<p>本章配套代码不引入新机制，只把 ch01 → ch17 一颗 LED 走过的演化路径在屏幕上 replay 一遍。一份 <code>main.c</code> 包揽全部 5 个阶段（每段对应书里的一个章节，前面 18.10 节里贴的就是它的片段）。</p>
 <h3 id="文件-1mainc164-行"><a class="header" href="#文件-1mainc164-行">文件 1：<code>main.c</code>（164 行）</a></h3>
 <p>5 个阶段：复制粘贴 → struct + me 指针 → 继承 + ops 表 + 多态 → 向上转型 + 全局句柄 → 链接自动注册（说明性占位，真实机制见 ch17）。</p>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
@@ -537,17 +691,17 @@ Good programmers worry about data structures and their relationships.</p>
 
 static void s1_red_on(void)
 {
-	printf("    s1_red_on: write reg(13) = 1\n");
+    printf("    s1_red_on: write reg(13) = 1\n");
 }
 
 static void s1_green_on(void)
 {
-	printf("    s1_green_on: write reg(14) = 1\n");
+    printf("    s1_green_on: write reg(14) = 1\n");
 }
 
 static void s1_blue_on(void)
 {
-	printf("    s1_blue_on: write reg(15) = 1\n");
+    printf("    s1_blue_on: write reg(15) = 1\n");
 }
 
 /* ======================== Stage 2: ch01 ========================
@@ -555,14 +709,14 @@ static void s1_blue_on(void)
  */
 
 struct s2_led {
-	uint8_t pin;
-	bool    is_on;
+    uint8_t pin;
+    bool    is_on;
 };
 
 static void s2_led_on(struct s2_led *me)
 {
-	me-&gt;is_on = true;
-	printf("    s2_led_on(pin=%u): write reg = 1\n", (unsigned)me-&gt;pin);
+    me-&gt;is_on = true;
+    printf("    s2_led_on(pin=%u): write reg = 1\n", (unsigned)me-&gt;pin);
 }
 
 /* ======================== Stage 3: ch06 - ch11 ========================
@@ -572,41 +726,41 @@ static void s2_led_on(struct s2_led *me)
 struct s3_led_base;
 
 struct s3_led_ops {
-	void (*on)(struct s3_led_base *me);
+    void (*on)(struct s3_led_base *me);
 };
 
 struct s3_led_base {
-	const struct s3_led_ops *ops;
-	const char              *name;
+    const struct s3_led_ops *ops;
+    const char              *name;
 };
 
 struct s3_led_gpio {
-	struct s3_led_base base;
-	uint8_t            pin;
+    struct s3_led_base base;
+    uint8_t            pin;
 };
 
 struct s3_led_pwm {
-	struct s3_led_base base;
-	uint8_t            channel;
+    struct s3_led_base base;
+    uint8_t            channel;
 };
 
 static void s3_gpio_on(struct s3_led_base *me)
 {
-	struct s3_led_gpio *self = (struct s3_led_gpio *)me;
-	printf("    s3_gpio_on  [%s]: write reg(%u) = 1\n",
-	       me-&gt;name, (unsigned)self-&gt;pin);
+    struct s3_led_gpio *self = (struct s3_led_gpio *)me;
+    printf("    s3_gpio_on  [%s]: write reg(%u) = 1\n",
+           me-&gt;name, (unsigned)self-&gt;pin);
 }
 
 static void s3_pwm_on(struct s3_led_base *me)
 {
-	struct s3_led_pwm *self = (struct s3_led_pwm *)me;
-	printf("    s3_pwm_on   [%s]: PWM ch=%u duty=100%%\n",
-	       me-&gt;name, (unsigned)self-&gt;channel);
+    struct s3_led_pwm *self = (struct s3_led_pwm *)me;
+    printf("    s3_pwm_on   [%s]: PWM ch=%u duty=100%%\n",
+           me-&gt;name, (unsigned)self-&gt;channel);
 }
 
 static void s3_led_on(struct s3_led_base *me)
 {
-	me-&gt;ops-&gt;on(me);    /* 多态 dispatch */
+    me-&gt;ops-&gt;on(me);    /* 多态 dispatch */
 }
 
 /* ======================== Stage 4: ch12 - ch15 ========================
@@ -624,60 +778,60 @@ static const struct s3_led_ops pwm_ops  = { .on = s3_pwm_on };
 
 static void s4_board_init(void)
 {
-	g_gpio.base.ops  = &amp;gpio_ops;
-	g_gpio.base.name = "RED";
-	g_gpio.pin       = 13;
+    g_gpio.base.ops  = &amp;gpio_ops;
+    g_gpio.base.name = "RED";
+    g_gpio.pin       = 13;
 
-	g_pwm.base.ops   = &amp;pwm_ops;
-	g_pwm.base.name  = "STAT";
-	g_pwm.channel    = 1;
+    g_pwm.base.ops   = &amp;pwm_ops;
+    g_pwm.base.name  = "STAT";
+    g_pwm.channel    = 1;
 
-	g_led_red    = &amp;g_gpio.base;     /* 向上转型 */
-	g_led_status = &amp;g_pwm.base;
+    g_led_red    = &amp;g_gpio.base;     /* 向上转型 */
+    g_led_status = &amp;g_pwm.base;
 }
 
 /* ======================== Replay ======================== */
 
 int main(void)
 {
-	printf("=========================================\n");
-	printf("  ch18 - the road one LED has walked\n");
-	printf("=========================================\n");
+    printf("=========================================\n");
+    printf("  ch18 - the road one LED has walked\n");
+    printf("=========================================\n");
 
-	printf("\n[stage 1] ch01 - 3 LEDs, 3 copies\n");
-	s1_red_on();
-	s1_green_on();
-	s1_blue_on();
+    printf("\n[stage 1] ch01 - 3 LEDs, 3 copies\n");
+    s1_red_on();
+    s1_green_on();
+    s1_blue_on();
 
-	printf("\n[stage 2] ch01 - struct + me pointer\n");
-	struct s2_led red   = { .pin = 13, .is_on = false };
-	struct s2_led green = { .pin = 14, .is_on = false };
-	struct s2_led blue  = { .pin = 15, .is_on = false };
-	s2_led_on(&amp;red);
-	s2_led_on(&amp;green);
-	s2_led_on(&amp;blue);
+    printf("\n[stage 2] ch01 - struct + me pointer\n");
+    struct s2_led red   = { .pin = 13, .is_on = false };
+    struct s2_led green = { .pin = 14, .is_on = false };
+    struct s2_led blue  = { .pin = 15, .is_on = false };
+    s2_led_on(&amp;red);
+    s2_led_on(&amp;green);
+    s2_led_on(&amp;blue);
 
-	printf("\n[stage 3] ch06-ch11 - inheritance + ops + polymorphism\n");
-	struct s3_led_gpio g = { .base = {.ops = &amp;gpio_ops, .name = "RED"}, .pin = 13 };
-	struct s3_led_pwm  p = { .base = {.ops = &amp;pwm_ops,  .name = "STAT"}, .channel = 1 };
-	s3_led_on(&amp;g.base);
-	s3_led_on(&amp;p.base);
+    printf("\n[stage 3] ch06-ch11 - inheritance + ops + polymorphism\n");
+    struct s3_led_gpio g = { .base = {.ops = &amp;gpio_ops, .name = "RED"}, .pin = 13 };
+    struct s3_led_pwm  p = { .base = {.ops = &amp;pwm_ops,  .name = "STAT"}, .channel = 1 };
+    s3_led_on(&amp;g.base);
+    s3_led_on(&amp;p.base);
 
-	printf("\n[stage 4] ch12-ch15 - upcasting + handle + board_init\n");
-	s4_board_init();
-	s3_led_on(g_led_red);
-	s3_led_on(g_led_status);
+    printf("\n[stage 4] ch12-ch15 - upcasting + handle + board_init\n");
+    s4_board_init();
+    s3_led_on(g_led_red);
+    s3_led_on(g_led_status);
 
-	printf("\n[stage 5] ch17 - linker auto registration (see 17-initcall)\n");
-	printf("    main never references *_init, drivers register themselves\n");
+    printf("\n[stage 5] ch17 - linker auto registration (see 17-initcall)\n");
+    printf("    main never references *_init, drivers register themselves\n");
 
-	printf("\n=========================================\n");
-	printf("  one LED, 17 chapters, 4000 lines covered\n");
-	printf("=========================================\n");
+    printf("\n=========================================\n");
+    printf("  one LED, 17 chapters, 4000 lines covered\n");
+    printf("=========================================\n");
 
-	printf("\nPress Enter to exit...\n");
-	getchar();
-	return 0;
+    printf("\nPress Enter to exit...\n");
+    getchar();
+    return 0;
 }
 </code></pre>
 <h3 id="文件-2makefile19-行"><a class="header" href="#文件-2makefile19-行">文件 2：<code>Makefile</code>（19 行）</a></h3>
@@ -737,12 +891,7 @@ make
 =========================================
 </code></pre>
 <p>一颗 LED，5 个阶段，5 行代码风格的演化。看自己一路走过的路。</p>
-<h2 id="1815-不止于这-18-章-oop-主体外加工业实战-2-章"><a class="header" href="#1815-不止于这-18-章-oop-主体外加工业实战-2-章">18.15 不止于这 18 章 OOP 主体（外加工业实战 2 章）</a></h2>
-<p>封装、继承、多态，这本书 18 章 OOP 主体是面向对象的基本功。</p>
-<p>工业级嵌入式架构还有几座山：分层架构、层次化状态机、事件驱动 + 发布订阅、非阻塞驱动框架。</p>
-<p>这些不是 PPT 上的名词。是真正能让 11 万行业务代码保持清醒的工具。</p>
-<p>这本书是这套思想的入门。后面的山一座一座去做，做好了在 GitHub Issues 或 Gitee Issues 第一时间告诉你。</p>
-<h2 id="1816-视频回放"><a class="header" href="#1816-视频回放">18.16 视频回放</a></h2>
+<h2 id="1815-视频回放"><a class="header" href="#1815-视频回放">18.15 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV13qREBGEgv/">《C 语言·终章·四千万行代码的秘密武器·OOP 系列·Linux 内核映射·Linus 金句》</a></p>
 </blockquote>

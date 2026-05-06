@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3f46a04d.js";
+            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1bc8502d.js"></script>
+        <script src="../toc-69e358bb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,9 +183,9 @@
                         <h1 id="第-11-章--同名函数不同行为"><a class="header" href="#第-11-章--同名函数不同行为">第 11 章 · 同名函数不同行为</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/"><code>oop-in-c/code/11-polymorphism/</code></a></p>
 <h2 id="111-一个真实场景"><a class="header" href="#111-一个真实场景">11.1 一个真实场景</a></h2>
-<p>第 10 章你把 ops 字段塞进了 <code>struct led_base</code> 第一个位置。每颗 LED 自带自己的 ops 表。应用层调 <code>led_on(&amp;red_led.base)</code>，内部 <code>me-&gt;ops-&gt;on(me)</code> 走对的实现。</p>
-<p>但应用层还有一个不爽的地方：每次都得写 <code>&amp;red_led.base</code>、<code>&amp;blue_led.base</code>。这意味着应用层还是知道每颗 LED 的具体子类（<code>struct led_gpio</code> / <code>struct led_pwm</code>）。</p>
-<p>如果你想做一件更工程化的事：把所有 LED 装在一个数组里循环跑：</p>
+<p>第 10 章每颗 LED 自带 ops 表。应用层调 <code>led_on(&amp;red_led.base)</code>，内部 <code>me-&gt;ops-&gt;on(me)</code> 走对的实现。</p>
+<p>但应用层有个不爽的地方：每次都得自己写 <code>me-&gt;ops-&gt;on(me)</code> 这一长串。能不能直接调一个 <code>led_on(me)</code>，让它自己找到对的函数？</p>
+<p>而且应用层经常要把所有 LED 装在一个数组里循环跑：</p>
 <pre><code class="language-c">struct led_base *all_leds[3] = {
 	&amp;red_led.base,
 	&amp;blue_led.base,
@@ -195,61 +195,110 @@
 for (int i = 0; i &lt; 3; ++i)
 	led_on(all_leds[i]);
 </code></pre>
-<p>这一行 <code>led_on(all_leds[i])</code> 跑的时候，应用层根本不知道 <code>all_leds[i]</code> 背后是 <code>struct led_gpio</code> 还是 <code>struct led_pwm</code> 还是 <code>struct led_i2c</code>。但是每颗灯都会按自己的 ops 表跑对的实现。</p>
+<p>这一行 <code>led_on(all_leds[i])</code> 跑的时候。</p>
 <p>红灯走 <code>gpio_on</code>：拉引脚。
 蓝灯走 <code>pwm_on</code>：按 duty 配 PWM。
 绿灯走 <code>gpio_on</code>：拉引脚。</p>
-<p>同一行代码 <code>led_on(...)</code>，跑出三种不同行为。这就是<strong>多态</strong>。</p>
+<p>同一行代码 <code>led_on(...)</code>，跑出三种不同行为。它怎么知道该调哪个？</p>
+<p>总不能写 if 判断吧。“如果是 GPIO 就调这个，如果是 PWM 就调那个”。那加第三种 LED 又要改 if。你写的 if-else 比 LED 还多，确定是在写驱动还是做选择题。</p>
 <p><img src="../assets/ch11/slide1_问题展示.png" alt="问题展示"></p>
-<h2 id="112-dispatch-调用链"><a class="header" href="#112-dispatch-调用链">11.2 dispatch 调用链</a></h2>
-<p><code>led_on(struct led_base *me)</code> 函数体只有一行：</p>
-<pre><code class="language-c">int led_on(struct led_base *me)
+<h2 id="112-答案在-ops-表里"><a class="header" href="#112-答案在-ops-表里">11.2 答案在 ops 表里</a></h2>
+<p>别急。答案你已经埋好了。</p>
+<p>第 10 章每种 LED 在 init 的时候，填了一张 ops 表：</p>
+<pre><code class="language-c">static const struct led_ops led_ops_gpio = {
+	.on     = gpio_on,
+	.off    = gpio_off,
+	.toggle = gpio_toggle,
+};
+
+int led_gpio_init(struct led_gpio *me, const char *name, uint8_t pin)
 {
-	if (!me)
-		return -1;
-	assert(me-&gt;ops &amp;&amp; me-&gt;ops-&gt;on &amp;&amp;
-	       "led_on: subclass must implement on()");
-	return me-&gt;ops-&gt;on(me);
+	led_base_init(&amp;me-&gt;base, name, &amp;led_ops_gpio);
+	/* ... */
 }
 </code></pre>
-<p><code>on / off / toggle</code> 是 LED 的核心能力，子类必须实现。调试构建里 assert 抓到忘实现的子类，立即 abort + 给行号；Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。第 14 章会专门展开必填和选填的边界。</p>
-<p><code>me-&gt;ops-&gt;on(me)</code> 这一行 ARM Cortex-M4 编译出来：</p>
-<pre><code>LDR  r3, [r0, #0]    ; r3 = me-&gt;ops              (3 cycle)
-LDR  r3, [r3, #0]    ; r3 = me-&gt;ops-&gt;on          (3 cycle)
-BX   r3              ; 跳到 on, 不返回 (tail call)
-                     ; r0 已经是 me, 不需要 mov
+<pre><code class="language-c">static const struct led_ops led_ops_pwm = {
+	.on     = pwm_on,
+	.off    = pwm_off,
+	.toggle = pwm_toggle,
+};
+
+int led_pwm_init(struct led_pwm *me, const char *name,
+                 uint8_t channel, uint8_t duty)
+{
+	led_base_init(&amp;me-&gt;base, name, &amp;led_ops_pwm);
+	/* ... */
+}
 </code></pre>
-<p><strong>两次跳转</strong>。</p>
-<p>第一跳：从 <code>me</code> 这个地址 load 出 <code>me-&gt;ops</code>（base 第一个字段是 ops，offset 0）。
-第二跳：从 <code>ops</code> 这个地址 load 出 <code>ops-&gt;on</code>（ops 表第一个字段是 on，offset 0）。
-然后跳过去执行。</p>
-<p>红灯：<code>me-&gt;ops</code> = <code>&amp;led_ops_gpio</code>，<code>me-&gt;ops-&gt;on</code> = <code>gpio_on</code>。跳到 <code>gpio_on</code>。
-蓝灯：<code>me-&gt;ops</code> = <code>&amp;led_ops_pwm</code>，<code>me-&gt;ops-&gt;on</code> = <code>pwm_on</code>。跳到 <code>pwm_on</code>。</p>
-<p>同一行代码 <code>me-&gt;ops-&gt;on(me)</code>，因为 <code>me</code> 不同，两跳之后落在不同的函数。这就是 dispatch。</p>
-<p>C++ 虚函数调用编译器生成的 ARM 汇编几乎一字不差。Stroustrup 把这两个 LDR 称为“virtual function 的两次访存“，这是 OOP 的固定开销。在主流嵌入式平台上一次 vcall 约 56ns @ 168MHz，可以忽略。</p>
+<p>GPIO 的 init，ops 里的 on 指向 <code>gpio_on</code>，off 指向 <code>gpio_off</code>。
+PWM 的 init，ops 里的 on 指向 <code>pwm_on</code>，off 指向 <code>pwm_off</code>。</p>
+<p>两种 LED，同样的 ops 结构，不同的函数指针。每种 LED 自带一张说明书，告诉你它的 on 怎么做。</p>
+<p><img src="../assets/ch11/slide2_ops表回顾.png" alt="ops 表回顾"></p>
+<h2 id="113-dispatch-调用链"><a class="header" href="#113-dispatch-调用链">11.3 dispatch 调用链</a></h2>
+<p>应用层调 <code>led_on(&amp;gpio_led.base)</code>，进到 <code>led_on</code> 函数里面，函数体的核心就一行：</p>
+<pre><code class="language-c">me-&gt;ops-&gt;on(me);
+</code></pre>
+<p>这一行就是两次跳转。</p>
+<p>第一跳：跟着 <code>me</code> 找到 <code>me-&gt;ops</code>。base 第一个字段是 ops，offset 0。
+第二跳：跟着 <code>ops</code> 找到 <code>ops-&gt;on</code>。ops 表第一个字段是 on，offset 0。</p>
+<p>然后跳过去执行，传入 <code>me</code>。</p>
+<p>来看 GPIO：<code>me-&gt;ops</code> 指向 <code>led_ops_gpio</code>，表里的 <code>on</code> 指向 <code>gpio_on</code>。两跳之后，<code>gpio_on(me)</code> 被调了。<code>gpio_on</code> 收到的是 base 指针，里面要拿 pin 字段，怎么拿？后面讲。</p>
+<p>再看 PWM：同样两跳。<code>me-&gt;ops</code> 指向 <code>led_ops_pwm</code>，表里的 <code>on</code> 指向 <code>pwm_on</code>。两跳之后，<code>pwm_on(me)</code> 被调了。</p>
+<p>同一行代码 <code>me-&gt;ops-&gt;on(me)</code>，因为 <code>me</code> 不同，两跳之后落在不同的函数。</p>
+<p>调用者不关心你是哪种 LED，能亮就行。</p>
 <p><img src="../assets/ch11/slide3_dispatch调用链.png" alt="dispatch 调用链"></p>
-<h2 id="113-led_on-这个函数写在哪"><a class="header" href="#113-led_on-这个函数写在哪">11.3 led_on 这个函数写在哪</a></h2>
-<p><code>led_on</code> 不是 <code>gpio_on</code>、不是 <code>pwm_on</code>。它是一个统一的对外接口，函数体只做“通过 ops 表 dispatch 到具体实现“这一件事。</p>
-<p>写在哪？写在 <code>led_base.c</code>（或者本书简化把它写在 <code>led.c</code>）。这是<strong>基类层</strong>的函数。所有 base 子类共享。</p>
-<p>为什么不写在子类？因为这件事对所有子类一样：通过 ops 找 on 函数、调它。子类自己不知道也不需要知道这件事。</p>
-<p>C++ 里这步 dispatch 是编译器自动生成的。<code>obj.on()</code> 编译器看到对象有 vptr，自动展成 <code>obj.vptr-&gt;on(&amp;obj)</code>。你不用写。</p>
-<p>C 里你手写 <code>led_on</code>：一行的胶水函数，通过 ops 表 dispatch。这一行胶水写一次，所有子类共用。</p>
+<h2 id="114-led_on-写在哪"><a class="header" href="#114-led_on-写在哪">11.4 led_on 写在哪</a></h2>
+<p>来给它一个正式的名字。</p>
+<p>写一个函数 <code>led_on</code>。写在哪？写在 <code>led_base.c</code>，父类的文件里。参数就一个：<code>struct led_base *</code>。函数体的核心就一行：通过 <code>me</code> 找到 ops，调 <code>on</code>。</p>
+<pre><code class="language-c">/* led_base.c */
+
+int led_on(struct led_base *me)
+{
+	return me-&gt;ops-&gt;on(me);
+}
+
+int led_off(struct led_base *me)
+{
+	return me-&gt;ops-&gt;off(me);
+}
+</code></pre>
+<p>为什么写在父类里？因为开灯是所有 LED 都具备的能力，不管你是 GPIO 灯、PWM 灯还是 I2C 灯，都得能开。所有 LED 共有的能力，就在父类统一实现。<code>led_off</code> 也一样。父类定义接口，子类各自实现。</p>
+<p>来看效果：</p>
+<pre><code class="language-c">led_on(&amp;gpio_led.base);    /* 走 gpio_on，拉引脚 */
+led_on(&amp;pwm_led.base);     /* 走 pwm_on，改占空比 */
+led_on(&amp;i2c_led.base);     /* 走 i2c_on，发命令 */
+</code></pre>
+<p>同一个函数名 <code>led_on</code>，传不同的 LED，不同的行为。这就是这一章标题说的事。</p>
+<p>应用层呢？不用再调 <code>gpio_on / pwm_on / i2c_on</code>，只调 <code>led_on</code> 一个函数。底下是 GPIO 还是 PWM，<code>led_on</code> 自己分发。</p>
+<p>C++ 里这一步 dispatch 是编译器自动生成的。你写 <code>obj.on()</code>，编译器看到对象有 vptr，自动展成 <code>obj.vptr-&gt;on(&amp;obj)</code>。你不用写。C 里你手写 <code>led_on</code>：一行胶水函数，写一次，所有子类共用。</p>
 <p><img src="../assets/ch11/slide4_led_on统一接口.png" alt="led_on 统一接口"></p>
-<h2 id="114-这个东西叫什么"><a class="header" href="#114-这个东西叫什么">11.4 这个东西叫什么</a></h2>
-<p>同一个函数名（<code>led_on</code>），传不同的对象进去（红灯、蓝灯、绿灯），跑出不同的行为。</p>
-<p>软件工程里有个名字。它叫<strong>多态</strong>（polymorphism）。希腊语词根：poly-（多）+ morph（形态）。同一个调用，多种形态。</p>
-<p>OOP 三大特性到这一章你全部解锁：</p>
-<ul>
-<li><strong>封装</strong>（ch01-ch05）：把数据和操作打包，外面看不见内部</li>
-<li><strong>继承</strong>（ch06）：把公共部分提到 base 里，子类共享</li>
-<li><strong>多态</strong>（ch07-ch11）：同一个接口，不同的实现，运行时 dispatch</li>
-</ul>
-<p>封装是藏细节，继承是共享不变，多态是各自精彩。</p>
-<p>C++ 里这一整套写法：</p>
+<h2 id="115-同一个接口不同的行为"><a class="header" href="#115-同一个接口不同的行为">11.5 同一个接口·不同的行为</a></h2>
+<p>加第 100 种 LED 怎么办？写一张新 ops 表，写一个新 init。<code>led_on</code> 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。所有应用层代码（包括循环 dispatch 那段）一行不改。</p>
+<p>软件工程里把这件事叫开闭原则：对扩展开放，对修改关闭。加新功能不要改老代码。这是面向对象设计很重要的一条工程纪律。</p>
+<p>生物学上一个有意思的现象：会飞的动物里，鸟、蝙蝠、飞鱼是三个完全不同的演化分支。鸟拍翅膀，蝙蝠振膜翼，飞鱼滑翔。三者都解决了“飞“这个问题，但实现完全不同。</p>
+<p>天空不关心你怎么飞，只看你能不能离地。<code>led_on</code> 不关心你是 GPIO 还是 PWM，只看你能不能亮。</p>
+<p>调用方对实现的不关心，是这一整套机制的根。</p>
+<p><img src="../assets/ch11/slide5_趋同进化.png" alt="鸟蝙蝠飞鱼"></p>
+<h2 id="116-这个东西叫什么"><a class="header" href="#116-这个东西叫什么">11.6 这个东西叫什么</a></h2>
+<p>到这里，OOP 三大特性你全部解锁。</p>
+<p>封装是藏细节。把数据和操作关在一起，外面看不见里面怎么做的。
+继承是共享不变。把公共部分提出来，写一次，所有人共享。
+多态是各自精彩。同一个接口，不同的实现，各做各的。</p>
+<p><strong>封装是藏细节，继承是共享不变，多态是各自精彩。</strong></p>
+<p>再说一遍本质：多态的本质是信任。调用者信任被调用者会做对的事。<code>led_on(me)</code> 调用时不知道也不需要知道是哪种 LED，它信任 <code>me-&gt;ops-&gt;on</code> 指向的函数会把这颗灯点亮。</p>
+<p><img src="../assets/ch11/slide6_三连金句.png" alt="三连金句"></p>
+<p>回头看从第 9 章一路过来的三件事：</p>
+<ol>
+<li>第 9 章·<strong>生成函数指针表</strong>。<code>struct led_ops</code> 是这张表，<code>led_ops_gpio / led_ops_pwm</code> 是两份具体实例。</li>
+<li>第 10 章·<strong>在对象里加指针</strong>。<code>struct led_base</code> 第一个字段加 <code>ops</code>，每个对象自带一张表。</li>
+<li>这一章·<strong>调用时查表找函数</strong>。<code>me-&gt;ops-&gt;on(me)</code> 两次跳转走到对的实现。</li>
+</ol>
+<p>C++ 编译器自动做的，你一步步亲手做了一遍。</p>
+<p>C++ 管这整套机制叫<strong>虚函数</strong>（virtual function）。原理一模一样：</p>
 <pre><code class="language-cpp">class led_base {
 public:
-	virtual int on() = 0;       /* 纯虚函数, 子类必须实现 */
-	virtual int off() = 0;
+	virtual int on() { ... }
+	virtual int off() { ... }
 };
 
 class led_gpio : public led_base {
@@ -258,235 +307,90 @@ public:
 	int off() override { ... }
 };
 
-class led_pwm : public led_base {
-public:
-	int on() override { ... }
-	int off() override { ... }
-};
-
-led_base *all_leds[3] = { new led_gpio, new led_pwm, new led_gpio };
+led_base *all_leds[3] = { /* ... */ };
 for (auto led : all_leds)
 	led-&gt;on();    /* 自动 dispatch */
 </code></pre>
-<p>C++ 编译器看到 virtual 后自动做：</p>
+<p>C++ 编译器看到 <code>virtual</code> 后自动做：</p>
 <ol>
 <li>给 <code>class led_gpio</code> 生成一张 vtable（你的 <code>led_ops_gpio</code>）</li>
-<li>给每个 <code>led_gpio</code> 对象的最前面塞一个 vptr（你的 <code>me-&gt;ops</code>）</li>
+<li>给每个对象的最前面塞一个 vptr（你的 <code>me-&gt;ops</code>）</li>
 <li>把 <code>led-&gt;on()</code> 编译成 <code>led-&gt;vptr-&gt;on(led)</code>（你的 <code>me-&gt;ops-&gt;on(me)</code>）</li>
 </ol>
-<p>C++ 编译器自动做的事，你 C 里手动做完。两份代码的机器码几乎一字不差。这就是为什么 Bjarne Stroustrup 反复说“C++ 的 OOP 是 zero overhead beyond what you’d write by hand in C“。</p>
-<p>你这本书走到这里，应该被自己说服了：OOP 不是 C++ 的特权。C 里你已经在写。区别只是 C++ 编译器把 vtable / vptr / dispatch 这三件事自动做了，C 里你手写。</p>
+<p>C++ 编译器自动做的事，你 C 里手动做完。两份代码的机器码几乎一字不差。OOP 不是 C++ 的特权。区别只是 C++ 编译器把 vtable / vptr / dispatch 这三件事自动做了，C 里你手写。</p>
 <p><img src="../assets/ch11/slide7_CvsCpp.png" alt="C 对比 C++"></p>
-<h2 id="115-platform-层从函数式重构成-ops-表式"><a class="header" href="#115-platform-层从函数式重构成-ops-表式">11.5 platform 层从函数式重构成 ops 表式</a></h2>
-<p>回头看 ch01-ch10。所有 platform 操作是 4 个独立函数：</p>
-<pre><code class="language-c">/* common/platform.h - 函数式 (ch01 - ch10) */
-void platform_gpio_init(uint8_t pin, uint8_t mode);
-void platform_gpio_write(uint8_t pin, bool value);
-void platform_gpio_deinit(uint8_t pin);
-bool platform_gpio_read(uint8_t pin);
-</code></pre>
-<p>每章的 STM32 / Linux snippet 都告诉你这是教学简化版。真正工业级 platform 抽象用 ops 表。本章演化出 vptr 之后，就把这个承诺兑现。</p>
-<p>兑现的方式有讲究：<strong>对外</strong>这 4 个函数签名一字不动，<strong>对内</strong>从直接实现演化成 ops dispatch。驱动层、应用层永远只看到这 4 个签名，看不到下面的 ops 表。</p>
-<p>观察这一招在概念上和 ch10 的 <code>struct led_base</code> 一字不差：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>ch10 设备层</th><th>ch11 平台层</th></tr>
-</thead>
-<tbody>
-<tr><td><code>struct led_base { const struct led_ops *ops; ... }</code></td><td><code>struct platform_ops { ... }</code> 多份具体实例（PC / STM32 / Linux）</td></tr>
-<tr><td>子类 init 时把 <code>&amp;led_ops_xxx</code> 填进 base</td><td>启动期 <code>platform_select(&amp;platform_xxx)</code> 切换 platform 层内部当前指针</td></tr>
-<tr><td>基类层 <code>led_on</code> 内部 <code>me-&gt;ops-&gt;on(me)</code></td><td>封装函数 <code>platform_gpio_write</code> 内部 <code>g_platform_ops-&gt;gpio_write(...)</code></td></tr>
-<tr><td>加新 LED 类型不改 led_on / led_off</td><td>加新平台不改 platform_gpio_write / 任何 driver 代码</td></tr>
-</tbody>
-</table>
-</div>
-<p>这就是面向对象的“递归“应用：同一个 ops 表机制，先用在设备层（每颗 LED 自带 ops），再用在平台层（platform 层内部维护一个 ops 指针）。两层独立演化，机制完全一致。</p>
-<p>新接口（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/pc/platform_ops.h"><code>oop-in-c/code/11-polymorphism/pc/platform_ops.h</code></a>）：</p>
-<pre><code class="language-c">/* 11-polymorphism/pc/platform_ops.h - platform 层内部细节 */
-struct platform_ops {
-	const char *name;
-	void (*gpio_init)(uint8_t pin, uint8_t mode);
-	void (*gpio_deinit)(uint8_t pin);
-	void (*gpio_write)(uint8_t pin, bool value);
-	bool (*gpio_read)(uint8_t pin);
-};
-
-/* 多份具体实例（在各自实现文件里定义） */
-extern const struct platform_ops platform_pc;
-
-/* 切换 platform 层内部当前 ops 指针 */
-void platform_select(const struct platform_ops *p);
-</code></pre>
-<p><code>platform_ops.h</code> 不放在 <code>common/</code> 目录，是 platform 层内部头文件。驱动层、应用层只 include <code>common/platform.h</code>（封装函数声明），永远看不到这张 ops 表。</p>
-<p>PC 模拟版的 ops 表（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/pc/platform_ops_pc.c"><code>oop-in-c/code/11-polymorphism/pc/platform_ops_pc.c</code></a>）：</p>
-<pre><code class="language-c">static void pc_gpio_init(uint8_t pin, uint8_t mode)  { ... }
-static void pc_gpio_write(uint8_t pin, bool value)   { ... }
-static bool pc_gpio_read(uint8_t pin)                { ... }
-static void pc_gpio_deinit(uint8_t pin)              { ... }
-
-const struct platform_ops platform_pc = {
-	.name        = "PC",
-	.gpio_init   = pc_gpio_init,
-	.gpio_deinit = pc_gpio_deinit,
-	.gpio_write  = pc_gpio_write,
-	.gpio_read   = pc_gpio_read,
-};
-</code></pre>
-<p>封装函数 + 内部 dispatch（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/pc/platform_dispatch.c"><code>oop-in-c/code/11-polymorphism/pc/platform_dispatch.c</code></a>）：</p>
-<pre><code class="language-c">/* platform 层内部当前指针, 文件作用域, 外部不可见 */
-static const struct platform_ops *g_platform_ops = &amp;platform_pc;
-
-void platform_select(const struct platform_ops *p)
-{
-	if (p)
-		g_platform_ops = p;
-}
-
-/* 封装函数: 签名跟 ch01 起一字不变, 内部走 ops dispatch */
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	if (g_platform_ops &amp;&amp; g_platform_ops-&gt;gpio_write)
-		g_platform_ops-&gt;gpio_write(pin, value);
-}
-</code></pre>
-<p>驱动层调用方式从 ch01 起一字不变：</p>
-<pre><code class="language-c">platform_gpio_write(pin, true);    /* ch01 函数式 */
-platform_gpio_write(pin, true);    /* ch11 内部走 ops dispatch */
-</code></pre>
-<p>变化的只是 platform 层内部：上面这一行函数调用，从直接执行 GPIO 操作，变成“先 LDR 一次拿到 <code>g_platform_ops</code>，再 LDR 一次拿到 <code>ops-&gt;gpio_write</code>，最后跳过去执行“。驱动层一字不知。</p>
-<p>ch01 1.10 节工业代码里的 <code>led_base + led_ops</code> 形态，和这里的 <code>platform_ops</code> 是同一种东西。整本书的 platform 层从这一章起，与工业代码完全对齐。</p>
-<h3 id="1151-为什么-platform-层要-ops-化"><a class="header" href="#1151-为什么-platform-层要-ops-化">11.5.1 为什么 platform 层要 ops 化</a></h3>
-<p>函数式 platform 抽象（ch01-ch10）有几个问题：</p>
-<ol>
-<li><strong>编译期决定平台</strong>：<code>platform_gpio_write</code> 在哪个 <code>.c</code> 实现，编译期就定了。同一份 firmware 跑不了两个不同硬件 revision</li>
-<li><strong>不能 mock</strong>：单元测试时想替换 platform 层为 mock 实现，函数式没法换（除非链接期 stub）</li>
-<li><strong>不能 runtime 切</strong>：一个进程里同时模拟多种 platform（教学场景）做不到</li>
-</ol>
-<p>封装函数 + 内部 ops 表式解决全部三个：</p>
-<ol>
-<li><code>platform_select(&amp;platform_xxx)</code> 启动期挑表</li>
-<li>mock 时填一张测试用的 ops 表，<code>platform_select(&amp;platform_mock)</code></li>
-<li>一个进程里持有多张 ops 表，按场景切换</li>
-</ol>
-<h3 id="1152-这件事的代价"><a class="header" href="#1152-这件事的代价">11.5.2 这件事的代价</a></h3>
-<p>封装函数 <code>platform_gpio_write</code> 的实现，从直接 <code>BL</code> 一条到底，变成函数体内多两次 LDR。在 ARM Cortex-M4 @ 168MHz、<code>-O2</code> 下大概多 28ns。</p>
-<p>驱动层调用方式没变，每次 <code>platform_gpio_write(pin, true);</code> 还是一条 <code>BL platform_gpio_write</code>。多出来的两次 LDR 在 platform 层内部消化。</p>
-<p>主流嵌入式驱动调用频率（每秒几十到几千次 GPIO 操作）远低于这个开销，完全可以忽略。极端高频场景（PWM 微秒级更新）应该走专用接口，不上 ops 表。</p>
-<h3 id="1153-ch12-ch18-沿用"><a class="header" href="#1153-ch12-ch18-沿用">11.5.3 ch12-ch18 沿用</a></h3>
-<p>第 12 章起，所有代码都用这种“对外封装、对内 ops“的 platform 抽象。驱动层调用形态从 ch01 起一字不变，platform 层内部走 ops dispatch。</p>
-<p>第 15 章是 platform 层 ops 化的高潮章，会演示同一份 firmware 同时持有 PC / STM32 / Linux 三套 platform_ops 实例，runtime 通过 <code>platform_select(&amp;platform_xxx)</code> 在三种 platform 之间切换，应用层、驱动层一字不改。</p>
-<h2 id="116-视频里没讲透的几个细节"><a class="header" href="#116-视频里没讲透的几个细节">11.6 视频里没讲透的几个细节</a></h2>
-<h3 id="1161-led_on-为什么不内联到-me-ops-onme"><a class="header" href="#1161-led_on-为什么不内联到-me-ops-onme">11.6.1 led_on 为什么不内联到 me-&gt;ops-&gt;on(me)</a></h3>
-<p>应用层完全可以写：</p>
+<h2 id="117-视频里没讲透的几个细节"><a class="header" href="#117-视频里没讲透的几个细节">11.7 视频里没讲透的几个细节</a></h2>
+<h3 id="1171-led_on-为什么不内联到-me-ops-onme"><a class="header" href="#1171-led_on-为什么不内联到-me-ops-onme">11.7.1 led_on 为什么不内联到 me-&gt;ops-&gt;on(me)</a></h3>
+<p>应用层完全可以直接写：</p>
 <pre><code class="language-c">me-&gt;ops-&gt;on(me);    /* 不通过 led_on 这层胶水, 直接 dispatch */
 </code></pre>
 <p>为什么还要套一层 <code>led_on(me)</code>？两个理由：</p>
 <ol>
-<li><strong>统一 NULL check</strong>：<code>me-&gt;ops</code>、<code>me-&gt;ops-&gt;on</code> 任意一个 NULL 都崩。胶水函数集中检查</li>
+<li><strong>统一空指针检查</strong>：<code>me</code>、<code>me-&gt;ops</code>、<code>me-&gt;ops-&gt;on</code> 任意一个为 NULL 都会崩。胶水函数集中检查</li>
 <li><strong>API 稳定</strong>：哪天 dispatch 机制改了（比如加日志、加 hook、上 trace），改一个 <code>led_on</code> 函数，所有调用方不用动</li>
 </ol>
-<p>工业代码的硬规则：<strong>不直接走 ops 表，所有 dispatch 走基类层包装的统一函数</strong>。<code>led_on / led_off / led_set_brightness</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
-<h3 id="1162-ops-字段的必填和选填"><a class="header" href="#1162-ops-字段的必填和选填">11.6.2 ops 字段的必填和选填</a></h3>
-<p>ops 表里有些字段是必填（每个子类都得实现），有些字段是选填（这种 LED 不支持就不填）。</p>
-<p>本章 <code>on / off / toggle</code> 三件套都是 LED 的核心能力，一颗灯不能开、不能关、不能翻转，就不算灯。所以本章代码统一用 assert 抓忘实现的子类，调试构建立即 abort 给行号，Release 构建定义 NDEBUG 后 assert 整行消失，零运行时开销。</p>
-<p>到第 12 章会引入 <code>set_brightness</code>，那个就属于选填，GPIO 灯硬件上没有调光能力，子类就别实现，父类的统一接口走默认行为兜底。这是另一种处理。</p>
-<p>第 14 章会专门展开必填 vs 选填的判断标准、三种处理策略（assert 报错、空 stub、默认行为）的取舍、对应到 C++ 里的纯虚函数和虚函数。本章先把“核心能力子类必须实现，调试期 assert 抓忘填“这条记下来。</p>
-<h3 id="1163-多态的开闭原则"><a class="header" href="#1163-多态的开闭原则">11.6.3 多态的开闭原则</a></h3>
+<p>工业代码的硬规则：不直接走 ops 表，所有 dispatch 走基类层包装的统一函数。<code>led_on / led_off / led_toggle</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
+<p>打开 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/pc/led_base.c"><code>oop-in-c/code/11-polymorphism/pc/led_base.c</code></a> 看 <code>led_on</code> 实际函数体：</p>
+<pre><code class="language-c">int led_on(struct led_base *me)
+{
+	if (!me || !me-&gt;ops || !me-&gt;ops-&gt;on)
+		return -1;
+	return me-&gt;ops-&gt;on(me);
+}
+</code></pre>
+<p>NULL 防御一句话挡住三个潜在 NULL 来源（<code>me</code> / <code>me-&gt;ops</code> / <code>me-&gt;ops-&gt;on</code>），任何一个 NULL 就退出，不进 dispatch。胶水函数的好处就在这：所有调用方只看到 <code>led_on</code> 这一个 API，NULL check 集中在这一处。</p>
+<p>这一章 <code>led_on</code> 是简化版，只做 NULL 防御 + dispatch 两件事。后面章节会引入“必填 / 选填“策略和 <code>assert</code> 抓忘填的子类，那是给函数表加一份契约，本章主题是“同名函数不同行为“，先不展开。</p>
+<h3 id="1172-dispatch-在内存里走的两步"><a class="header" href="#1172-dispatch-在内存里走的两步">11.7.2 dispatch 在内存里走的两步</a></h3>
+<p><code>me-&gt;ops-&gt;on(me)</code> 这一行展开就是两次访存加一次跳转。先从 <code>me</code> 这块内存里取出 <code>ops</code> 字段（base 第一个字段，偏移 0），拿到 ops 表的地址；再从 ops 表里取出 <code>on</code> 字段（ops 第一个字段，偏移 0），拿到目标函数地址；最后跳过去执行，参数 <code>me</code> 已经在那。</p>
+<p>红灯：<code>me-&gt;ops</code> 指向 <code>led_ops_gpio</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>gpio_on</code>。落到 <code>gpio_on(me)</code>。
+蓝灯：<code>me-&gt;ops</code> 指向 <code>led_ops_pwm</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>pwm_on</code>。落到 <code>pwm_on(me)</code>。</p>
+<p>同一行代码 <code>me-&gt;ops-&gt;on(me)</code>，因为 <code>me</code> 不同，两跳之后落在不同的函数。这就是 dispatch 在内存里实际发生的事。</p>
+<h3 id="1173-加新-led-不改老代码"><a class="header" href="#1173-加新-led-不改老代码">11.7.3 加新 LED 不改老代码</a></h3>
 <p>加第 100 种 LED 怎么改代码？</p>
 <ol>
-<li>写一个 <code>struct led_ops led_ops_xxx</code>，填 3 个函数</li>
+<li>写一个 <code>const struct led_ops led_ops_xxx</code>，填 3 个函数</li>
 <li>写一个 <code>led_xxx_init</code> 函数，里面调 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_xxx)</code></li>
 <li>完了</li>
 </ol>
-<p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。所有应用层代码（包括循环 dispatch 那段）一行不改。</p>
-<p>软件工程把这件事叫<strong>开闭原则</strong>（Open/Closed Principle）：<strong>对扩展开放，对修改关闭</strong>。加新功能不要改老代码。这是面向对象设计五大原则（SOLID）的 O。</p>
-<p>多态是开闭原则在 C 语言里的具体实现机制。函数指针表 + base + dispatch 这一套就是工程上做“对扩展开放“的标准答案。</p>
-<h3 id="1164-多态调用的开销和限制"><a class="header" href="#1164-多态调用的开销和限制">11.6.4 多态调用的开销和限制</a></h3>
-<p>多态调用比直接调用贵两个 LDR。绝大多数场景里这点开销远低于 GPIO / I2C 操作本身的延迟，可以忽略。</p>
-<p>具体的几组对照（ARM Cortex-M4 @ 168 MHz，<code>-O2</code>）：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>操作</th><th>大致开销</th><th>vs 直接调用</th><th>占比</th></tr>
-</thead>
-<tbody>
-<tr><td>直接函数调用 <code>BL gpio_on_pull_high</code></td><td>约 18 ns（3 cycle）</td><td>baseline</td><td>0%</td></tr>
-<tr><td>间接调用一次 <code>BLX r3</code>（ch07 函数指针变量 / ch08 函数指针参数）</td><td>约 30 ns（5 cycle）</td><td>+12 ns</td><td>67% 慢</td></tr>
-<tr><td>多态调用 <code>me-&gt;ops-&gt;on(me)</code>（两次 LDR + BX）</td><td>约 56 ns（9 cycle）</td><td>+38 ns</td><td>3 倍慢</td></tr>
-<tr><td>一次 GPIO 写 BSRR 寄存器</td><td>约 12 ns（2 cycle，硬件总线时序）</td><td>/</td><td>/</td></tr>
-<tr><td>一次 I2C 字节传输（100 kHz）</td><td>约 90 µs</td><td>/</td><td>/</td></tr>
-<tr><td>一次 SPI 字节传输（10 MHz）</td><td>约 800 ns</td><td>/</td><td>/</td></tr>
-</tbody>
-</table>
-</div>
-<p>注意横向比较：多态调用 56 ns 比 GPIO 写本身（12 ns）慢，但和 I2C / SPI 操作（µs 级）比可以忽略不计。<strong>多态的开销在于“调用 dispatch“，不在于“目标硬件操作“，所以多态适合给 I2C / SPI / 网络这种 µs-ms 级别的硬件做包装，给 GPIO 直接 toggle 这种 ns 级操作做包装就有点贵</strong>。</p>
-<p>但有几个场景要避开 ops 表：</p>
-<ol>
-<li><strong>中断处理函数（ISR）</strong>：执行时间敏感，每个 ns 都要算。中断里直接调最底层 platform 函数，不走 ops 表</li>
-<li><strong>PWM 高频更新</strong>：微秒级时序，ops 表的两次 LDR 可能影响 jitter。直接调</li>
-<li><strong>超低功耗 MCU</strong>：M0 + 16KB RAM 跑几百对象，ops 表的 RAM 开销（每对象多一个 vptr）可能省下来比较关键</li>
-<li><strong>极致性能的 hot loop</strong>：内层每秒跑几百万次的循环，多态会让循环体多 7 个周期 × 百万 = 几百毫秒每秒。这种地方应该把 dispatch 提到循环外，循环里直接调</li>
-</ol>
-<p>这是工程权衡，不是 OOP 错。Linus 在内核里大量用 ops 表，但中断 fast path 一定不走（中断里 <code>irq_enter() / irq_exit()</code> 是直接函数调用，整个 <code>gpio_chip</code> 的 ops 表只在慢路径用）。</p>
-<h3 id="1165-多态和继承的关系"><a class="header" href="#1165-多态和继承的关系">11.6.5 多态和继承的关系</a></h3>
-<p>多态依赖继承，但不是所有继承都是多态。</p>
-<p>继承（ch06）只是数据 / 行为共享。<code>struct led_base { name, is_on }</code> 没有 ops 字段，子类就只能继承数据，不能多态。</p>
-<p>多态需要 vptr（ops 字段）+ vtable（ops 表）+ dispatch（基类层包装函数）三件套。本章把三件齐了。</p>
-<h3 id="1166-鸟蝙蝠飞鱼的故事"><a class="header" href="#1166-鸟蝙蝠飞鱼的故事">11.6.6 鸟、蝙蝠、飞鱼的故事</a></h3>
-<p>生物学上一个有意思的现象：会飞的动物里，鸟、蝙蝠、飞鱼是三个完全不同的演化分支。鸟拍翅膀，蝙蝠振膜翼，飞鱼滑翔。三者都解决了“飞“这个问题，但实现完全不同。</p>
-<p>这就是多态最朴素的视觉化：飞行是一个接口（能在空中移动），三种实现各有各的 ops 表。</p>
-<p>天空不关心你怎么飞，只看你能不能离地。<code>led_on</code> 不关心你是 GPIO 还是 PWM，只看你能不能亮。</p>
-<p>调用方对实现的不关心，是 OOP 的根。</p>
-<p><img src="../assets/ch11/slide5_趋同进化.png" alt="鸟蝙蝠飞鱼"></p>
-<h2 id="117-你现在的代码在-stm32-上长什么样"><a class="header" href="#117-你现在的代码在-stm32-上长什么样">11.7 你现在的代码在 STM32 上长什么样</a></h2>
-<p>STM32 端的 platform_ops 实例（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/stm32-snippet/platform_ops_stm32.c"><code>oop-in-c/code/11-polymorphism/stm32-snippet/platform_ops_stm32.c</code></a>）：</p>
-<pre><code class="language-c">static void stm32_gpio_init(uint8_t pin, uint8_t mode)  { ...HAL_GPIO_Init... }
-static void stm32_gpio_write(uint8_t pin, bool value)   { ...HAL_GPIO_WritePin... }
-static bool stm32_gpio_read(uint8_t pin)                { ...HAL_GPIO_ReadPin... }
-static void stm32_gpio_deinit(uint8_t pin)              { ...HAL_GPIO_DeInit... }
-
-const struct platform_ops platform_stm32 = {
-	.name        = "STM32",
-	.gpio_init   = stm32_gpio_init,
-	.gpio_deinit = stm32_gpio_deinit,
-	.gpio_write  = stm32_gpio_write,
-	.gpio_read   = stm32_gpio_read,
-};
+<p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。所有应用层代码一行不改。</p>
+<p>这就是函数指针表 + base + dispatch 这一套在工程上的好处：加新功能不动老代码，老代码不会被加新东西改坏。</p>
+<h3 id="1174-配套代码-ops-字段说明"><a class="header" href="#1174-配套代码-ops-字段说明">11.7.4 配套代码 ops 字段说明</a></h3>
+<p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>
+<p>三个字段还是两个字段，dispatch 机制完全一样：通过 <code>me-&gt;ops</code> 找到表，按名字调到对的实现。</p>
+<h2 id="118-你现在的代码在-stm32-上长什么样"><a class="header" href="#118-你现在的代码在-stm32-上长什么样">11.8 你现在的代码在 STM32 上长什么样</a></h2>
+<p>STM32 端 <code>led_base.h / led_base.c / led.h / led.c / main.c</code> 一字不改。<code>platform_gpio_xxx</code> 这一组封装函数还是 ch01 那套：</p>
+<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
+{
+	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
 </code></pre>
-<p>启动时：</p>
+<p>启动 + 调用：</p>
 <pre><code class="language-c">int main(void)
 {
 	HAL_Init();
 	SystemClock_Config();
 	MX_GPIO_Init();
 
-	platform_select(&amp;platform_stm32);    /* 切到 STM32 ops 表 */
-
 	struct led_gpio red_led;
 	led_gpio_init(&amp;red_led, "red", 13);
 	led_on(&amp;red_led.base);
-	...
+	/* ... */
 }
 </code></pre>
-<p><code>led.h / led.c / led_base.h / led_base.c</code> 一字不改。<code>platform_gpio_xxx</code> 这一组封装函数的签名跟 ch01 起一字不变。整本书的代码到这一章已经是工业代码的形态。第 12 章起，platform 层都用这种“对外封装、对内 ops“的形态。</p>
-<h2 id="118-你现在的代码在-linux-用户态长什么样"><a class="header" href="#118-你现在的代码在-linux-用户态长什么样">11.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端的 platform_ops 实例（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/linux-snippet/platform_ops_linux.c"><code>oop-in-c/code/11-polymorphism/linux-snippet/platform_ops_linux.c</code></a>）：</p>
-<pre><code class="language-c">static void linux_gpio_init(uint8_t pin, uint8_t mode)  { ...sysfs export + direction... }
-static void linux_gpio_write(uint8_t pin, bool value)   { ...write /sys/class/gpio/gpioN/value... }
-static bool linux_gpio_read(uint8_t pin)                { ...read /sys/class/gpio/gpioN/value... }
-static void linux_gpio_deinit(uint8_t pin)              { ...sysfs unexport... }
-
-const struct platform_ops platform_linux = {
-	.name        = "LINUX",
-	.gpio_init   = linux_gpio_init,
-	.gpio_deinit = linux_gpio_deinit,
-	.gpio_write  = linux_gpio_write,
-	.gpio_read   = linux_gpio_read,
-};
+<p>这一节 platform 层用的是函数式包装的教学简化版（几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>），和 ch01 起一字不变。真正工业级的 platform 抽象用 ops 表的形式做成可切换。这件事第 16 章会专门展开。</p>
+<h2 id="119-你现在的代码在-linux-用户态长什么样"><a class="header" href="#119-你现在的代码在-linux-用户态长什么样">11.9 你现在的代码在 Linux 用户态长什么样</a></h2>
+<p>Linux 端 sysfs 实现一字不改：</p>
+<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
+{
+	int fd = open("/sys/class/gpio/gpioN/value", O_WRONLY);
+	write(fd, value ? "1" : "0", 1);
+	close(fd);
+}
 </code></pre>
-<p>启动时 <code>platform_select(&amp;platform_linux);</code>，之后所有 LED / Motor / EEPROM 通过 platform 层封装函数 dispatch 到 sysfs 实现。驱动层调用形态跟 ch01 一字不变。</p>
-<h2 id="119-工业代码里的多态"><a class="header" href="#119-工业代码里的多态">11.9 工业代码里的多态</a></h2>
+<p>启动时跑一段 sysfs export，把要用的 GPIO 编号 export 出来；之后所有 LED 通过 <code>platform_gpio_xxx</code> 封装函数走到 sysfs。<code>led_base / led / main.c</code> 一字不改。</p>
+<p>同 11.8 节，platform 层用的是函数式包装的教学简化版。第 16 章会演化成 ops 表的可切换形态，让一份 firmware 同时持有 PC / STM32 / Linux 三套 platform 实例运行时切换。</p>
+<h2 id="1110-工业代码里的多态"><a class="header" href="#1110-工业代码里的多态">11.10 工业代码里的多态</a></h2>
 <p>工业控制板项目里的 LED 驱动到这一章已经和书里你写的几乎一模一样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;
@@ -509,24 +413,22 @@ extern struct led_base *green_led;
 extern struct led_base *red_led;
 extern struct led_base *led_array[];
 </code></pre>
-<p>应用层代码：</p>
+<p>应用层的代码长这样：</p>
 <pre><code class="language-c">for (int i = 0; led_array[i] != NULL; ++i)
 	led_off(led_array[i]);
 </code></pre>
-<p>不管 led_array 里挂了多少种 LED（GPIO 灯、PWM 灯、I2C 灯、SPI 矩阵），这个循环一次性把它们全关掉。<code>led_array[i]</code> 是 <code>struct led_base *</code>，应用层完全不关心你是什么子类。</p>
-<p>这就是 Linux 内核 / Zephyr / GObject / 你这一章手写的代码同一种 dispatch 机制。<strong>面向对象不是 C++ 的特权，是工业代码的世界标准做法</strong>。</p>
-<h2 id="1110-跑一遍"><a class="header" href="#1110-跑一遍">11.10 跑一遍</a></h2>
+<p>不管 <code>led_array</code> 里挂了多少种 LED（GPIO 灯、PWM 灯、I2C 灯、SPI 矩阵），这个循环一次性把它们全关掉。<code>led_array[i]</code> 是 <code>struct led_base *</code>，应用层完全不关心你是什么子类。</p>
+<p>这就是 Linux 内核 / Zephyr / GObject / 你这一章手写的代码同一种 dispatch 机制。OOP 不是 C++ 的特权，是工业代码里很普遍的做法。</p>
+<h2 id="1111-跑一遍"><a class="header" href="#1111-跑一遍">11.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/11-polymorphism/pc
 make
 ./demo
 </code></pre>
 <p>输出节选：</p>
 <pre><code>========================================
-  Polymorphism complete picture.
-  Same code, different behavior per LED.
+  led_on / led_off / led_toggle
+  Same call, different behavior per LED.
 ========================================
-
-[platform] selected: PC
 
   [base] "red" common init done, ops=XXXXXXXX
 [GPIO] Pin13 init as OUTPUT
@@ -549,33 +451,18 @@ make
 [GPIO] Pin17 -&gt; HIGH (ON)
   [GPIO] "green" ON
 </code></pre>
-<p>注意 ops 地址：红灯和绿灯都打到 <code>XXXXXXXX</code>（共享 <code>led_ops_gpio</code> 这一张表），蓝灯打到 <code>YYYYYYYY</code>（<code>led_ops_pwm</code>）。具体地址因 build 环境会变，关键是看红灯绿灯共享同一地址，蓝灯不同。同一个循环，三颗 LED 各自 dispatch 到对的实现。</p>
+<p>注意 ops 地址：红灯和绿灯都打到 <code>XXXXXXXX</code>（共享同一张 <code>led_ops_gpio</code> 表），蓝灯打到 <code>YYYYYYYY</code>（<code>led_ops_pwm</code>）。具体地址因 build 环境会变，关键是看红灯绿灯共享同一地址，蓝灯不同。同一个循环，三颗 LED 各自 dispatch 到对的实现。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/"><code>oop-in-c/code/11-polymorphism/</code></a>。</p>
-<h2 id="1111-视频回放"><a class="header" href="#1111-视频回放">11.11 视频回放</a></h2>
+<h2 id="1112-视频回放"><a class="header" href="#1112-视频回放">11.12 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1FzonBiE9M/">《C 语言·多态｜同名函数不同行为·ops dispatch》</a></p>
 </blockquote>
-<p><img src="../assets/ch11/slide6_三连金句.png" alt="三连金句"></p>
 <p>视频里把 OOP 三大特性总结成一行：封装是藏细节、继承是共享不变、多态是各自精彩。</p>
-<p>多态的本质是信任：调用方信任被调用方会做对的事。<code>led_on(me)</code> 调用时不知道也不需要知道是哪种 LED，它信任 <code>me-&gt;ops-&gt;on</code> 指向的函数会把这颗灯点亮。</p>
-<h2 id="1112-教学版-base-到此定型"><a class="header" href="#1112-教学版-base-到此定型">11.12 教学版 base 到此定型</a></h2>
-<p>走到这一章，教学版 <code>struct led_base</code> 的字段集尘埃落定：</p>
-<pre><code class="language-c">struct led_base {
-	const struct led_ops *ops;     /* vptr - 第一个字段 */
-	const char           *name;
-	bool                  is_on;
-};
-</code></pre>
-<p>ch12 起字段不变。变化的是子类（GPIO / PWM / I2C 三种），每种子类都把 <code>struct led_base</code> 嵌在第一个字段，再外加自己的硬件字段（<code>pin</code> / <code>channel</code> / <code>bus + addr</code>）。</p>
-<p>11.9 节工业代码版多了一个 <code>flags</code> 字段（事件状态位、错误掩码）。那是工业项目的扩展，教学版保持精简。本书 ch12 到 ch18 一直用上面这三字段的版本，附录 B / C 的完整工程才把 <code>flags</code> 加回来。</p>
-<p>为什么定型在这里？因为多态需要的三件套（vptr + vtable + dispatch）都齐了。再往后加的（<code>flags</code> 状态位、<code>refcount</code> 引用计数）是工程问题，不是 OOP 概念问题。<strong>OOP 三大特性到这一章你全部解锁，base 字段集到这一章稳定下来</strong>。</p>
+<p>多态的本质是信任。<code>led_on(me)</code> 调用时不知道也不需要知道是哪种 LED，它信任 <code>me-&gt;ops-&gt;on</code> 指向的函数会把这颗灯点亮。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
-<p><code>led_on(&amp;red_led.base)</code> 这一行有个隐藏现象：把 <code>struct led *</code> 当成 <code>struct led_base *</code> 用，是合法的。</p>
-<p>合法的原因是 base 在 led 第一个位置，地址相同。但这件事在 C++ 里有个正式名字叫<strong>向上转型</strong>。下一章把它讲透。</p>
-<p>下一章你会看到，把 ch10/ch11 这里的“一种 led 子类两种 init 风格“模型继续演化，把每种实现独立成自己的子类（<code>struct led_gpio</code> / <code>struct led_pwm</code> / <code>struct led_i2c</code>），三种子类全都把 <code>struct led_base</code> 嵌在第一个字段。应用层只看到 <code>struct led_base *</code> 句柄，配合板级初始化文件 <code>board_init.c</code> 把所有“用哪种 LED“的决定锁进一个文件。这是工业项目里 LED 驱动的最终形态。</p>
-<p>更重要的是，反方向也可能：拿到一个 <code>struct led_base *</code> 怎么找回它的子类？基类层的函数能不能反向访问子类字段？</p>
-<p>这是 Linus Torvalds 1990 年代写 Linux 内核时引入的 <code>container_of</code> 宏的用武之地。第 13 章。</p>
+<p><code>led_on(&amp;red_led.base)</code> 这一行你已经写了好几章。<code>led_on</code> 的参数类型是 <code>struct led_base *</code>，但 <code>gpio_led</code> 明明是 <code>struct led_gpio</code>，凭什么合法？</p>
+<p>你一直在用但没仔细想过的事，把 <code>struct led_gpio *</code> 当成 <code>struct led_base *</code> 用。这件事在 C++ 里有个正式名字。下一章把它讲透，并演示它在应用层带来的真正威力。</p>
 <p>下一篇：<a href="../04-工程威力/12-向上转型.html">第 12 章 · 一个指针指所有 LED · 向上转型</a></p>
 
                     </main>
