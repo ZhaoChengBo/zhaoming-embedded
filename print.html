@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-83035d0f.js";
+            window.path_to_searchindex_js = "searchindex-3f46a04d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1bc8502d.js"></script>
@@ -3490,181 +3490,177 @@ make
 <h1 id="第-9-章--参数长到换行"><a class="header" href="#第-9-章--参数长到换行">第 9 章 · 参数长到换行</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/09-ops-table/"><code>oop-in-c/code/09-ops-table/</code></a></p>
 <h2 id="91-一个真实场景"><a class="header" href="#91-一个真实场景">9.1 一个真实场景</a></h2>
-<p>第 8 章你把 on / off 函数指针当参数传给 <code>test_led</code>。两个参数还行。</p>
-<p>但需求来了：</p>
-<ul>
-<li>测灯不能只测开关，还要测调亮度（<code>set_brightness</code>）</li>
-<li>测灯还要测能不能正确切换（<code>toggle</code>）</li>
-<li>状态查询也要测（<code>get_state</code>）</li>
-</ul>
-<p><code>test_led</code> 的签名变成：</p>
-<pre><code class="language-c">int test_led(struct led_base *me,
-             int (*on)(struct led_base *me),
-             int (*off)(struct led_base *me),
-             int (*toggle)(struct led_base *me),
-             int (*get_state)(struct led_base *me));
+<p>第 8 章你把 <code>on / off</code> 函数指针当参数传给 <code>test_led</code>。两个参数还行。</p>
+<p>但需求来了。一颗 LED 你不光要测开关，还要测翻转、调亮度。<code>test_led</code> 的参数列表跟着膨胀：</p>
+<pre><code class="language-c">void test_led(struct led_base *me,
+              void (*on)(struct led_base *),              /* 1 */
+              void (*off)(struct led_base *),             /* 2 */
+              void (*toggle)(struct led_base *),          /* 3 */
+              void (*set_brightness)(struct led_base *, int)); /* 4 */
 </code></pre>
 <p>4 个函数指针参数。声明换两次行才写得下。调用更长：</p>
 <pre><code class="language-c">test_led(&amp;red_led.base,
          gpio_on_pull_high,
          gpio_off,
          gpio_toggle,
-         gpio_get_state);
+         gpio_set_brightness);
 </code></pre>
-<p>调用一次写五行。</p>
-<p>更要命的：<code>on</code> 和 <code>off</code> 类型一样（都是 <code>int (*)(struct led_base *)</code>）。<code>toggle</code> 也一样。</p>
-<p>如果调用方手抖把 <code>on</code> 和 <code>off</code> 顺序传反了：</p>
+<p>调用一次写五行。读着累、写着累。</p>
+<p>更要命的：<code>on / off / toggle</code> 这几个函数指针的类型一模一样，都是 <code>void (*)(struct led_base *)</code>。如果调用方手抖把 <code>on</code> 和 <code>off</code> 顺序传反了：</p>
 <pre><code class="language-c">test_led(&amp;red_led.base,
          gpio_off,              /* 这里本来该传 on */
          gpio_on_pull_high,     /* 这里本来该传 off */
-         ...);
+         gpio_toggle,
+         gpio_set_brightness);
 </code></pre>
 <p>编译器看不出来。类型对就放行。运行起来，开灯调到了 off 函数，关灯调到了 on 函数。该亮的时候灭，该灭的时候亮。这种 bug 能查一天。</p>
+<p>散装的电话号码摊了一桌子，纸条多了，拿错一张都不知道。</p>
 <p><img src="assets/ch09/slide1_参数列表爆炸.png" alt="参数列表爆炸"></p>
-<h2 id="92-朴素方案靠注释和命名"><a class="header" href="#92-朴素方案靠注释和命名">9.2 朴素方案：靠注释和命名</a></h2>
-<p>最朴素的应对：变量名起严谨点，参数顺序写注释。</p>
-<pre><code class="language-c">test_led(&amp;red_led.base,
-         gpio_on_pull_high,    /* on */
-         gpio_off,             /* off */
-         ...);
+<h2 id="92-typedef-给函数指针起短名字"><a class="header" href="#92-typedef-给函数指针起短名字">9.2 typedef 给函数指针起短名字</a></h2>
+<p>第一步先解决“类型声明又臭又长“这件事。</p>
+<pre><code class="language-c">void (*on)(struct led_base *me);
+void (*off)(struct led_base *me);
+void (*toggle)(struct led_base *me);
+void (*set_brightness)(struct led_base *me, int val);
 </code></pre>
-<p>不可靠。3 个月后改代码漏看注释、IDE 自动补全把顺序排错、code review 时看不出来。bug 一样会犯。</p>
-<p>工程上可靠的解法是让编译器帮你抓错。</p>
-<h2 id="93-把多个函数指针装进一个-struct"><a class="header" href="#93-把多个函数指针装进一个-struct">9.3 把多个函数指针装进一个 struct</a></h2>
-<p>一个观察：<code>on / off / toggle</code> 是一组绑死的东西。它们一起描述了“一种 LED 的所有行为“。GPIO 风格 LED 这一组，PWM 风格 LED 那一组。</p>
-<p>注意 ops 表里只装“<strong>做法不同</strong>“的行为。<code>on</code> 一类函数 GPIO LED 是拉电平，PWM LED 是配占空比，I2C LED 是发命令，同一个动作每种实现都不一样，所以要做成函数指针让运行时绑定。<code>get_name</code>、<code>get_state</code> 这种只是读父类字段的函数不用进 ops 表，沿用 ch06 的 <code>led_get_name(&amp;xxx.base)</code> 直接读 base 数据就行。<strong>做法不同的进 ops 表，读数据的不进</strong>。这个判断准则下一章会反复用到。</p>
-<p>把一组绑死的东西打包，C 里的工具叫 struct。</p>
-<pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
-
-struct led_ops {
-	led_action_fn on;
-	led_action_fn off;
-	led_action_fn toggle;
+<p>每个函数指针的类型字面量都要写一坨 <code>void (*)(struct led_base *)</code>。写一次能看懂，写第三次看着累。</p>
+<p>C 语言里有个工具叫 <code>typedef</code>，给类型起一个别名：</p>
+<pre><code class="language-c">typedef void (*led_on_fn)(struct led_base *me);
+typedef void (*led_off_fn)(struct led_base *me);
+typedef void (*led_action_fn)(struct led_base *me);              /* 通用一元 action */
+typedef void (*led_brightness_fn)(struct led_base *me, int val);
+</code></pre>
+<p>这之后 <code>led_on_fn fp;</code> 等价于 <code>void (*fp)(struct led_base *me);</code>，但读起来短一截。和你早就在用的 <code>typedef unsigned int uint32_t</code> 是同一个语法、同一个用途：给一个长得难读的类型起一个短名字。</p>
+<p><code>typedef</code> 在 ch01 1.7.3 节讲 <code>typedef struct</code> 时提过，Linus 反对的是那种“藏类型信息“的滥用（写 <code>typedef struct foo {} foo_t;</code> 让你看 <code>foo_t</code> 不知道是 struct）。<strong>函数指针 typedef 是少数 Linus 也支持的 typedef 例外</strong>：原始类型字面量太长，起短名是纯收益。Linux 内核的 <code>struct file_operations</code> 字段也是这么 typedef 一遍的。</p>
+<p>注意 <code>typedef</code> 本身不分配存储、不生成代码、不引入新类型，只是给已有类型起别名。编译完字节码里看不出有过 typedef。</p>
+<p><img src="assets/ch09/slide2_typedef简化.png" alt="typedef 给函数指针起短名"></p>
+<h2 id="93-装进盒子struct-led_ops"><a class="header" href="#93-装进盒子struct-led_ops">9.3 装进盒子：struct led_ops</a></h2>
+<p>名字起好了，下一步把这一组函数指针打包进一个 <code>struct</code>。</p>
+<p>观察一件事：<code>on / off / toggle</code> 是一组绑死的东西。它们一起描述了“一种 LED 的所有行为“。GPIO 风格 LED 这一组，PWM 风格 LED 那一组。一组绑死的东西打包，C 里的工具就是 struct：</p>
+<pre><code class="language-c">struct led_ops {
+    led_action_fn on;
+    led_action_fn off;
+    led_action_fn toggle;
 };
 </code></pre>
-<p>这就是<strong>操作表</strong>（ops table）。一个 struct，几个函数指针字段，每个字段一个名字。</p>
+<p>一个 struct，三个函数指针字段，每个字段一个名字。这就是<strong>操作表</strong>（ops table）。</p>
 <p><code>test_led</code> 现在接 ops 指针：</p>
 <pre><code class="language-c">int test_led(struct led_base *me, const struct led_ops *ops)
 {
-	if (!me || !ops || !ops-&gt;on || !ops-&gt;off || !ops-&gt;toggle)
-		return -1;
+    if (!me || !ops || !ops-&gt;on || !ops-&gt;off || !ops-&gt;toggle)
+        return -1;
 
-	ops-&gt;on(me);
-	ops-&gt;toggle(me);
-	ops-&gt;off(me);
-	return 0;
+    ops-&gt;on(me);
+    ops-&gt;toggle(me);
+    ops-&gt;off(me);
+    return 0;
 }
 </code></pre>
-<p>调用方填好一张表传进去：</p>
+<p>调用方填好一张表，传进去：</p>
 <pre><code class="language-c">const struct led_ops led_ops_gpio = {
-	.on     = gpio_on_pull_high,
-	.off    = gpio_off,
-	.toggle = gpio_toggle,
+    .on     = gpio_on_pull_high,
+    .off    = gpio_off,
+    .toggle = gpio_toggle,
 };
 
 test_led(&amp;red_led.base, &amp;led_ops_gpio);
 </code></pre>
-<p>参数列表从 4 个塞到了 1 个。<code>test_led</code> 内部按名字访问：<code>ops-&gt;on</code> 永远是 on，<code>ops-&gt;off</code> 永远是 off，不可能传反。编译器在初始化 <code>led_ops_gpio</code> 时帮你查 <code>.on</code> 这个字段类型对不对（不对就编译报错）。</p>
+<p>参数列表从 5 个塞到了 2 个。<code>test_led</code> 内部按名字访问：<code>ops-&gt;on</code> 永远是 on，<code>ops-&gt;off</code> 永远是 off，不可能传反。编译器在初始化 <code>led_ops_gpio</code> 时帮你查 <code>.on</code> 这个字段类型对不对（不对就编译报错）。</p>
 <p>散装的函数指针装订成一本电话簿。散装号码丢了找不到，电话簿翻开就有，一个不少。</p>
-<p><img src="assets/ch09/slide3_LedOps_struct.png" alt="LedOps struct"></p>
-<h2 id="94-typedef-给函数指针起名字"><a class="header" href="#94-typedef-给函数指针起名字">9.4 typedef 给函数指针起名字</a></h2>
-<p>ops 表里每个字段都是一长串函数指针类型。重复几遍后用 typedef 提一下：</p>
-<pre><code class="language-c">typedef int (*led_action_fn)(struct led_base *me);
-
-struct led_ops {
-	led_action_fn on;
-	led_action_fn off;
-	led_action_fn toggle;
-};
+<p><strong>注意 ops 表里只装“做法不同“的行为</strong>。<code>on / off / toggle / set_brightness</code> 这种每种 LED 实现都不一样的（拉电平 vs 配占空比 vs 写 I2C 命令），才需要做成函数指针让运行时绑定。<code>get_name</code>、<code>get_state</code> 这种只是读父类字段的函数不用进 ops 表，沿用 ch06 引入的 <code>led_get_name(&amp;xxx.base)</code> 直接读 base 数据就行。<strong>做法不同的进 ops 表，读数据的不进</strong>。这个判断准则下一章会反复用到。</p>
+<p>本章为了和后续章节衔接，ops 表只放最核心的三件套 <code>on / off / toggle</code>。<code>set_brightness</code> 留给 9.5.2 节当“选填字段“的例子。</p>
+<p>ops 表通常加 <code>const</code> 修饰：</p>
+<pre><code class="language-c">const struct led_ops led_ops_gpio = { ... };
 </code></pre>
-<p>整洁。</p>
-<p><code>typedef</code> 在 ch01 1.7.3 节讲过：Linus 反对 <code>typedef struct</code>（藏类型信息）。但函数指针 typedef 是少数 Linus 也支持的例外。<code>int (*)(struct led_base *)</code> 这个类型字面量太长，typedef 给它起短名字纯收益。</p>
-<p>Linux 内核里 <code>struct file_operations</code> 也是这个套路，一堆 typedef 函数指针类型组合成一张大表。</p>
-<p><img src="assets/ch09/slide2_typedef简化.png" alt="typedef 简化"></p>
-<h2 id="95-ops-表放哪里"><a class="header" href="#95-ops-表放哪里">9.5 ops 表放哪里</a></h2>
-<p>ops 表本身是一个 struct 实例。放哪？</p>
-<p>工业代码里通常放在常量段（<code>.rodata</code>）：</p>
-<pre><code class="language-c">const struct led_ops led_ops_gpio = {
-	.on  = gpio_on_pull_high,
-	.off = gpio_off,
-	...
-};
-</code></pre>
-<p>加 <code>const</code> 三层意义：</p>
+<p><code>const</code> 三层意义：</p>
 <ol>
-<li><strong>不允许运行时改动</strong> ops 表内容。所有同类型 LED 共享同一张表，改了灾难</li>
-<li><strong>链接时进 .rodata 段</strong>。Flash 上有备份，RAM 不占空间。MCU 上 RAM 是稀缺资源，能进 .rodata 就尽量进</li>
-<li><strong>在 base + ops 演化到第 10 章后</strong>，<code>base-&gt;ops</code> 字段会写成 <code>const struct led_ops *ops</code>，这一层 const 把“我手里这个 ops 表别动“的意图传到字段上</li>
+<li>不允许运行时改动 ops 表内容。所有同类型 LED 共享同一张表，改了灾难</li>
+<li>链接时进 <code>.rodata</code> 段。Flash 上有备份，RAM 不占空间</li>
+<li>下一章 <code>base-&gt;ops</code> 字段也写 <code>const struct led_ops *ops</code>，把“我手里这个 ops 表别动“的意图传到字段上</li>
 </ol>
-<p>实测：一张含 3 个函数指针的 ops 表在 ARM Cortex-M4 上占 12 字节。100 颗 LED 全部用同一张 ops 表，共享 12 字节而不是 1200 字节。</p>
-<p><code>extern</code> 暴露给用户：</p>
+<p><code>extern</code> 暴露给用户，调用方拿 <code>&amp;led_ops_gpio</code> 就是 ops 表的地址：</p>
 <pre><code class="language-c">/* led.h */
 extern const struct led_ops led_ops_gpio;
 extern const struct led_ops led_ops_pwm;
 </code></pre>
-<p>调用方拿到 <code>&amp;led_ops_gpio</code> 就是 ops 表的地址。</p>
-<h2 id="96-这个东西叫什么"><a class="header" href="#96-这个东西叫什么">9.6 这个东西叫什么</a></h2>
+<p><img src="assets/ch09/slide3_LedOps_struct.png" alt="装进盒子·struct led_ops"></p>
+<h2 id="94-这个东西叫什么"><a class="header" href="#94-这个东西叫什么">9.4 这个东西叫什么</a></h2>
 <p>把一组相关的函数指针打包进一个 struct，让别人通过表名按名访问，软件工程里有个名字。</p>
-<p>它叫<strong>操作表</strong>（ops table），也叫<strong>虚函数表</strong>（vtable / virtual table）。Linux 内核源码里把这种 struct 都叫 <code>xxx_ops</code>：<code>file_operations</code>、<code>net_device_ops</code>、<code>gpio_chip</code> 里的回调集，都是 ops 表。</p>
+<p>它叫<strong>操作表</strong>（ops table），也叫<strong>虚函数表</strong>（vtable）。Linux 内核源码里把这种 struct 都叫 <code>xxx_ops</code>：<code>file_operations</code>、<code>net_device_ops</code>、<code>gpio_chip</code> 里的回调集，都是 ops 表。</p>
 <p>C++ 里你写：</p>
 <pre><code class="language-cpp">class led_base {
 public:
-	virtual int on() = 0;
-	virtual int off() = 0;
-	virtual int toggle() = 0;
+    virtual void on() = 0;
+    virtual void off() = 0;
+    virtual void toggle() = 0;
 };
 
 class led_gpio : public led_base { ... };
 class led_pwm  : public led_base { ... };
 </code></pre>
-<p>带 <code>virtual</code> 函数的 class，编译器在背后做三件事：</p>
+<p>带 <code>virtual</code> 函数的 class，C++ 编译器在背后<strong>做三件事</strong>：</p>
 <ol>
 <li><strong>生成一张函数指针表</strong>。每个 class 一张。<code>led_gpio</code> 的表里 <code>.on</code> 指向 <code>led_gpio::on</code>，<code>led_pwm</code> 的表里 <code>.on</code> 指向 <code>led_pwm::on</code>。这张表 C++ 叫 vtable</li>
-<li>在每个对象里偷偷加一个指针，指向这张表（叫 vptr）</li>
-<li>调用 <code>led-&gt;on()</code> 时自动通过 vptr 查表 dispatch</li>
+<li><strong>在每个对象里偷偷加一个指针</strong>，指向这张表（叫 vptr）</li>
+<li><strong>调用时自动通过 vptr 查表</strong>找到正确的函数</li>
 </ol>
-<p>你这一章手动做了第一步：手写了 <code>struct led_ops</code> 这张表。下一章手动做第二步：在 <code>struct led_base</code> 里加一个 <code>const struct led_ops *ops</code> 字段。第 11 章手动做第三步：通过 <code>me-&gt;ops-&gt;on(me)</code> dispatch。</p>
-<p>C++ 编译器自动做的事，你 C 里手动做完。底层机器码几乎一模一样。</p>
-<p><img src="assets/ch09/slide4_CvsCpp.png" alt="C 对比 C++"></p>
-<h2 id="97-视频里没讲透的几个细节"><a class="header" href="#97-视频里没讲透的几个细节">9.7 视频里没讲透的几个细节</a></h2>
-<h3 id="971-designated-initializer-是-c99-的礼物"><a class="header" href="#971-designated-initializer-是-c99-的礼物">9.7.1 designated initializer 是 C99 的礼物</a></h3>
+<p>你这一章亲手做了<strong>第一步</strong>：手写了 <code>struct led_ops</code> 这张表。下一章手动做第二步：在 <code>struct led_base</code> 里加一个 <code>const struct led_ops *ops</code> 字段。第 11 章手动做第三步：通过 <code>me-&gt;ops-&gt;on(me)</code> 找到对的函数调它。</p>
+<p>C++ 编译器自动做的事，你 C 里手动做完。底层机器码几乎一字不差。Stroustrup 那句“零成本抽象“的具体形态，就是你这一章手写的那张表。</p>
+<p><img src="assets/ch09/slide4_CvsCpp.png" alt="C 对比 C++ · 编译器三件事"></p>
+<p>视频的金句版总结：<strong>结构化不是束缚，是让混乱变得可管理</strong>。散装号码会丢，电话簿不会。</p>
+<h2 id="95-视频里没讲透的几个细节"><a class="header" href="#95-视频里没讲透的几个细节">9.5 视频里没讲透的几个细节</a></h2>
+<h3 id="951-designated-initializer-是-c99-的礼物"><a class="header" href="#951-designated-initializer-是-c99-的礼物">9.5.1 designated initializer 是 C99 的礼物</a></h3>
 <pre><code class="language-c">const struct led_ops led_ops_gpio = {
-	.on     = gpio_on_pull_high,
-	.off    = gpio_off,
-	.toggle = gpio_toggle,
+    .on     = gpio_on_pull_high,
+    .off    = gpio_off,
+    .toggle = gpio_toggle,
 };
 </code></pre>
 <p>这种 <code>.field_name = value</code> 的写法叫 designated initializer，C99 引入。好处：</p>
 <ol>
 <li><strong>不依赖字段顺序</strong>。哪天 struct 里调换字段顺序，已有 ops 表代码不用改</li>
 <li><strong>可读性好</strong>。不用数到第几个字段</li>
-<li><strong>未列出的字段自动初始化为 0</strong> / NULL（C99 标准 6.7.8 节第 21 段）</li>
+<li><strong>未列出的字段自动初始化为 0 / NULL</strong>（C99 标准 6.7.8 节第 21 段）</li>
 </ol>
-<p>C89 没有这个语法，只能：</p>
+<p>C89 没有这个语法，只能按字段顺序填：</p>
 <pre><code class="language-c">const struct led_ops led_ops_gpio = {
-	gpio_on_pull_high,    /* on */
-	gpio_off,             /* off */
-	gpio_toggle,          /* toggle */
+    gpio_on_pull_high,    /* on */
+    gpio_off,             /* off */
+    gpio_toggle,          /* toggle */
 };
 </code></pre>
-<p>字段顺序变了就全乱。Linux 内核早期代码很多这种“按位置 init“，后期重构都改成了 designated initializer。</p>
-<h3 id="972-ops-表里某些字段不填怎么办"><a class="header" href="#972-ops-表里某些字段不填怎么办">9.7.2 ops 表里某些字段不填怎么办</a></h3>
-<p>某些扩展能力（比如 set_brightness）假如本章 ops 不放进来；后续要加时某种 LED 不支持，干脆不填。designated initializer 会把它默认初始化成 NULL。</p>
-<p>调用方就得做 NULL check：</p>
-<pre><code class="language-c">if (ops-&gt;toggle)
-	ops-&gt;toggle(me);
-else
-	printf("This LED doesn't support toggle\n");
-</code></pre>
-<p>第 14 章会专门讲这件事的三种处理策略：报错、空 stub、纯虚函数（约定子类必须填）。本章先做 NULL check 这种最朴素的版本。</p>
-<h3 id="973-ops-表的内存代价共享-vs-每实例一份"><a class="header" href="#973-ops-表的内存代价共享-vs-每实例一份">9.7.3 ops 表的内存代价：共享 vs 每实例一份</a></h3>
+<p>字段顺序变了就全乱。Linux 内核早期代码很多这种“按位置 init“，后期重构都改成了 designated initializer。本书一律用 designated 写法。</p>
+<h3 id="952-ops-表里某些字段不填怎么办"><a class="header" href="#952-ops-表里某些字段不填怎么办">9.5.2 ops 表里某些字段不填怎么办</a></h3>
+<p><code>set_brightness</code> 这种字段就是个例子：GPIO LED 硬件上没有调光能力，PWM LED 才有。如果 ops struct 里加上 <code>set_brightness</code> 字段：</p>
 <pre><code class="language-c">struct led_ops {
-	led_action_fn on;       /* 4 bytes 32-bit */
-	led_action_fn off;
-	led_action_fn toggle;
+    led_action_fn     on;
+    led_action_fn     off;
+    led_action_fn     toggle;
+    led_brightness_fn set_brightness;     /* 选填 */
+};
+
+const struct led_ops led_ops_gpio = {
+    .on     = gpio_on_pull_high,
+    .off    = gpio_off,
+    .toggle = gpio_toggle,
+    /* set_brightness 不填, designated initializer 自动置 NULL */
 };
 </code></pre>
-<p>ARM Cortex-M4 上 3 个函数指针 3 × 4 = 12 字节。在 .rodata 段，全程序就一份。</p>
+<p>调用方就得做 NULL check：</p>
+<pre><code class="language-c">if (ops-&gt;set_brightness)
+    ops-&gt;set_brightness(me, 50);
+else
+    printf("This LED doesn't support brightness control\n");
+</code></pre>
+<p><strong>第 14 章会专门讲这件事的三种处理策略</strong>：报错、空 stub、纯虚函数（约定子类必须填）。本章先用 NULL check 这种最朴素的版本。</p>
+<h3 id="953-ops-表的内存代价共享-vs-每实例一份"><a class="header" href="#953-ops-表的内存代价共享-vs-每实例一份">9.5.3 ops 表的内存代价：共享 vs 每实例一份</a></h3>
+<pre><code class="language-c">struct led_ops {
+    led_action_fn on;       /* 4 bytes 32-bit */
+    led_action_fn off;
+    led_action_fn toggle;
+};
+</code></pre>
+<p>ARM Cortex-M4 上 3 个函数指针 3 × 4 = 12 字节。在 <code>.rodata</code> 段，全程序就一份。</p>
 <p>100 颗 LED 的两种实现路线对比：</p>
 <div class="table-wrapper">
 <table>
@@ -3673,35 +3669,23 @@ else
 </thead>
 <tbody>
 <tr><td>ops 表共享（推荐）：每个对象只存一个 <code>const struct led_ops *</code> 指针</td><td>一张 ops 表 12 字节（Flash），每颗 LED 多 4 字节指针 = 100 × 4 + 12 = <strong>412 字节</strong></td><td>同类型 LED 必须用同一张表</td></tr>
-<tr><td>ops 表每实例一份：每个对象嵌入完整的 <code>struct led_ops ops</code></td><td>100 × 12 = <strong>1200 字节</strong>（必须在 RAM，因为对象本身在 RAM）</td><td>每颗 LED 可以独立调实现</td></tr>
+<tr><td>ops 表每实例一份：每个对象嵌入完整的 <code>struct led_ops</code></td><td>100 × 12 = <strong>1200 字节</strong>（必须在 RAM，因为对象本身在 RAM）</td><td>每颗 LED 可以独立调实现</td></tr>
 </tbody>
 </table>
 </div>
-<p>工业代码里的硬规则：<strong>ops 表共享，对象只存 ops 指针</strong>。原因有三：</p>
+<p>工业代码里的硬规则：<strong>ops 表共享，对象只存 ops 指针</strong>。三条理由：</p>
 <ol>
-<li><strong>省 RAM</strong>：100 颗 LED 省 788 字节。MCU 上 RAM 是几十 KB 量级，这点省下来很关键</li>
-<li><strong>进 Flash</strong>：共享版 ops 表 <code>const</code> 之后链接进 .rodata，烧到 Flash 上零 RAM 占用</li>
-<li><strong>缓存友好</strong>：所有同类 LED 调 <code>ops-&gt;on</code> 都访问同一段地址，CPU 数据缓存命中率几乎 100%。每实例一份 ops 表会让缓存反复换行</li>
+<li><strong>省 RAM</strong>。100 颗 LED 省 788 字节。MCU 上 RAM 是几十 KB 量级，这点省下来很关键</li>
+<li><strong>进 Flash</strong>。共享版 ops 表 <code>const</code> 之后链接进 .rodata，烧到 Flash 上零 RAM 占用</li>
+<li><strong>缓存友好</strong>。所有同类 LED 调 <code>ops-&gt;on</code> 都访问同一段地址，CPU 数据缓存命中率几乎 100%；每实例一份会让缓存反复换行，在 Cortex-A53 跑 Linux 时差距明显</li>
 </ol>
 <p>下一章 ops 字段就是 <code>const struct led_ops *ops</code>，4 字节，所有同类型 LED 共享同一张表。这就是 C++ vtable 的存储策略：<strong>类一份，对象只存 vptr</strong>。</p>
-<h3 id="9731-ops-表落在-cacheline-哪里"><a class="header" href="#9731-ops-表落在-cacheline-哪里">9.7.3.1 ops 表落在 cacheline 哪里</a></h3>
-<p>ARM Cortex-A（Linux SBC）和高端 Cortex-M（M7、A 系列）有 D-cache，cacheline 通常 32 或 64 字节。书里的 <code>struct led_ops</code> 12 字节，一定能放进同一条 cacheline。</p>
-<p>调用 <code>ops-&gt;on(me)</code> 时 CPU 取 <code>ops-&gt;on</code> 这一个字段，cacheline 加载之后 <code>ops-&gt;off / ops-&gt;toggle</code> 也在缓存里。如果同一个对象后面还要调 <code>off</code>，就是缓存命中。</p>
-<p>但如果 ops 表是每实例一份，分散在不同 RAM 地址，每个对象的 ops 表落不同 cacheline。100 个对象在循环里调 <code>ops-&gt;on</code>，缓存来回换行，性能掉一截。</p>
-<p>这件事在低端 MCU 上看不出来（没 cache），但在 Cortex-A53、SBC 跑 Linux 时差距明显。Linux 内核里几乎所有 ops 表都共享设计，部分原因就是这个。</p>
-<h3 id="9732-const-是把双刃剑"><a class="header" href="#9732-const-是把双刃剑">9.7.3.2 const 是把双刃剑</a></h3>
-<p><code>const struct led_ops led_ops_gpio = { ... };</code> 链接进 <code>.rodata</code>，在 STM32 等 MCU 上落 Flash。读起来快、不占 RAM。</p>
-<p>但 <code>.rodata</code> 是只读段。如果你想运行时换实现（比如开发板上跑某段诊断代码时临时把 <code>.on</code> 替换成“先打 log 再调原 on“），就不能改 ops 表本身。两种解法：</p>
-<ol>
-<li><strong>预先准备多张 ops 表</strong>，运行时换 <code>me-&gt;ops</code> 指针指向不同表（只改对象里的指针，不改表）</li>
-<li><strong>去掉表上的 const</strong>，让表落在 <code>.data</code>（RAM），允许字段改写。代价：占 RAM、丢失安全性</li>
-</ol>
-<p>工业代码 99% 走第 1 种。运行时换 <code>me-&gt;ops</code> 指针在 ch15 platform 切换时就是这个用法的高潮。</p>
-<h3 id="974-ops-表的初始化顺序问题"><a class="header" href="#974-ops-表的初始化顺序问题">9.7.4 ops 表的初始化顺序问题</a></h3>
+<p><code>const</code> 限制只读这件事还有一个边界：如果你想运行时换实现（比如开发板上跑某段诊断代码时临时把 <code>.on</code> 替换成“先打 log 再调原 on“），不能改 const ops 表本身。工业代码 99% 走的是<strong>预先准备多张 ops 表，运行时换 <code>me-&gt;ops</code> 指针</strong>指向不同表（ch15 platform 切换是这个用法的高潮）。极少数场景才会去掉 const 让 ops 落 .data 允许字段改写。</p>
+<h3 id="954-ops-表的初始化顺序问题"><a class="header" href="#954-ops-表的初始化顺序问题">9.5.4 ops 表的初始化顺序问题</a></h3>
 <p>C 标准保证：全局 / 静态对象的常量初始化在 main() 之前完成。<code>const struct led_ops led_ops_gpio = { ... };</code> 这种形式由编译器在编译期填好，写进 .rodata。</p>
 <p>但是！如果 ops 表里某个字段引用了<strong>非常量地址</strong>（比如不是函数地址，而是某个全局函数指针变量），就会进入“运行时动态初始化“，时机取决于实现。</p>
 <p>工业代码硬规则：<strong>ops 表只填函数地址，不填变量地址</strong>。函数地址是常量（链接期定）。本章符合。</p>
-<h3 id="975-调用-ops-on-的汇编代价"><a class="header" href="#975-调用-ops-on-的汇编代价">9.7.5 调用 ops-&gt;on 的汇编代价</a></h3>
+<h3 id="955-调用-ops-on-的汇编代价"><a class="header" href="#955-调用-ops-on-的汇编代价">9.5.5 调用 ops-&gt;on 的汇编代价</a></h3>
 <pre><code class="language-c">ops-&gt;on(me);
 </code></pre>
 <p>ARM Cortex-M4 编译出来：</p>
@@ -3710,14 +3694,14 @@ BLX  r3              ; 间接跳转 (3 cycle)
 </code></pre>
 <p>和上一章独立函数指针变量的调用开销一样：一次 LDR + 一次 BLX，约 28 ns @ 168 MHz。从 ops 表第 0 个字段读 on 地址走的是编译期常量偏移，没有额外的运行时计算。</p>
 <p>C++ virtual 函数调用就是这两条指令。Stroustrup 那句“零成本抽象“在 vcall 这里要打个小折扣（间接跳转编译器没法 inline，CPU branch predictor 命中率也低），但这是工程上完全可接受的代价。</p>
-<h3 id="976-为什么-ops-不写在-led_base-里"><a class="header" href="#976-为什么-ops-不写在-led_base-里">9.7.6 为什么 ops 不写在 led_base 里</a></h3>
+<h3 id="956-为什么-ops-不写在-led_base-里"><a class="header" href="#956-为什么-ops-不写在-led_base-里">9.5.6 为什么 ops 不写在 led_base 里</a></h3>
 <p>按理说 <code>struct led_ops</code> 应该是基类的概念，所有子类共用一份接口定义。本章直接写在 led.h 里，对应“GPIO 风格 LED“和“PWM 风格 LED“两组实现。下一章 ops 才会真正放进 base。</p>
 <p>为什么分两章？因为本章先把“打包“这个动作单独讲清楚（ops 表是什么、怎么填、怎么调）。下一章再处理“ops 表跟谁绑、谁带“（放进 base 让对象自带）。一次只解决一件事，认知负荷小。</p>
 <p>工业代码里 ops 表的最终落点是 base struct 里的字段，下一章会演化到位。</p>
-<h2 id="98-你现在的代码在-stm32-上长什么样"><a class="header" href="#98-你现在的代码在-stm32-上长什么样">9.8 你现在的代码在 STM32 上长什么样</a></h2>
+<h2 id="96-你现在的代码在-stm32-上长什么样"><a class="header" href="#96-你现在的代码在-stm32-上长什么样">9.6 你现在的代码在 STM32 上长什么样</a></h2>
 <p>STM32 端胶水还是 ch01 那套。<code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / main.c</code> 一字不改。</p>
-<p>ops 表 <code>led_ops_gpio / led_ops_pwm</code> 编译后进 <code>.rodata</code> 段，烧到 Flash 上。运行时常驻。所有 GPIO 类 LED 共享同一份 12 字节的 ops 表。</p>
-<pre><code class="language-c">/* 真实芯片 .map 文件里能看到 */
+<p>ops 表 <code>led_ops_gpio / led_ops_pwm</code> 编译后进 <code>.rodata</code> 段，烧到 Flash 上。运行时常驻。所有 GPIO 类 LED 共享同一份 12 字节的 ops 表：</p>
+<pre><code>/* 真实芯片 .map 文件里能看到 */
 .rodata
   ...
   led_ops_gpio        0x08001234  12
@@ -3725,53 +3709,61 @@ BLX  r3              ; 间接跳转 (3 cycle)
 </code></pre>
 <p>100 颗 LED 仅有 24 字节 ops 表代价，加上每颗 LED 自己的 struct 实例（在 .bss 或栈上）。</p>
 <p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。第 11 章后会改成 ops 表式。</p>
-<h2 id="99-你现在的代码在-linux-用户态长什么样"><a class="header" href="#99-你现在的代码在-linux-用户态长什么样">9.9 你现在的代码在 Linux 用户态长什么样</a></h2>
+<h2 id="97-你现在的代码在-linux-用户态长什么样"><a class="header" href="#97-你现在的代码在-linux-用户态长什么样">9.7 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>Linux 端的 ops 表完全一样的写法。<code>gcc / clang</code> 把 <code>const struct</code> 放到 <code>.rodata</code>，进程加载时在虚拟内存里只读映射，全进程共享。</p>
-<p><code>led.h / led.c / main.c</code> 一字不改。同 9.8 节，平台层是教学简化版，第 11 章后会演化成 ops 表式。</p>
-<h2 id="910-工业代码里的-ops-表"><a class="header" href="#910-工业代码里的-ops-表">9.10 工业代码里的 ops 表</a></h2>
+<p><code>led.h / led.c / main.c</code> 一字不改。同 9.6 节 STM32 端，平台层是教学简化版，第 11 章后会演化成 ops 表式。</p>
+<h2 id="98-工业代码里的-ops-表"><a class="header" href="#98-工业代码里的-ops-表">9.8 工业代码里的 ops 表</a></h2>
 <p>工业控制板项目里，每个驱动都有一张 ops 表。LED 驱动这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;
 
 struct led_ops {
-	int (*on)(struct led_base *me);
-	int (*off)(struct led_base *me);
-	int (*toggle)(struct led_base *me);
+    int (*on)(struct led_base *me);
+    int (*off)(struct led_base *me);
+    int (*toggle)(struct led_base *me);
 };
 
 /* drivers/led/led_gpio.c */
 const struct led_ops led_ops_gpio = {
-	.on     = led_gpio_on,
-	.off    = led_gpio_off,
-	.toggle = led_gpio_toggle,
+    .on     = led_gpio_on,
+    .off    = led_gpio_off,
+    .toggle = led_gpio_toggle,
 };
 </code></pre>
 <p>注意 ops 表里函数指针的参数是 <code>struct led_base *</code>，不是某个具体子类。这是因为 ops 表要被基类层使用（下一章讲 ops 放进 base），所有子类的 ops 表必须类型一致。</p>
 <p>EEPROM、风扇、蜂鸣器、按键这些 driver 的 ops 表结构各不相同，但写法都是这一套：定义 ops struct，每种实现 fill 一张 const ops 表，应用层通过 base 指针拿到 ops 指针调用。</p>
 <p>这就是 Linux 内核 <code>struct file_operations</code> 的 OOP 骨架。你这一章亲手推了一遍。</p>
-<h2 id="911-跑一遍"><a class="header" href="#911-跑一遍">9.11 跑一遍</a></h2>
+<h2 id="99-跑一遍"><a class="header" href="#99-跑一遍">9.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/09-ops-table/pc
 make
 ./demo
 </code></pre>
 <p>输出节选：</p>
-<pre><code>--- test_led(&amp;red_led.base, &amp;led_ops_gpio) ---
+<pre><code>========================================
+  ops table: pack action pointers as struct.
+  test_led takes one ops pointer.
+========================================
+
+--- test_led(&amp;red_led.base, &amp;led_ops_gpio) ---
   [test] open ...
-[GPIO] Pin13 -&gt; HIGH
+[GPIO] Pin13 -&gt; HIGH (ON)
   [GPIO] "red" ON
   [test] toggle ...
+[GPIO] Pin13 -&gt; LOW (OFF)
   [GPIO] "red" OFF
   [test] close ...
 
 --- test_led(&amp;blue_led.base, &amp;led_ops_pwm) ---
   [test] open ...
-  [PWM] "blue" ON (channel 1)
+  [PWM] "blue" ON  (channel 1, duty=70)
   [test] toggle ...
+  [PWM] "blue" OFF (channel 1)
+  [test] close ...
   [PWM] "blue" OFF (channel 1)
 </code></pre>
 <p><code>test_led</code> 函数体没改。换一张 ops 表，跑出完全不同的行为。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/09-ops-table/"><code>oop-in-c/code/09-ops-table/</code></a>。</p>
-<h2 id="912-视频回放"><a class="header" href="#912-视频回放">9.12 视频回放</a></h2>
+<h2 id="910-视频回放"><a class="header" href="#910-视频回放">9.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1iLdrBUEvf/">《C 语言·ops 操作表｜参数长到换行·虚函数表》</a></p>
