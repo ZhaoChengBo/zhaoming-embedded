@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-cb5cdb0f.js";
+            window.path_to_searchindex_js = "../searchindex-8eb47a62.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0f4fc518.js"></script>
@@ -357,7 +357,7 @@ typedef struct {            /* 早期 C 风格, 大写驼峰 */
 </code></pre>
 <p>本书用 <code>struct led_ops</code> 的写法，和 ch01 已经定下的“struct 名字小写、不藏类型信息“风格一致。Linus 在内核编码风格文档里反对的就是 <code>LedOps_t</code> 这种 typedef。读到 <code>LedOps_t</code> 不知道它是 struct 还是基本类型，要去翻定义。<code>struct led_ops</code> 写出来就明白。</p>
 <h3 id="956-视频版与配套代码版的三处差异"><a class="header" href="#956-视频版与配套代码版的三处差异">9.5.6 视频版与配套代码版的三处差异</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP14 演示用的 ops 表设计是这样：</p>
 <ul>
 <li>typedef 三个不同名字：<code>led_on_fn / led_off_fn / led_brightness_fn</code>，都返回 <code>void</code></li>

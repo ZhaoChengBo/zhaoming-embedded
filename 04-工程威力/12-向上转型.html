@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-cb5cdb0f.js";
+            window.path_to_searchindex_js = "../searchindex-8eb47a62.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0f4fc518.js"></script>
@@ -384,7 +384,7 @@ struct led_base * const g_led_error;   /* 不让别人重新指向 */
 </code></pre>
 <p>向上转型时写 <code>&amp;gpio_data-&gt;cdev</code>。整个 Linux LED 子系统就是这一招的工业级展开。</p>
 <h3 id="1287-配套代码相对第-11-章的演化点"><a class="header" href="#1287-配套代码相对第-11-章的演化点">12.8.7 配套代码相对第 11 章的演化点</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>打开第 12 章配套代码 <code>oop-in-c/code/12-upcasting/</code>，跟第 11 章 <code>oop-in-c/code/11-polymorphism/</code> 对一下，会发现两处变化。这些变化在主线叙事里没特别说，这里集中说一下。本章 § 12.1 引的 <code>led_gpio_init(&amp;gpio_led, "ERR", 10, true)</code> 和 § 12.2 画的 <code>struct led_gpio { base; pin; on_level; }</code>，都已经是下面这个 ch12 的形态。</p>
 <p><code>struct led_gpio</code> 加了 <code>on_level</code> 字段：</p>
 <pre><code class="language-c">/* ch11: */

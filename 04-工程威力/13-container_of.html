@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-cb5cdb0f.js";
+            window.path_to_searchindex_js = "../searchindex-8eb47a62.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0f4fc518.js"></script>
@@ -395,7 +395,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>container_of 的实现里有一步 <code>(char *)(ptr)</code>（最简版）或 <code>(void *)(ptr)</code>（内核版），强转之后 const 就没了。Linux 内核 6.5 之后引入了 <code>container_of_const</code> 用 <code>_Generic</code> 保住 const，但老代码到处都在用裸的 container_of。需要严格 const-correctness 时手动检查一下。</p>
 <p>PC 上不依赖 GNU C 扩展的最简版就是 § 13.5 那个三步宏，本书配套代码 <code>pc/container_of.h</code> 里就是这一份。逻辑等价，编译期约束少一点，PC 上跑没影响。生产代码里可以直接用内核版，那个 static_assert 能在 commit 前帮你抓住低级错。</p>
 <h3 id="1385-配套代码-ops-表多了一个字段set_brightness"><a class="header" href="#1385-配套代码-ops-表多了一个字段set_brightness">13.8.5 配套代码 ops 表多了一个字段：set_brightness</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>打开本章配套代码 <code>oop-in-c/code/13-container-of/pc/led.h</code>，会发现 <code>struct led_ops</code> 比第 12 章多了一个字段：</p>
 <pre><code class="language-c">struct led_ops {
 	int (*on)(struct led_base *me);

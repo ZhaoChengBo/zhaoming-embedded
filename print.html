@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cb5cdb0f.js";
+            window.path_to_searchindex_js = "searchindex-8eb47a62.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0f4fc518.js"></script>
@@ -3616,7 +3616,7 @@ typedef struct {            /* 早期 C 风格, 大写驼峰 */
 </code></pre>
 <p>本书用 <code>struct led_ops</code> 的写法，和 ch01 已经定下的“struct 名字小写、不藏类型信息“风格一致。Linus 在内核编码风格文档里反对的就是 <code>LedOps_t</code> 这种 typedef。读到 <code>LedOps_t</code> 不知道它是 struct 还是基本类型，要去翻定义。<code>struct led_ops</code> 写出来就明白。</p>
 <h3 id="956-视频版与配套代码版的三处差异"><a class="header" href="#956-视频版与配套代码版的三处差异">9.5.6 视频版与配套代码版的三处差异</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP14 演示用的 ops 表设计是这样：</p>
 <ul>
 <li>typedef 三个不同名字：<code>led_on_fn / led_off_fn / led_brightness_fn</code>，都返回 <code>void</code></li>
@@ -3937,7 +3937,7 @@ int led_base_init(struct led_base *me, const struct led_ops *ops) {
 <p>强转。<code>(struct led_gpio *)me</code>。因为 <code>struct led_base base</code> 是 <code>struct led_gpio</code> 的第一个字段，<code>&amp;red_led</code> 和 <code>&amp;red_led.base</code> 在内存里是同一个地址。同一字节，两个指针类型，强转后访问 <code>self-&gt;pin</code> 合法。</p>
 <p>这一招的前提是“base 在子类第一个字段“。Linux 内核为了打破这个限制（让 base 可以在中间），引入了一个宏来反向算地址。本章先用最朴素的强转，后面会展开更通用的做法。</p>
 <h3 id="1064-视频版与配套代码版字段差异说明"><a class="header" href="#1064-视频版与配套代码版字段差异说明">10.6.4 视频版与配套代码版字段差异说明</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP15 里 ops 表字段是 <code>on / off / set_brightness</code>（视频画面里能看到 PWM 调亮度的演示）。本章配套代码 <code>oop-in-c/code/10-vptr/</code> 用的是 <code>on / off / toggle</code>，和第 9 章配套代码字段保持一致。</p>
 <p>两边讲的是同一件事：三个函数指针装进 ops 表，按名字访问，运行时各自指向不同实现。换字段不影响 ops 表的设计本身。读视频以视频画面为准，跑代码以代码包为准，两种字段都能演示“对象自带操作表“这件事。</p>
 <p><code>set_brightness</code> 在 PC 上跑不出可视化亮度变化，所以代码包里改成了 <code>toggle</code>。开关来回切换，终端能看到。</p>
@@ -4202,7 +4202,7 @@ struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
 <p><strong>两层好处叠加。</strong> 第一层（封装）让“挂 50 个同种 LED“是一行 init 的事；第二层（多态 + dispatch）让“加一种新硬件机制“只动新文件，老文件全不动。两层加起来，工业代码才能做到“骨架不变，不断长出新模块“。</p>
 <p>工业现场 LED 种类真实不会超过 5-6 种（GPIO 指示灯 + PWM 状态灯 + I2C 数码管 + SPI 矩阵 + WS2812 灯条已经覆盖大多数产品），但每种下面挂几十个实例很常见。这套机制让两个轴都自由：种类轴靠 dispatch，实例轴靠封装。</p>
 <h3 id="1174-配套代码-ops-字段说明"><a class="header" href="#1174-配套代码-ops-字段说明">11.7.4 配套代码 ops 字段说明</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>
 <p>三个字段还是两个字段，dispatch 机制完全一样：通过 <code>me-&gt;ops</code> 找到表，按名字调到对的实现。</p>
 <h2 id="118-你现在的代码在-stm32-上长什么样"><a class="header" href="#118-你现在的代码在-stm32-上长什么样">11.8 你现在的代码在 STM32 上长什么样</a></h2>
@@ -4508,7 +4508,7 @@ struct led_base * const g_led_error;   /* 不让别人重新指向 */
 </code></pre>
 <p>向上转型时写 <code>&amp;gpio_data-&gt;cdev</code>。整个 Linux LED 子系统就是这一招的工业级展开。</p>
 <h3 id="1287-配套代码相对第-11-章的演化点"><a class="header" href="#1287-配套代码相对第-11-章的演化点">12.8.7 配套代码相对第 11 章的演化点</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>打开第 12 章配套代码 <code>oop-in-c/code/12-upcasting/</code>，跟第 11 章 <code>oop-in-c/code/11-polymorphism/</code> 对一下，会发现两处变化。这些变化在主线叙事里没特别说，这里集中说一下。本章 § 12.1 引的 <code>led_gpio_init(&amp;gpio_led, "ERR", 10, true)</code> 和 § 12.2 画的 <code>struct led_gpio { base; pin; on_level; }</code>，都已经是下面这个 ch12 的形态。</p>
 <p><code>struct led_gpio</code> 加了 <code>on_level</code> 字段：</p>
 <pre><code class="language-c">/* ch11: */
@@ -4885,7 +4885,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>container_of 的实现里有一步 <code>(char *)(ptr)</code>（最简版）或 <code>(void *)(ptr)</code>（内核版），强转之后 const 就没了。Linux 内核 6.5 之后引入了 <code>container_of_const</code> 用 <code>_Generic</code> 保住 const，但老代码到处都在用裸的 container_of。需要严格 const-correctness 时手动检查一下。</p>
 <p>PC 上不依赖 GNU C 扩展的最简版就是 § 13.5 那个三步宏，本书配套代码 <code>pc/container_of.h</code> 里就是这一份。逻辑等价，编译期约束少一点，PC 上跑没影响。生产代码里可以直接用内核版，那个 static_assert 能在 commit 前帮你抓住低级错。</p>
 <h3 id="1385-配套代码-ops-表多了一个字段set_brightness"><a class="header" href="#1385-配套代码-ops-表多了一个字段set_brightness">13.8.5 配套代码 ops 表多了一个字段：set_brightness</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>打开本章配套代码 <code>oop-in-c/code/13-container-of/pc/led.h</code>，会发现 <code>struct led_ops</code> 比第 12 章多了一个字段：</p>
 <pre><code class="language-c">struct led_ops {
 	int (*on)(struct led_base *me);

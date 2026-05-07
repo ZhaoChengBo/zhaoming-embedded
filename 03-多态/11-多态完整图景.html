@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-cb5cdb0f.js";
+            window.path_to_searchindex_js = "../searchindex-8eb47a62.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0f4fc518.js"></script>
@@ -370,7 +370,7 @@ struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
 <p><strong>两层好处叠加。</strong> 第一层（封装）让“挂 50 个同种 LED“是一行 init 的事；第二层（多态 + dispatch）让“加一种新硬件机制“只动新文件，老文件全不动。两层加起来，工业代码才能做到“骨架不变，不断长出新模块“。</p>
 <p>工业现场 LED 种类真实不会超过 5-6 种（GPIO 指示灯 + PWM 状态灯 + I2C 数码管 + SPI 矩阵 + WS2812 灯条已经覆盖大多数产品），但每种下面挂几十个实例很常见。这套机制让两个轴都自由：种类轴靠 dispatch，实例轴靠封装。</p>
 <h3 id="1174-配套代码-ops-字段说明"><a class="header" href="#1174-配套代码-ops-字段说明">11.7.4 配套代码 ops 字段说明</a></h3>
-<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>
 <p>三个字段还是两个字段，dispatch 机制完全一样：通过 <code>me-&gt;ops</code> 找到表，按名字调到对的实现。</p>
 <h2 id="118-你现在的代码在-stm32-上长什么样"><a class="header" href="#118-你现在的代码在-stm32-上长什么样">11.8 你现在的代码在 STM32 上长什么样</a></h2>
