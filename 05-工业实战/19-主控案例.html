@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d236f1f0.js";
+            window.path_to_searchindex_js = "../searchindex-22c47fce.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -242,11 +242,17 @@
 </tbody>
 </table>
 </div>
-<p><code>const void *api</code> 就是 ch11 推过的“父类 vptr“。类型为什么擦除成 <code>void *</code>，原因是各子系统的 ops 表 struct 不一样，<code>led_driver_api</code>、<code>gpio_driver_api</code>、<code>i2c_driver_api</code> 都不是同一个 struct。父类层不知道每个子系统具体的 ops 表长什么样，只能擦成 <code>void *</code>，调用前由子系统头文件做向下转型。</p>
+<p><code>const void *api</code> 就是 ch11 推过的“父类 vptr“。类型为什么擦除成 <code>void *</code>，原因是各子系统的 ops 表 struct 不一样，<code>led_driver_api</code>、<code>gpio_driver_api</code>、<code>i2c_driver_api</code> 都不是同一个 struct。父类层不知道每个子系统具体的 ops 表长什么样，只能擦成 <code>void *</code>，调用前由子系统头文件把它还原回真实的 ops 表类型。</p>
 <p><code>const void *config</code> 是子类出厂参数。GPIO LED 驱动里它是“几颗 LED + 每颗的引脚号“，I2C 控制器里它是“基地址 + 时钟 + DMA 通道“。<code>const</code> 关键字告诉链接器放进 ROM，和 ch04 推过的 const config 完全一致。</p>
 <p><code>void *data</code> 是子类运行态。LED 不需要，后面看到的 <code>led_gpio_config_##i</code> 把 data 留成 NULL。I2C 控制器需要存“当前传输到第几个字节、信号量、DMA 状态“，这种就放在 <code>data</code> 里。</p>
 <p><code>state</code> 是 Zephyr 公共字段，记 init 是否成功。这个字段是 Zephyr 在教学版基础上多加的，和 OOP 抽象本身关系不大，先了解就够。</p>
 <p>一句话：ch11 一个人推出来的 <code>struct base { const ops_t *ops; }</code>，Zephyr 把它扩成 5 个字段的工业版本，核心还是那一个 ops 表指针。</p>
+<h3 id="1911-这里的强转和-ch13-的向下转型不是一回事"><a class="header" href="#1911-这里的强转和-ch13-的向下转型不是一回事">19.1.1 这里的“强转“和 ch13 的“向下转型“不是一回事</a></h3>
+<p>后面几节会反复看到 <code>(const struct led_driver_api *)dev-&gt;api</code> 这种强转。这不是 ch13 教的那种“向下转型“，要分清楚。</p>
+<p>ch13 教的向下转型：父类是子类的<strong>内嵌字段</strong>（<code>struct gpio_led_data { struct led_classdev cdev; ... }</code>），拿到 <code>led_classdev *</code> 反推回 <code>gpio_led_data *</code>，必须 <code>container_of + offsetof</code> 减偏移。这是“继承 by 嵌入“，工业代码里 Linux 内核的 leds-gpio 走的就是这条路（ch20 会看到）。</p>
+<p>Zephyr <code>dev-&gt;api</code> / <code>dev-&gt;config</code> 这种强转：父类只把指针存进 <code>void *</code> 槽位，槽里指向的具体类型由子系统决定，强转就是把 <code>void *</code> 还原回原类型，<strong>不需要 offsetof</strong>，因为根本不是嵌套关系。这是“组合 by 指针“，C 圈一般叫“void 指针类型还原“，C++ 里对应的是 <code>static_cast&lt;T*&gt;(void*)</code>，不是 <code>dynamic_cast</code>。</p>
+<p>ch19 这一章里 <code>dev-&gt;api</code> / <code>dev-&gt;config</code> 反复出现的强转，全部是后一种“void 指针类型还原“。真正 ch13 教的那种向下转型，会在 19.9 节看到，那是 <code>CONTAINER_OF(cb, struct ht16k33_data, irq_cb)</code> 在 GPIO 中断回调里反推子类，工业代码里 Zephyr 自己也用同一招。</p>
+<p>两种都是 C 工业代码常见手法，不要混。</p>
 <h2 id="192-driver_api-是-ops-表"><a class="header" href="#192-driver_api-是-ops-表">19.2 driver_api 是 ops 表</a></h2>
 <p>每个子系统都有自己的 driver_api，写法完全是 ch11 的 ops 表 struct。先看 LED 子系统。</p>
 <p>源：<code>include/zephyr/drivers/led.h</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/drivers/led.h">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/drivers/led.h</a></p>
@@ -271,7 +277,7 @@
     return api-&gt;on(dev, led);
 }
 </code></pre>
-<p><code>(const struct led_driver_api *)dev-&gt;api</code> 这一行，就是 ch11 推过的“父类 vptr 向下转型到子系统 ops 表“。父类层把 ops 表存成 <code>void *</code>，调用前每个子系统的公开头文件负责强转回自己的 ops 表 struct，然后通过 <code>api-&gt;on</code> 一次间接跳转，命中具体的子类实现。</p>
+<p><code>(const struct led_driver_api *)dev-&gt;api</code> 这一行就是 19.1.1 节讲过的“void 指针类型还原“。父类层把 ops 表存成 <code>void *</code>，调用前每个子系统的公开头文件负责把它还原回自己的 ops 表 struct，然后通过 <code>api-&gt;on</code> 一次间接跳转，命中具体的子类实现。</p>
 <p>应用层调一次 <code>led_on(dev, 0)</code>，内核里走的路径用一行链路就能看完：</p>
 <p><code>led_on(dev,0)</code> → <code>z_impl_led_on</code> → <code>(led_driver_api *)dev-&gt;api</code> → <code>api-&gt;on(dev,0)</code> → <code>led_gpio_on</code> → <code>gpio_pin_set_dt</code> → 拨 PD12 寄存器位 → LED 亮</p>
 <p>链路里只有一次“父类 <code>void *api</code> 强转回 LED 子系统 ops 表“，只有一次“通过 <code>api-&gt;on</code> 间接跳转命中具体子类实现“。其余几步都是普通函数调用。这不是教学杜撰，就是 Zephyr v3.7.0 LED 子系统应用层每天调的那行代码。</p>
@@ -319,7 +325,7 @@ static int led_gpio_on (const struct device *dev, uint32_t led)
 static int led_gpio_off(const struct device *dev, uint32_t led)
 { return led_gpio_set_brightness(dev, led, 0); }
 </code></pre>
-<p>第一行 <code>const struct led_gpio_config *config = dev-&gt;config;</code> 是 ch13 讲过的“子类向下转型 dev_data“。父类把出厂参数存在 <code>dev-&gt;config</code> 这个 <code>const void *</code> 字段里，子类一进来就把它强转回自己的 <code>led_gpio_config *</code>，然后访问字段。这就是 ch13 推过的 container 反推逻辑的轻量版，因为这里 config 直接就是 void * 转回去，不用 offsetof 减偏移。</p>
+<p>第一行 <code>const struct led_gpio_config *config = dev-&gt;config;</code> 是 19.1.1 节讲过的“void 指针类型还原“，和 ch13 教的向下转型不是同一种操作。父类把出厂参数存在 <code>dev-&gt;config</code> 这个 <code>const void *</code> 字段里，子类一进来把它还原回自己的 <code>led_gpio_config *</code>，然后访问字段。这里没有嵌入关系，不需要 offsetof：<code>led_gpio_config</code> 不是嵌入在某个父类里的子对象，它就是 GPIO LED 子类自己定义的独立 config struct，父类只是把指针存进 <code>void *</code> 槽位。这是“组合 by 指针“在工业代码里的标准写法。</p>
 <p><code>led_gpio_on</code> 和 <code>led_gpio_off</code> 都是直接复用 <code>set_brightness</code>，这是子类内部的代码组织，跟父类无关。</p>
 <p>第三段，ops 表实例化：</p>
 <pre><code class="language-c">static const struct led_driver_api led_gpio_api = {
@@ -349,7 +355,7 @@ DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)
 <p>ch12 / ch13 推出来的所有抽象，led_gpio.c 整文件 102 行字节级齐全。五段拆解列出来：</p>
 <ul>
 <li>子类 config struct·5 行：对应 ch12 推过的“子类出厂参数“</li>
-<li><code>led_gpio_set_brightness</code> 等实现函数·24 行：对应 ch12 子类实现 + ch13 <code>dev-&gt;config</code> 反推</li>
+<li><code>led_gpio_set_brightness</code> 等实现函数·24 行：对应 ch12 子类实现 + <code>void *config</code> 类型还原（见 19.1.1）</li>
 <li><code>led_driver_api</code> ops 表实例化·5 行：对应 ch11 ops 表</li>
 <li><code>LED_GPIO_DEVICE(i)</code> 宏 + <code>DT_INST_FOREACH_STATUS_OKAY</code>，一行完成 initcall 注册和父类挂载</li>
 <li>剩余 60 多行是头文件 include、<code>led_gpio_init</code> 入口函数、Kconfig 开关等基础设施</li>
@@ -689,10 +695,10 @@ printk("led_blink returned %d\n", rc);
 <tbody>
 <tr><td>ch11</td><td>父类 + vptr</td><td><code>struct device</code> + <code>dev-&gt;api</code></td><td><code>include/zephyr/device.h</code></td></tr>
 <tr><td>ch11</td><td>ops 表 struct</td><td><code>struct led_driver_api</code> / <code>struct sensor_driver_api</code></td><td><code>include/zephyr/drivers/{led,sensor}.h</code></td></tr>
-<tr><td>ch11</td><td>公开 dispatch + 向下转型</td><td><code>z_impl_led_on</code> 强转 <code>dev-&gt;api</code></td><td><code>include/zephyr/drivers/led.h</code></td></tr>
+<tr><td>ch11</td><td>公开 dispatch + void 指针类型还原</td><td><code>z_impl_led_on</code> 强转 <code>dev-&gt;api</code></td><td><code>include/zephyr/drivers/led.h</code></td></tr>
 <tr><td>ch12</td><td>子类 = config + data + 实现 + ops</td><td><code>led_gpio_config</code> + <code>led_gpio_api</code> + <code>led_gpio_on/off</code></td><td><code>drivers/led/led_gpio.c</code></td></tr>
 <tr><td>ch12</td><td>I2C 子系统同款</td><td><code>lm75_config</code> + <code>lm75_driver_api</code> + <code>lm75_sample_fetch</code></td><td><code>drivers/sensor/lm75/lm75.c</code></td></tr>
-<tr><td>ch13</td><td>子类向下转型 dev_data</td><td><code>dev-&gt;config</code> 强转 <code>led_gpio_config *</code></td><td><code>drivers/led/led_gpio.c</code></td></tr>
+<tr><td>19.1.1</td><td>子类 config 类型还原（组合 by 指针）</td><td><code>dev-&gt;config</code> 强转 <code>led_gpio_config *</code></td><td><code>drivers/led/led_gpio.c</code></td></tr>
 <tr><td>ch15</td><td>platform 层 + 配置外置</td><td>device tree（.dts + .overlay）</td><td><code>boards/st/stm32f4_disco/*.dts</code></td></tr>
 <tr><td>ch15</td><td>dts 节点 → driver 静态 match</td><td><code>DT_DRV_COMPAT</code> + <code>DT_INST_FOREACH_STATUS_OKAY</code></td><td><code>drivers/led/led_gpio.c</code> / <code>drivers/sensor/lm75/lm75.c</code></td></tr>
 <tr><td>ch16</td><td>可空 ops vs 纯虚</td><td>mandatory <code>on/off</code> + optional <code>blink</code> 等</td><td><code>include/zephyr/drivers/led.h</code></td></tr>
