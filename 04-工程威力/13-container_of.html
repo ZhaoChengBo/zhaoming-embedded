@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8eb47a62.js";
+            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0f4fc518.js"></script>
@@ -184,7 +184,7 @@
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/"><code>oop-in-c/code/13-container-of/</code></a></p>
 <p>第 12 章解决了向上转型：应用层用 <code>struct led_base *</code> 句柄，硬件是谁都不问。</p>
 <p>但反过来呢？子类的实现函数 <code>gpio_on</code> 收到的也是 <code>struct led_base *</code>。它要操作 <code>pin</code>，<code>pin</code> 在 <code>struct led_gpio</code> 里，不在 base 里。怎么从 base 反推回 gpio？</p>
-<p>这一章揭穿。</p>
+<p>这一章解决。</p>
 <h2 id="131-base-里没有-pin"><a class="header" href="#131-base-里没有-pin">13.1 base 里没有 pin</a></h2>
 <p>打开第 12 章的 <code>gpio_on</code>：</p>
 <pre><code class="language-c">static int gpio_on(struct led_base *me)
@@ -201,11 +201,29 @@
 	bool            on_level;
 };
 </code></pre>
-<p>第一行 <code>(struct led_gpio *)me</code> 把 base 指针强转回外层 struct 指针。这一行能跑，但前提是：<strong>base 必须是 <code>struct led_gpio</code> 的第 0 个字段</strong>。</p>
-<p>需要的是：拿到 base 指针，反推回那个把它当成员的 <code>struct led_gpio</code>。怎么找？</p>
+<p>第一行 <code>(struct led_gpio *)me</code> 把 base 指针强转回外层 struct 指针。这一招能不能跑，看 base 在 struct 里放第几个位置。两种情况：</p>
+<p><strong>情况一·base 放第 0 个字段。</strong></p>
+<pre><code class="language-c">struct led_gpio {
+	struct led_base base;       /* 偏移 0 */
+	uint8_t         pin;        /* 偏移 4 */
+	bool            on_level;
+};
+</code></pre>
+<p>base 字段地址 = <code>struct led_gpio</code> 起始地址。强转后 self 指针正好指向 led_gpio 开头，<code>self-&gt;pin</code> 落在 pin 字段，跑通。</p>
+<p><strong>情况二·base 不在第 0 个。</strong> 比如有人为了校验在最前面加一个 <code>magic</code> 字段（一个固定值如 <code>0xCAFE</code>，代码里检查 <code>me-&gt;magic == 0xCAFE</code> 来识别野指针，工业代码常见）：</p>
+<pre><code class="language-c">struct led_gpio {
+	uint16_t        magic;      /* 偏移 0 */
+	struct led_base base;       /* 偏移 4（含 padding） */
+	uint8_t         pin;
+	bool            on_level;
+};
+</code></pre>
+<p>base 字段地址 ≠ <code>struct led_gpio</code> 起始地址，两者差 4 字节。强转后 self 指针比真实地址早 4 字节，<code>self-&gt;pin</code> 落在 magic 字段位置，读出来是乱码、写下去是越界。<strong>编译器一句话不说就让你过了</strong>，错只能在运行时崩出来才发现。</p>
+<p>工业代码里“加 magic 防野指针“、“把 ops 放第 0 个”、“按字段大小分组排“这些理由都会让 base 不在第 0 个。强转这一招在情况二就废了。</p>
+<p>要的是另一种办法：<strong>不管 base 在 struct 里第几个位置，都能正确算出 struct 起点</strong>。</p>
 <p><img src="../assets/ch13/slide1_问题展示.png" alt="问题：base 里没有 pin"></p>
 <h2 id="132-偏移量这件事"><a class="header" href="#132-偏移量这件事">13.2 偏移量这件事</a></h2>
-<p>仔细看，问题里有两个已知量：</p>
+<p>反推回 <code>led_gpio</code> 起点这件事，手上已知两个量：</p>
 <ol>
 <li>me 的地址（base 字段在内存里的位置）</li>
 <li>base 字段在 struct led_gpio 里的偏移</li>
@@ -217,18 +235,18 @@
 <p>类比生活：你走在一条路上，看见路牌写着“离起点 300 米“。退 300 米，回到起点。</p>
 <p>这段距离叫<strong>偏移量</strong>。base 离 struct led_gpio 开头有多远，就是偏移量。</p>
 <p><img src="../assets/ch13/slide2_内存布局.png" alt="内存布局"></p>
-<h2 id="133-强转能用但脆弱"><a class="header" href="#133-强转能用但脆弱">13.3 强转能用但脆弱</a></h2>
-<p>回到 <code>(struct led_gpio *)me</code> 这一招。base 在偏移 0 时它能跑，因为 base 的地址刚好就是 struct led_gpio 的起始地址。</p>
-<p>但如果哪天有人为了对齐、为了字段分组、为了塞一个 <code>magic</code> 校验字段，把 base 挪到第二个位置：</p>
-<pre><code class="language-c">struct led_gpio {
-	uint16_t        magic;      /* 偏移 0 */
-	struct led_base base;       /* 偏移 4（含 padding） */
-	uint8_t         pin;
-	bool            on_level;
-};
+<h2 id="133-偏移这个数从哪来"><a class="header" href="#133-偏移这个数从哪来">13.3 偏移这个数·从哪来</a></h2>
+<p>§ 13.2 给的公式很简单：</p>
+<pre><code>起点 = base 地址 - base 在 struct 里的偏移
 </code></pre>
-<p><code>(struct led_gpio *)me</code> 算出来的 self 指针就比 gpio 真实地址早 4 字节。<code>self-&gt;pin</code> 拿到的是 magic 字段的一部分，崩或乱码。编译器一句话不说就让你过了。</p>
-<p>需要的是另一种办法：不管 base 在 struct 里第几个位置，都能正确算出 struct 起点。</p>
+<p>但有个工程问题：<strong>偏移这个数怎么写进代码</strong>？</p>
+<p>最朴素的办法是数一遍。看 § 13.1 那个带 magic 的布局，base 在偏移 4，所以 <code>gpio_on</code> 第一行可以写：</p>
+<pre><code class="language-c">struct led_gpio *self = (struct led_gpio *)((char *)me - 4);
+</code></pre>
+<p>这一行能跑，但脆。哪天有人在 magic 后面加一个 <code>uint32_t version</code> 字段（版本号，工业代码很常见），struct 重排，base 偏移从 4 变成 8。代码里这个 <code>4</code> 不会自己跟着变。下次 demo 一跑，self 指针又错位、pin 又乱码。bug 一来一个准。</p>
+<p>要让“偏移“自己知道字段排在哪。</p>
+<p>编译器其实知道每个字段的偏移，padding 和 alignment 都是它算的。能不能从编译器手里把这个数字拿出来，当个常量塞进 container 公式里？</p>
+<p>答案就在 C 标准库里。</p>
 <p><img src="../assets/ch13/slide3_强制转换.png" alt="强制转换能用但脆弱"></p>
 <h2 id="134-编译期算偏移offsetof"><a class="header" href="#134-编译期算偏移offsetof">13.4 编译期算偏移：offsetof</a></h2>
 <p>C 标准库（<code>stddef.h</code>）有一个宏专门干这件事：</p>
@@ -290,13 +308,19 @@ if (gpio) {
 <li>编译期检查 <code>LedBase</code> 和 <code>LedGpio</code> 之间真有继承关系（不然报错）。</li>
 <li>运行时查 RTTI（Run-Time Type Information）表，确认 base 指针指向的是不是真的 <code>LedGpio</code> 对象，不是就返回 nullptr。</li>
 </ol>
-<p>C++ 给你一张安全网。代价是有运行时开销：每个含 virtual 函数的类要带上 type_info 元数据，dynamic_cast 调用要走这一层。</p>
+<p>RTTI 是 C++ 的一套运行时类型记录机制。编译器为每个含 virtual 函数的类生成一份 <code>type_info</code> 元数据（类名、父类指针、继承链等），每个对象的 vtable 第 0 项藏一个指针指向这份 <code>type_info</code>。<code>dynamic_cast</code> 调用时，先从对象拿到 vtable、再从 vtable 拿到 <code>type_info</code>、沿继承链一路匹配，确认是合法子类才返回指针，不是就返回 nullptr。整条链每次调用都要走一遍，几十 cycle 起步。</p>
+<p>C++ 给你一张安全网，代价就是这套类型记录系统：每个含 virtual 函数的类要带 <code>type_info</code> 元数据，每次 <code>dynamic_cast</code> 都要走一遍这条链。</p>
 <p>container_of 没有安全网，但代价是零：</p>
 <blockquote>
 <p>container_of 一旦编译完，就是一条减法指令。零运行时开销。</p>
 </blockquote>
 <p>C 用编译期数学解决了 C++ 用运行时类型信息解决的同一个问题。</p>
-<p>第 12 章看的是 C++ 偏移加法的手写版，第 13 章看的是 C++ RTTI 查表的零开销替代版。两章一起讲完了 C++ 类型转换的对偶。</p>
+<p>两章合起来，OOP 的类型上下转都覆盖了：</p>
+<ul>
+<li>第 12 章 <code>&amp;xxx.base</code> · 向上转型 · 子类对象当父类句柄看</li>
+<li>第 13 章 <code>container_of</code> · 向下转型 · 从父类成员反推回子类</li>
+</ul>
+<p>C++ 把这两件事藏在 <code>static_cast</code> / <code>dynamic_cast</code> 后面，编译器和 RTTI 自动做。C 里你两章手写了一遍：机制看得清、字段管得严、运行时零开销。</p>
 <p><img src="../assets/ch13/slide7_金句CvsCpp.png" alt="C 对比 C++"></p>
 <h2 id="138-视频里没讲透的几个细节"><a class="header" href="#138-视频里没讲透的几个细节">13.8 视频里没讲透的几个细节</a></h2>
 <h3 id="1381-编译器算偏移的过程"><a class="header" href="#1381-编译器算偏移的过程">13.8.1 编译器算偏移的过程</a></h3>
