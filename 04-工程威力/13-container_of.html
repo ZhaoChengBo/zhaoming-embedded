@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -431,14 +431,24 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>为什么这一章就把 <code>set_brightness</code> 加进 ops 表？因为后续章节代码包沿用同一份字段集，提前加进去，跨章演化更平滑。这一章的主线还是 container_of，<code>set_brightness</code> 字段只是顺便挂上。</p>
 <p>至于“<code>set_brightness</code> 字段为 NULL 怎么办“、“PWM 填、GPIO 不填这种’子类各自决定’怎么处理”，正是第 14 章「虚函数不实现 · 三种策略」的主题。这一章先把字段挂上，下一章展开机制。</p>
 <p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.12。</p>
+<h3 id="1386-配套代码文件组织每个子类一个文件"><a class="header" href="#1386-配套代码文件组织每个子类一个文件">13.8.6 配套代码文件组织：每个子类一个文件</a></h3>
+<p>本章 <code>pc/</code> 目录沿用第 12 章的“每个子类一个文件“组织：</p>
+<pre><code>oop-in-c/code/13-container-of/pc/
+├── led_base.h / led_base.c    父类字段集 + 共有 init + 父类统一接口
+├── led.h                      公开接口集中点（ops 表字段集 + led_on/off/set_brightness 声明）
+├── led_gpio.h / led_gpio.c    GPIO 子类（base 故意挪到偏移 4，container_of 演示位置无关）
+├── led_pwm.h  / led_pwm.c     PWM 子类（base 在偏移 0，三件套全填）
+├── led_i2c.h  / led_i2c.c     I2C 子类（base 在偏移 0，set_brightness 不填）
+├── container_of.h             § 13.5 那个三步宏的最简实现
+└── main.c                     跑 demo
+</code></pre>
+<p>三种子类全部用 <code>container_of</code> 反推自己 – GPIO 子类必须用（base 偏移 4，强转会算错地址 4 字节），PWM / I2C 子类 base 偏移 0，<code>container_of</code> 在偏移 0 的减法会被编译器优化掉，等价于直接强转。三个子类一视同仁全部用 <code>container_of</code> 是为了让 GPIO 那条 base 偏移 4 的教学变形不显得特殊，应用层和驱动框架看到的代码风格一致。</p>
 <h2 id="139-你现在的代码在-stm32-上长什么样"><a class="header" href="#139-你现在的代码在-stm32-上长什么样">13.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>container_of 在 STM32 上是同一个宏，编译产物就是 ARM Cortex-M 的 <code>SUB Rd, Rn, #imm</code>。STM32 工程里你直接 <code>#include &lt;linux/types.h&gt;</code> 不行（那是内核头），但 STM32CubeIDE 的 <code>arm-none-eabi-gcc</code> 自带 <code>&lt;stddef.h&gt;</code>，offsetof 一直可用。把 § 13.5 那个三步宏放进 utility 头文件就能用。</p>
 <p>本节用的是函数式包装的教学简化版（4 个 <code>platform_gpio_*</code> 独立函数）。真正工业级的 platform 抽象用 ops 表（虚函数表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
-<p>完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/stm32-snippet/"><code>oop-in-c/code/13-container-of/stm32-snippet/</code></a>。</p>
-<h2 id="1310-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1310-你现在的代码在-linux-用户态长什么样">13.10 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 用户态可以直接借 <code>&lt;stddef.h&gt;</code> 的 offsetof。绝大多数 user-space 项目自定义自己的 container_of 宏，比如 systemd、gobject、libnl 都各写一份，逻辑都一样。在 Linux 用户态写 OOP 风格 C 代码，container_of 这一招几乎是入场券。</p>
-<p>本节同样是函数式包装的教学简化版（sysfs 实现的 4 个 <code>platform_gpio_*</code>），ops 表式重构在 ch15 展开。</p>
-<p>完整 Linux 用户态 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/linux-snippet/"><code>oop-in-c/code/13-container-of/linux-snippet/</code></a>。</p>
+<p>完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/platform-mcu/stm32/"><code>oop-in-c/code/13-container-of/platform-mcu/stm32/</code></a>（用 <code>PIN_NUM('A', 13)</code> 编码 + <code>_gpio_table</code> 查表）。完整跑通的 STM32 工程见附录 B。</p>
+<h2 id="1310-linux-用户态完整工程"><a class="header" href="#1310-linux-用户态完整工程">13.10 Linux 用户态完整工程</a></h2>
+<p>Linux 用户态可以直接借 <code>&lt;stddef.h&gt;</code> 的 offsetof。绝大多数 user-space 项目自定义自己的 container_of 宏，比如 systemd、gobject、libnl 都各写一份，逻辑都一样。在 Linux 用户态写 OOP 风格 C 代码，container_of 这一招几乎是入场券。三种子类内部各自直接调 Linux 内核暴露的接口（GPIO 走 libgpiod，PWM 走 sysfs PWM，I2C 走 i2c-dev），container_of 这一招在哪个子类内部都用，跟平台无关，判断标准见 § 15.15。完整跑通的工程见附录 C。</p>
 <h2 id="1311-工业代码里的-container_of"><a class="header" href="#1311-工业代码里的-container_of">13.11 工业代码里的 container_of</a></h2>
 <p>工业控制板 driver 里：</p>
 <pre><code class="language-c">/* drivers/encoder/encoder.h */

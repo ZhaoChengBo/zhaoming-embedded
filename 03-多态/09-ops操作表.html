@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -312,7 +312,7 @@ class led_pwm  : public led_base { ... };
 else
     printf("This LED doesn't support brightness control\n");
 </code></pre>
-<p>NULL check 这件事，工业代码里函数指针调用前几乎都做。本章配套代码 <code>test_led</code> 入口处对 <code>on / off / toggle</code> 三个字段都跑了 NULL check（<code>led.c:143</code>），就是这个习惯。指针来源（字段、参数、全局都算）不重要，重要的是用之前查一次。</p>
+<p>NULL check 这件事，工业代码里函数指针调用前几乎都做。本章配套代码 <code>test_led</code> 入口处对 <code>on / off / toggle</code> 三个字段都跑了 NULL check（<code>led_base.c</code> 里的 <code>test_led</code>），就是这个习惯。指针来源（字段、参数、全局都算）不重要，重要的是用之前查一次。</p>
 <h3 id="953-ops-表为什么是-const"><a class="header" href="#953-ops-表为什么是-const">9.5.3 ops 表为什么是 const</a></h3>
 <p>ops 表通常加 <code>const</code> 修饰：</p>
 <pre><code class="language-c">const struct led_ops led_ops_gpio = { ... };
@@ -380,7 +380,8 @@ struct led_ops {
 </ol>
 <p>跑代码以代码包为准，看视频以视频画面为准，两边讲的是同一个机制。</p>
 <h2 id="96-你现在的代码在-stm32-上长什么样"><a class="header" href="#96-你现在的代码在-stm32-上长什么样">9.6 你现在的代码在 STM32 上长什么样</a></h2>
-<p>STM32 端胶水还是 ch01 那套。<code>led_base.h / led_base.c / led.h / led.c / main.c</code> 一字不改。</p>
+<p>STM32 端胶水还是 ch01 那套。<code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / led_pwm.h / led_pwm.c / main.c</code> 一字不改。</p>
+<p>注意从这一章起每种 LED 子类拆到自己的 <code>led_xxx.h/.c</code> 一对文件里，方便往后加 I2C 等更多种类时直接新增一对 <code>led_i2c.h/.c</code>、老子类完全不动。这件事在 ch11 三种子类同台 dispatch 时彻底兑现。</p>
 <p>ops 表 <code>led_ops_gpio / led_ops_pwm</code> 编译后进 <code>.rodata</code> 段，烧到 Flash 上。运行时常驻，所有 GPIO 类 LED 共享同一份 12 字节的 ops 表：</p>
 <pre><code>/* 真实芯片 .map 文件里能看到 */
 .rodata
@@ -391,8 +392,9 @@ struct led_ops {
 <p>100 颗 LED 仅有 24 字节 ops 表代价。每颗 LED 自己的 struct 实例（在 <code>.bss</code> 或栈上）和这张 ops 表无关。</p>
 <p>本节用的还是函数式包装的 platform 抽象层（<code>platform_gpio_write(pin, value)</code> 这种独立函数），是教学简化版。真正工业级的 platform 抽象用 ops 表的形式。后面章节会把 platform 层从函数式重构成 ops 表式，和工业代码对齐。</p>
 <h2 id="97-你现在的代码在-linux-用户态长什么样"><a class="header" href="#97-你现在的代码在-linux-用户态长什么样">9.7 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端的 ops 表完全一样的写法。<code>gcc / clang</code> 把 <code>const struct</code> 放到 <code>.rodata</code>，进程加载时在虚拟内存里只读映射，全进程共享。</p>
-<p><code>led_base.h / led_base.c / led.h / led.c / main.c</code> 一字不改。同 9.6 节 STM32 端，platform 层是教学简化版，第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
+<p>Linux 端的 ops 表写法和 PC / STM32 完全一样，<code>gcc / clang</code> 把 <code>const struct</code> 放到 <code>.rodata</code>，进程加载时只读映射，全进程共享。</p>
+<p>不同的是 Linux 上<strong>没有 platform 抽象层</strong>。GPIO 子类内部直接调 libgpiod（<code>gpiod_line_set_value</code>），背后是 Linux 内核完整的 gpio chardev / gpiolib（内核已经把 platform 抽象做完了，应用层再套一层是反工程）。完整工程见附录 C。</p>
+<p><code>led_base.h / led_base.c / main.c</code> 一字不改。“换硬件不改应用“在 Linux 上兑现成“换子类内部实现，应用层和 base 层完全一致”。判断标准见 § 15.15。</p>
 <h2 id="98-工业代码里的-ops-表"><a class="header" href="#98-工业代码里的-ops-表">9.8 工业代码里的 ops 表</a></h2>
 <p>工业控制板项目里，每个驱动都有一张 ops 表。LED 驱动这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -408,7 +408,7 @@ api-&gt;port_set_bits_raw(dev, BIT(pin));
 <li>在 <code>.device_states</code> 段塞一个 <code>struct device</code> 实例</li>
 <li>把 <code>&amp;gpio_stm32_driver_api</code> 链到 <code>dev-&gt;api</code></li>
 </ol>
-<p>跟工业项目的 <code>INIT_DEVICE_EXPORT(my_setup)</code> 加全局 <code>extern led_base_t *green_led;</code> 是一回事。差别只在 Zephyr 用编译期模板（多个 <code>_##idx</code> 后缀）批量生成实例，更精致。</p>
+<p>跟工业项目的 <code>INIT_DEVICE_EXPORT(my_setup)</code> 加全局 <code>extern struct led_base *green_led;</code> 是一回事。差别只在 Zephyr 用编译期模板（多个 <code>_##idx</code> 后缀）批量生成实例，更精致。</p>
 <h3 id="a32-zephyr-设备树编译期展开式的设备描述"><a class="header" href="#a32-zephyr-设备树编译期展开式的设备描述">A.3.2 Zephyr 设备树：编译期展开式的设备描述</a></h3>
 <p>Zephyr 的“哪些设备存在 + 各自参数“信息来自 <code>.dts</code> 设备树文件，但和 Linux 不同的是：Linux 在运行时解析 dtb 二进制，Zephyr 在编译期通过宏展开把 dts 的内容变成 C 字面量。</p>
 <p>某块板的 dts 写：</p>
@@ -534,7 +534,7 @@ GtkButton *button = G_TYPE_CHECK_INSTANCE_CAST(widget,
 <tr><td>子类嵌入基类</td><td><code>struct led { struct led_base base; ... }</code></td><td><code>struct cdev { struct kobject kobj; ... }</code></td><td>（字段 + dt 配置组合）</td><td><code>struct GtkButton { GtkBin parent_instance; ... }</code></td></tr>
 <tr><td>向下转型</td><td><code>(struct led *)me</code> 或 <code>container_of</code></td><td><code>container_of(ptr, struct cdev, kobj)</code></td><td>（通过 <code>dev-&gt;data</code>）</td><td><code>G_TYPE_CHECK_INSTANCE_CAST</code></td></tr>
 <tr><td>initcall 等级</td><td>INIT_DEVICE_EXPORT 等 7 级</td><td>core/postcore/…/late 7 级</td><td>PRE_KERNEL_1 / POST_KERNEL / APPLICATION</td><td>编译期 + GType 注册时执行</td></tr>
-<tr><td>注册机制</td><td><code>extern led_base_t *green_led;</code></td><td><code>register_chrdev</code> + <code>module_init</code> / <code>gpiochip_add_data</code></td><td><code>DEVICE_DT_INST_DEFINE</code> 宏</td><td><code>g_type_register_static</code></td></tr>
+<tr><td>注册机制</td><td><code>extern struct led_base *green_led;</code></td><td><code>register_chrdev</code> + <code>module_init</code> / <code>gpiochip_add_data</code></td><td><code>DEVICE_DT_INST_DEFINE</code> 宏</td><td><code>g_type_register_static</code></td></tr>
 <tr><td>类型检查</td><td>无（裸强转）</td><td>无（裸强转）</td><td>无（裸强转）</td><td>RTTI（<code>G_TYPE_CHECK_INSTANCE_CAST</code>）</td></tr>
 <tr><td>事件机制</td><td>单 cb 字段</td><td>callback / notifier_chain</td><td>callback 数组</td><td>signal / property</td></tr>
 </tbody>

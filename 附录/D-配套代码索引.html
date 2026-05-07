@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,18 +183,44 @@
                         <h1 id="附录-d--配套代码索引--视频清单--编译运行指南"><a class="header" href="#附录-d--配套代码索引--视频清单--编译运行指南">附录 D · 配套代码索引 + 视频清单 + 编译运行指南</a></h1>
 <p>这一附录是全书的“导航地图“。你在任何一章想找配套代码、想找对应视频、想跑某一章的代码，全在这一附录。</p>
 <h2 id="d1-配套代码包索引"><a class="header" href="#d1-配套代码包索引">D.1 配套代码包索引</a></h2>
-<p>每一章对应一个独立目录在 <code>oop-in-c/code/&lt;ch&gt;-&lt;topic&gt;/</code> 下。结构都按 ch01 模板：</p>
+<p>每一章对应一个独立目录在 <code>oop-in-c/code/&lt;ch&gt;-&lt;topic&gt;/</code> 下。结构按章节复杂度渐进引入：</p>
+<p><strong>ch01-ch14 / ch17（基础章 + initcall）：单 MCU 平台对照</strong></p>
 <pre><code>oop-in-c/code/&lt;ch&gt;-&lt;topic&gt;/
-├── pc/                 完整可跑的 PC 模拟版
+├── pc/                       完整可跑的 PC 模拟版（一行 make 即可编译）
 │   ├── Makefile
 │   ├── README.md
-│   ├── led.h / led.c
-│   ├── main.c
-│   └── （根据章节，可能含 motor.h / motor.c 等）
-├── stm32-snippet/      STM32 HAL 等效片段（不是完整工程）
-│   └── led_stm32.c
-├── linux-snippet/      Linux 用户态等效片段
-│   └── led_linux.c
+│   └── （led.h / led.c / main.c，按章节演化）
+├── platform-mcu/
+│   └── stm32/                STM32 HAL 等效片段（不是完整工程，看真机版本长什么样）
+│       ├── led_gpio.c        GPIO 子类的 STM32 实现（含 PIN_NUM 解码 + HAL_GPIO_*）
+│       ├── led_pwm.c         PWM 子类的 STM32 实现（HAL_TIM_PWM_*）
+│       └── led_i2c.c         I2C 子类的 STM32 实现（HAL_I2C_Master_Transmit），ch11+ 起出现
+└── README.md
+</code></pre>
+<p><strong>ch15（高潮章·完整四层架构）：跨 MCU + Linux 用户态对照</strong></p>
+<pre><code>oop-in-c/code/15-platform/
+├── pc/                                  PC 模拟版（板级 ops 走 stdout 模拟）
+├── drivers/led/                         驱动层：led_base + led_gpio / led_pwm / led_i2c 子类
+├── platform/                            平台框架层：platform_pin / platform_pwm / platform_i2c
+│   └── arch/
+│       ├── stm32/                       STM32 板级实现（pin_board.c 调 HAL）
+│       └── nxp/                         NXP 板级实现（同接口换厂家 HAL）
+├── linux-driver/
+│   └── userspace/                       Linux 用户态版（直接调 libgpiod / sysfs / i2c-dev，无 platform 层）
+└── README.md
+</code></pre>
+<p><strong>ch16（Linux 风格章）：内核源码对照 + 用户态实战</strong></p>
+<pre><code>oop-in-c/code/16-linux-style/
+├── pc/                                  PC 模拟版（gpio_chip 多态 dispatch 完整图景）
+├── platform-mcu/
+│   └── stm32/                           STM32 占位 README（指向 Linux 源 + Zephyr / RT-Thread）
+├── linux-driver/
+│   └── userspace/                       Linux 用户态实战代码（leds-gpio.c 内核驱动指向内核源）
+└── README.md
+</code></pre>
+<p><strong>ch18（终章·全书地图回顾）：仅 PC 演示</strong></p>
+<pre><code>oop-in-c/code/18-roadmap/
+├── pc/                                  全书 18 章演化路径全景演示
 └── README.md
 </code></pre>
 <p>完整列表：</p>
@@ -218,31 +244,42 @@
 <tr><td>ch12</td><td><code>12-upcasting/</code></td><td>向上转型，<code>(struct led_base *)led</code> 子类指针转基类</td></tr>
 <tr><td>ch13</td><td><code>13-container-of/</code></td><td>container_of 宏，从基类指针拿回子类</td></tr>
 <tr><td>ch14</td><td><code>14-pure-virtual/</code></td><td>纯虚 / 抽象类，<code>int (*on)(...);</code> 没赋值</td></tr>
-<tr><td>ch15</td><td><code>15-platform/</code></td><td>platform 抽象到底，GPIO / PWM / I2C 三种硬件混搭，应用层 0 修改换硬件方案</td></tr>
-<tr><td>ch16</td><td><code>16-linux-style/</code></td><td>Linux 内核风格，引用 <code>struct gpio_chip</code></td></tr>
+<tr><td>ch15</td><td><code>15-platform/</code></td><td>完整四层架构：drivers + platform + platform/arch/{stm32,nxp} + linux-driver/userspace（i2c 二层 + Linux i2c 子系统对照见 § 15.17）</td></tr>
+<tr><td>ch16</td><td><code>16-linux-style/</code></td><td>Linux 内核风格，gpio_chip 子系统 + 用户态实战；内核驱动 LED 直接读 <code>drivers/leds/leds-gpio.c</code></td></tr>
 <tr><td>ch17</td><td><code>17-initcall/</code></td><td>链接自动初始化，模仿 Linux 内核的 module_init 机制</td></tr>
 <tr><td>ch18</td><td><code>18-roadmap/</code></td><td>全书地图回顾，一颗 LED 18 章演化路径全景图</td></tr>
 </tbody>
 </table>
 </div>
 <p>每个 <code>pc/README.md</code> 描述这一章演示什么、跑出来你应该看到什么。每个 <code>pc/Makefile</code> 一行 <code>make</code> 即可编译。</p>
+<h3 id="为什么各章目录结构不一致"><a class="header" href="#为什么各章目录结构不一致">为什么各章目录结构不一致</a></h3>
+<p>教学路径渐进引入，不在每一章都铺一份完整四层架构：</p>
+<ul>
+<li><strong>ch01 - ch10 早期</strong>：每章一个新概念（封装 / 信息隐藏 / 数据归位 / 函数指针 / 回调 / ops 表），<code>pc/</code> + <code>platform-mcu/stm32/</code> 两份对照足够。读者看 PC 版本理解抽象，看 STM32 片段感受真机里这一行长什么样</li>
+<li><strong>ch11 - ch14</strong>：同样保持 <code>pc/</code> + <code>platform-mcu/stm32/</code>。多态 / 向上转型 / container_of / 纯虚每一招在 PC 演示足够清楚，加 STM32 片段做真机镜像</li>
+<li><strong>ch15</strong>：本书第一个高潮章，必须把完整四层架构铺出来。drivers + platform + platform/arch/{stm32,nxp} + linux-driver/userspace 全部就位，“换硬件不改应用” 在三个维度（GPIO / PWM / I²C）+ 跨 MCU（STM32 vs NXP）+ 跨平台（裸机 vs Linux 用户态）同时演示。§ 15.17 i2c 二层（adapter + 设备）+ Linux i2c 子系统对照接在这一章末尾</li>
+<li><strong>ch16</strong>：Linux 风格章，重点是看真实内核 <code>gpio_chip</code> 子系统。<code>pc/</code> 给 gpio_chip + leds_gpio + 多厂家驱动多态 dispatch 完整 demo，<code>linux-driver/userspace/</code> 给可在 SBC 上 build 的实战代码。LED 内核驱动不在 <code>linux-driver/</code> 自己实现，直接指向内核源 <code>drivers/leds/leds-gpio.c</code> —— 上千种板子用过的标准版本，重写没意义（完整论述见 ch16 § 16.13 + § 16.14）</li>
+<li><strong>ch17</strong>：initcall 是独立主题（链接器段 + 启动期遍历），跟 platform 层的“换硬件“没关系，<code>pc/</code> + <code>platform-mcu/stm32/</code> 即可</li>
+<li><strong>ch18</strong>：终章只有 <code>pc/</code> 一份，回顾全书 18 章演化路径，不再挂任何真机片段</li>
+</ul>
 <h2 id="d2-工业代码包索引"><a class="header" href="#d2-工业代码包索引">D.2 工业代码包索引</a></h2>
-<p>工业代码在 <code>industrial/</code> 下：</p>
+<p>工业代码在 <code>industrial/</code> 下，5 个子目录覆盖三类任务：</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>目录</th><th>对应章节</th><th>内容</th></tr>
+<tr><th>目录</th><th>对应章节</th><th>平台 / 角色</th><th>状态</th></tr>
 </thead>
 <tbody>
-<tr><td><code>industrial/led_basic/</code></td><td>ch19 19.1</td><td>LED 最小继承范例，<code>led_base + led_gpio</code></td></tr>
-<tr><td><code>industrial/motor_24vfuncs/</code></td><td>ch20 20.1 - 20.4</td><td>Motor 驱动 24 虚方法 + 工作线程 + 三种回调</td></tr>
-<tr><td><code>industrial/platform_layer/</code></td><td>ch20 20.6</td><td>UART / I²C / SPI 统一抽象 + initcall 7 级</td></tr>
-<tr><td><code>industrial/stm32_full/</code></td><td>附录 B</td><td>STM32F407 完整工程，全书所有抽象一次跑通</td></tr>
-<tr><td><code>industrial/linux_full/</code></td><td>附录 C</td><td>Linux 用户态完整工程，全书所有抽象在 Linux 跑通</td></tr>
+<tr><td><code>industrial/led_basic/</code></td><td>ch19 § 19.1</td><td>工业项目 LED 最小继承范例（<code>led_base + led_gpio</code> 接口骨架，不直接 build）</td><td>完成</td></tr>
+<tr><td><code>industrial/motor_24vfuncs/</code></td><td>ch20 § 20.1 - 20.4</td><td>水平 / 垂直电机 24 + 3 虚方法 + 工作线程 + 三种回调（接口骨架）</td><td>完成</td></tr>
+<tr><td><code>industrial/platform_layer/</code></td><td>ch19 § 19.6 + ch20 § 20.6</td><td>UART / I²C / SPI / PWM 统一抽象 + 7 级 initcall + 第 8 级单测段</td><td>完成</td></tr>
+<tr><td><code>industrial/stm32_full/</code></td><td>附录 B</td><td>STM32F407 / Cortex-M4F · CubeMX HAL（完整工程）</td><td>PC mock 跑通；真机依赖 CubeMX 生成的 HAL 库</td></tr>
+<tr><td><code>industrial/linux_full/</code></td><td>附录 C</td><td>ARM64 SBC（树莓派 / 香橙派）· 用户态（完整工程）</td><td>PC mock + libgpiod + sysfs 三模 build 跑通</td></tr>
 </tbody>
 </table>
 </div>
-<p><code>industrial/README.md</code> 是工业代码总入口，描述“工业代码和教学版的 9 个差距“。</p>
+<p>前三个目录是<strong>接口骨架</strong>（脱敏自真实工业项目，保留 OOP 抽象层），主要给 ch19 / ch20 章节正文做“工业代码长什么样“的实证。后两个 <code>_full/</code> 是<strong>完整可 build 工程</strong>，附录 B / C 章节正文围绕它们展开。</p>
+<p><code>industrial/README.md</code> 是工业代码总入口，列出上面 5 个子目录的对应章节和当前状态，并简介工业级骨架的核心要素：跨编译器宏（ARMCC / IAR / GCC）、<code>platform_err_t</code> 错误码、7 级 initcall + 第 8 级单测段、<code>platform_assert</code> 校验、字符串 PIN 名解析（<code>"PA.5"</code> / <code>"PD.12"</code> / <code>"PI.14"</code>）、三层信息可见性（应用层 / 驱动层 / 平台层）。</p>
 <h2 id="d3-视频清单"><a class="header" href="#d3-视频清单">D.3 视频清单</a></h2>
 <p>每章对应一期视频，发在 B 站 / 抖音 / 视频号「兆鸣嵌入式」频道。</p>
 <div class="table-wrapper">
@@ -294,13 +331,29 @@ sudo yum groupinstall "Development Tools"
 </code></pre>
 <p><code>gcc --version</code> 和 <code>make --version</code> 看到版本号即装好。</p>
 <h3 id="d43-跑任一章配套代码"><a class="header" href="#d43-跑任一章配套代码">D.4.3 跑任一章配套代码</a></h3>
-<p>三步法（每章一样）：</p>
+<p><strong>ch01 - ch14 / ch17 / ch18：<code> pc/</code> 目录三步法</strong></p>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc      # 换成你想跑的章
 make
 ./demo
 </code></pre>
 <p>Windows 上跑出来的可执行文件叫 <code>demo.exe</code>，Linux 上叫 <code>demo</code>。</p>
 <p>终端会滚出几十行 <code>[GPIO]</code> 和 <code>[LED]</code> 输出，跟章节正文末尾“跑一遍“那一节的预期输出一致。</p>
+<p><strong>ch15：完整四层架构在 <code>pc/</code> 跑通</strong></p>
+<pre><code class="language-bash">cd oop-in-c/code/15-platform/pc        # PC 模拟版主目录
+make
+./demo
+</code></pre>
+<p>ch15 的 <code>drivers/</code> / <code>platform/</code> / <code>platform/arch/{stm32,nxp}/</code> 四个子目录是<strong>库代码</strong>，由 <code>pc/</code> 的 Makefile 链接进来一并 build，不要在子目录单独跑 make。ch15 的 Linux 用户态版在 <code>linux-driver/userspace/</code> 下，需要在 Linux SBC（树莓派 / 香橙派）上装好 libgpiod-dev 才能跑：</p>
+<pre><code class="language-bash">cd oop-in-c/code/15-platform/linux-driver/userspace
+make
+sudo ./demo                            # 接好 LED 后跑
+</code></pre>
+<p><strong>ch16：PC 模拟 gpio_chip 子系统</strong></p>
+<pre><code class="language-bash">cd oop-in-c/code/16-linux-style/pc
+make
+./demo
+</code></pre>
+<p><code>pc/</code> 里的 <code>gpio_chip.h / gpiolib.c / gpio_vendor_a.c / gpio_vendor_b.c / leds_gpio.c / main.c</code> 拼出的是 Linux 内核 <code>gpio_chip</code> 子系统在 PC 上的可跑版本，演示同一份 <code>leds_gpio.c</code> 跨两家厂家芯片的多态 dispatch。<code>linux-driver/userspace/</code> 是 Linux SBC 上的实战版（同 ch15 的跑法），<code>platform-mcu/stm32/</code> 只是占位 README，指向 Linux 内核源 + Zephyr / RT-Thread 对应实现。</p>
 <h3 id="d44-跑出错时的常见问题"><a class="header" href="#d44-跑出错时的常见问题">D.4.4 跑出错时的常见问题</a></h3>
 <div class="table-wrapper">
 <table>
@@ -334,12 +387,12 @@ make
 <p>或用 STM32CubeProgrammer GUI。</p>
 <h3 id="d46-跑-linux-sbc-工程附录-c"><a class="header" href="#d46-跑-linux-sbc-工程附录-c">D.4.6 跑 Linux SBC 工程（附录 C）</a></h3>
 <p>在树莓派 / 香橙派等 SBC 上：</p>
-<pre><code class="language-bash">sudo apt install libgpiod-dev gpiod build-essential
+<pre><code class="language-bash">sudo apt install libgpiod-dev build-essential
 cd industrial/linux_full
 make
-sudo ./build/demo
+sudo ./build/firmware
 </code></pre>
-<p>板上接 4 颗 LED + 220Ω 限流电阻到 GPIO（具体引脚见附录 C C.4 led_cfg.c）。</p>
+<p>板上接 4 颗 LED + 220Ω 限流电阻到 GPIO（具体引脚见附录 C C.4）。这一份工程跟附录 B 不同：它<strong>没有 <code>app/platform/</code> 抽象层</strong>——子类直接调 libgpiod / sysfs PWM / i2c-dev，因为 Linux 内核已经把 platform 抽象做完了，应用层再套一层是过度封装。完整对比看附录 C C.0 节。</p>
 <h2 id="d5-看哪一章解决哪种问题速查"><a class="header" href="#d5-看哪一章解决哪种问题速查">D.5 看哪一章解决哪种问题（速查）</a></h2>
 <p>如果你不是从头读，而是有具体问题来书里查：</p>
 <div class="table-wrapper">
@@ -362,8 +415,8 @@ sudo ./build/demo
 <tr><td>子类指针往哪转、为什么这样转</td><td>ch12</td></tr>
 <tr><td>收到基类指针想拿回子类</td><td>ch13</td></tr>
 <tr><td>想强制子类必须实现某些方法</td><td>ch14</td></tr>
-<tr><td>想做一份代码多平台跑（PC / STM32 / Linux）</td><td>ch15</td></tr>
-<tr><td>想知道 Linux 内核驱动怎么写</td><td>ch16</td></tr>
+<tr><td>想做一份代码多平台跑（PC / STM32 / Linux）</td><td>ch15（含 § 15.17 i2c 二层 + Linux i2c 子系统对照）</td></tr>
+<tr><td>想知道 Linux 内核驱动怎么写 / 应用层 vs 内核层怎么选</td><td>ch16（§ 16.13 Zephyr / RT-Thread 同款 + § 16.14 应用层 vs 内核层判断三步）</td></tr>
 <tr><td>想做大型项目自动初始化（避免 main 一长串 init）</td><td>ch17</td></tr>
 <tr><td>想看全书演化路径全景图</td><td>ch18</td></tr>
 <tr><td>想看真实工业项目代码长什么样</td><td>ch19 / ch20</td></tr>

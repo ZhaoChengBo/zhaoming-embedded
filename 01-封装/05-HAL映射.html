@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -351,7 +351,7 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin,
 <p><strong>几千个 HAL 函数就一个套路</strong>这句话不是我说的，是 ST 工程师写 HAL 时的设计哲学。每个外设都是 <code>XXX_TypeDef + XXX_Init / DeInit + 操作函数</code> 这一套，每个操作函数底下都是寄存器 store。HAL 库教学价值最大的部分在这一层：让你看到“工业级框架的骨架就是 ch01-ch04 的几个动作“。</p>
 <h2 id="59-你现在的代码在-stm32-上跑"><a class="header" href="#59-你现在的代码在-stm32-上跑">5.9 你现在的代码在 STM32 上跑</a></h2>
 <p>PC 模拟版在 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/pc/"><code>oop-in-c/code/05-hal-mapping/pc/</code></a>。Makefile + main.c + hal_gpio.c + gpio_typedef.h 一个文件不少，gcc 编完就跑。</p>
-<p>真实 STM32 上的等效片段（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/stm32-snippet/hal_gpio_real.c"><code>oop-in-c/code/05-hal-mapping/stm32-snippet/hal_gpio_real.c</code></a>）：</p>
+<p>真实 STM32 上的等效片段（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/platform-mcu/stm32/hal_gpio_real.c"><code>oop-in-c/code/05-hal-mapping/platform-mcu/stm32/hal_gpio_real.c</code></a>）：</p>
 <pre><code class="language-c">GPIO_InitTypeDef cfg = {0};
 
 __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -374,15 +374,8 @@ HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
    -&gt; 具体 GPIO controller driver
    -&gt; 最终还是 BSRR 或类似的硬件寄存器
 </code></pre>
-<p><a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/linux-snippet/sysfs_gpio_real.c"><code>oop-in-c/code/05-hal-mapping/linux-snippet/sysfs_gpio_real.c</code></a> 演示了用户态最朴素的 sysfs 用法：</p>
-<pre><code class="language-c">gpio_export(13);
-gpio_set_dir(13, "out");
-gpio_write(13, 1);
-sleep(1);
-gpio_write(13, 0);
-</code></pre>
 <p>sysfs 的“把硬件当文件“机制怎么和内核的 <code>file_operations</code> + <code>gpio_chip</code> 衔接起来：<code>gpio_chip</code> 是第 16 章的内容，<code>file_operations</code> 是第 18 章 § 18.1 的内容。这一章先看到“用户态调用还是同一个套路“。</p>
-<p>新内核推荐 libgpiod 替代 sysfs，附录 C 会展开。</p>
+<p>完整工程见附录 C（新内核推荐 libgpiod 替代 sysfs，附录里展开）。</p>
 <h2 id="511-工业代码里的对应"><a class="header" href="#511-工业代码里的对应">5.11 工业代码里的对应</a></h2>
 <p>我做的工业控制板项目里所有的驱动都按 HAL 这套路子组织。每个底层 driver 都有自己的 <code>&lt;MOD&gt;_TypeDef</code>、自己的 init/deinit、自己的命名前缀。</p>
 <p>随便举一个例子。DS2433（1-Wire EEPROM）的头文件骨架：</p>
@@ -401,6 +394,9 @@ int ds2433_deinit(ds2433_t *me);
 int ds2433_read(ds2433_t *me, uint32_t addr, void *buf, size_t n);
 int ds2433_write(ds2433_t *me, uint32_t addr, const void *buf, size_t n);
 </code></pre>
+<blockquote>
+<p>ds2433 用了 <code>typedef struct ... ds2433_t</code> 写法·这是工业代码沿用的早期风格。本书新章节代码统一改 struct（理由 ch01 § 1.7.3 已讲）·历史代码看到 <code>_t</code> 后缀不必惊讶。</p>
+</blockquote>
 <p>字段命名、<code>&lt;MOD&gt;_TypeDef</code> 风格、init/deinit 配对、<code>me</code> 指针作为第一参数，跟 HAL 库的 GPIO 一字不差，跟前 4 章你学的一字不差。</p>
 <blockquote>
 <p><strong>这一节有意省略的部分</strong>：真实工业代码里 EEPROM 还会拆成“父类 + 子类“两份头文件，父类 <code>eeprom_base.h</code> 放对外统一接口（<code>eeprom_read</code> / <code>eeprom_write</code>），多种 EEPROM 实现（DS2433 / AT24Cxx / Flash 模拟）通过一张函数指针表分发到具体硬件。这一招叫<strong>多态</strong>，是 ch06（继承）→ ch07-09（函数指针 + ops 表）→ ch10-11（vptr + dispatch）整个 OOP 系列展开的主题。这一章你看到“工业代码也是 struct + me + init/deinit + 命名前缀“这一层就够了，别的层级在后面学到了再回来看。</p>

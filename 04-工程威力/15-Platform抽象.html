@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -249,6 +249,9 @@ int led_set_brightness(struct led_base *me, uint8_t b)
 }
 </code></pre>
 <p><code>on / off</code> 必填，对应 C++ 纯虚函数，子类不实现 <code>assert</code> 立刻报错。<code>set_brightness</code> 选填，对应 C++ 带默认行为的虚函数，子类不实现父类走默认（GPIO 灯没法调光）。同一个父类接口里，必填和选填两种做法同时出现。这就是 ch14 的精确兑现。</p>
+<blockquote>
+<p>注意从 ch15 起 ops 表把 <code>toggle</code> 槽位换成 <code>set_brightness</code>。toggle 教学到 ch11 已讲透·set_brightness 是为了 ch14 § 14.4 演示选填策略·两者按“留一个槽演化“原则替换。</p>
+</blockquote>
 <p><img src="../assets/ch15/slide2_父类代码.png" alt="父类代码"></p>
 <h2 id="153-子类层三种硬件"><a class="header" href="#153-子类层三种硬件">15.3 子类层：三种硬件</a></h2>
 <p>子类把 <code>led_base</code> 嵌进自己的结构体，第一个字段（<code>container_of</code> 不挑位置，但工业代码里 base 仍推荐放第一个）：</p>
@@ -546,46 +549,151 @@ struct motor_can { struct motor base; uint8_t can_id; };       /* 总线伺服 *
 <p>Sensor 同理：温度传感器、压力传感器、IMU，每种都是一种子类。应用层调 <code>sensor_read(handle, &amp;val)</code>，背后是 ADC、是 I2C、是 SPI，无所谓。</p>
 <p>整本书 ch07 - ch14 学到的所有武器，每种外设都套得进去。LED 是教学线索，但这套思维方式是通用的。ch20 工业实战会再用一次：温度传感器 + 压力传感器 + 流量计混搭在同一个采集任务里。</p>
 <h2 id="1510-你现在的代码在-stm32-上长什么样"><a class="header" href="#1510-你现在的代码在-stm32-上长什么样">15.10 你现在的代码在 STM32 上长什么样</a></h2>
-<p><code>stm32-snippet/led_stm32.c</code> 是真实硬件版的 4 个 platform 封装函数：</p>
-<pre><code class="language-c">#include "platform.h"
-#include "stm32f4xx_hal.h"
-
-void platform_gpio_init(uint8_t pin, uint8_t mode)
-{
-	GPIO_InitTypeDef cfg = {0};
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
-	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
-	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
-	cfg.Pull  = GPIO_NOPULL;
-	cfg.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &amp;cfg);
-}
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
-	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
+<blockquote>
+<p>提示：§15.1 - §15.9 视频版讲的是函数式 <code>platform_gpio_*</code> 抽象（一组独立函数 + 数字 pin 编号）·让概念跑通最快。本节起进入工业级兑现层：把厂家差异锁到一份 <code>platform/arch/&lt;mcu&gt;/pin_board.c</code>·上面的 <code>drivers/led/* / platform/*.c 接口实现</code> 跨 MCU 一字不变。两套都讲是因为它们对应“教学引入“和“工业落地“两个不同的复杂度档位。</p>
+</blockquote>
+<p>工业级跨 MCU 工程会把 ch15 这一套四层架构再细分: 应用层 / 设备驱动层 (<code>drivers/led/</code>) / platform 接口层 (<code>platform/platform_*.h+c</code>) / platform 实现层 (<code>platform/arch/&lt;mcu&gt;/pin_board.c</code>)。前三层跨 MCU 字节级不变, <strong>唯一变化点是 platform 实现层一份 <code>pin_board.c</code></strong>。</p>
+<p><code>oop-in-c/code/15-platform/</code> 目录组织就是这套分层:</p>
+<pre><code>15-platform/
+├── pc/                              PC 教学版四层架构
+├── drivers/led/                     设备驱动层·跨 MCU 不变
+│   ├── led_base.{h,c}
+│   ├── led_gpio.{h,c}
+│   ├── led_pwm.{h,c}
+│   └── led_i2c.{h,c}
+├── platform/                        platform 接口层·跨 MCU 不变
+│   ├── platform_pin.{h,c}           ops 表 + register dispatcher
+│   ├── platform_pwm.{h,c}
+│   ├── platform_i2c.{h,c}
+│   └── arch/                        MCU 厂家差异收拢点
+│       ├── stm32/pin_board.c        STM32 HAL 实现
+│       └── nxp/pin_board.c          NXP MCUXpresso SDK 实现
+└── linux-driver/userspace/          Linux 用户态 (没有 platform 层)
 </code></pre>
-<p>子类里 <code>platform_gpio_write(self-&gt;pin, self-&gt;on_level)</code> 在 STM32 上调到底就是 <code>HAL_GPIO_WritePin → GPIOx-&gt;BSRR = (1u &lt;&lt; pin)</code>，一次 32 位 store，原子。</p>
-<p>应用层 <code>app.c</code> / 父类 <code>led_base.c</code> / 子类 <code>led.c</code> / 板级 <code>board_init.c</code> 一字不改。封装函数 <code>platform_gpio_write</code> 的签名一字不改。换的就是这一份 <code>led_stm32.c</code>。</p>
+<p>STM32 端的实现写在 <code>platform/arch/stm32/pin_board.c</code>, 启动期 <code>platform_hw_pin_init()</code> 把三组 ops 表 (<code>_stm32_pin_ops</code> / <code>_stm32_pwm_ops</code> / <code>_stm32_i2c_ops</code>) 注册到 dispatcher:</p>
+<pre><code class="language-c">/* platform/arch/stm32/pin_board.c */
+static GPIO_TypeDef *const _gpio_table[] = {
+    GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, /* ... */
+};
+
+static void _stm32_pin_write(int32_t pin, int32_t value)
+{
+    GPIO_TypeDef *port = _gpio_table[PIN_PORT(pin)];
+    HAL_GPIO_WritePin(port, PIN_MASK(pin),
+                      value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+static const struct platform_pin_ops _stm32_pin_ops = {
+    .mode  = _stm32_pin_mode,
+    .write = _stm32_pin_write,
+    .read  = _stm32_pin_read,
+    .get   = _stm32_pin_get,
+};
+</code></pre>
+<p><code>drivers/led/led_gpio.c</code> 子类调 <code>platform_pin_write(self-&gt;pin, ...)</code>, framework 内部 dispatch 就落到 <code>_stm32_pin_write</code>, 最终 <code>HAL_GPIO_WritePin -&gt; GPIOx-&gt;BSRR = (1u &lt;&lt; pin)</code>, 一次 32 位 store, 原子。</p>
+<p>PIN 编码: 高 4 位 port (字母 A-Z 偏移), 低 4 位 num. PA.0 = 0x00, PD.12 = 0x3C, PI.14 = 0x8E。一份 <code>uint8_t</code> 同时编码 port 字母和 pin 号, 接口签名只有一个 <code>pin</code> 参数 – 换 MCU 时接口不动, 解码表跟着换。</p>
 <h2 id="1511-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1511-你现在的代码在-linux-用户态长什么样">15.11 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p><code>linux-snippet/led_linux.c</code> 走 sysfs 文件读写：</p>
-<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
+<p>Linux 用户态实现这一套, <strong>禁自抽 platform 层</strong>, 内核已经做完。libgpiod / sysfs PWM / i2c-dev 这一组接口本身就是内核 driver model 暴露给用户态的 OOP 接口, 应用层再套一层 <code>platform_gpio_write -&gt; gpiod_line_set_value</code> 就是过度封装, 没拦下任何变化, 反而多了一层没意义的 indirection。</p>
+<p><code>linux-driver/userspace/</code> 给的就是 “内核做完别再抽” 的代码兑现版本: <code>led_gpio.c</code> 直接 <code>gpiod_line_set_value(self-&gt;line, ...)</code>, <code>led_pwm.c</code> 直接写 <code>/sys/class/pwm/pwmchipN/pwmM/duty_cycle</code>, <code>led_i2c.c</code> 直接 <code>open("/dev/i2c-1") + ioctl(I2C_SLAVE) + write(fd, [reg, val], 2)</code>. 没有 <code>platform_gpio_init</code> 这种自抽中间层。父类 ops 表保留 (OOP 抽象任何平台都该有), 但 platform 抽象层没有, 内核已经做完。</p>
+<p>LED 这种通用外设 Linux 内核已经有 <code>drivers/leds/leds-gpio.c</code> 这份内核驱动 – 标准 driver model 写好的版本, 上千种板子用过。所以本目录 <code>linux-driver/</code> 不再贴自家内核驱动版本, 应用层只走用户态 libgpiod / sysfs / i2c-dev 三条路径。要看真实工业级原型, 直接读内核源 <code>drivers/leds/leds-gpio.c</code>, 完整论述见 § 15.15 + ch16 § 16.13 + 附录 C。“应用层 vs 内核层“这个判断标准 ch16 § 16.14 还会展开。</p>
+<h2 id="15115-stm32-vs-nxp换-mcu-不改应用"><a class="header" href="#15115-stm32-vs-nxp换-mcu-不改应用">15.11.5 STM32 vs NXP·换 MCU 不改应用</a></h2>
+<p>§ 15.10 给的是 STM32 上 <code>pin_board.c</code> 长什么样。如果要换一颗 MCU – 比如把 STM32F407 换成 NXP i.MX RT1170 – 同一套应用层 / 设备驱动层 / platform 接口层要改多少行?</p>
+<blockquote>
+<p>注意 <code>drivers/led/led_gpio.h</code> 的 <code>led_gpio_init</code> 比 § 15.3 教学版多一层“字符串 pin 名 + 解析“·签名是 <code>(me, name, pin_name, active_high)</code>·目的是把 pin 名跨 MCU 解耦——同样的字符串 <code>"PA.13"</code> 在 stm32 / nxp 下解析出对应 port + bit。教学版直接用 <code>uint8_t pin</code> 是为了让 § 15.3 学生第一眼跑得通。</p>
+</blockquote>
+<p><code>platform/arch/nxp/</code> 给出答案: <strong>应用层 + drivers/led + platform 接口层 0 行</strong>。<strong>唯一变化点是 <code>platform/arch/&lt;mcu&gt;/{pin_board.c, pwm_board.c, i2c_board.c}</code> 三份文件</strong>, 一外设一文件。</p>
+<p>按文件清单一过:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>文件</th><th>跨 MCU 是否变化</th></tr>
+</thead>
+<tbody>
+<tr><td><code>main.c</code> / <code>app.c</code> (应用层)</td><td>不变</td></tr>
+<tr><td><code>drivers/led/*</code> 4 对 .h/.c (设备驱动层)</td><td>不变</td></tr>
+<tr><td><code>platform/platform_*.h</code> + <code>platform/platform_*.c</code> (platform 接口层)</td><td>不变</td></tr>
+<tr><td><code>platform/arch/&lt;mcu&gt;/pin_board.c</code> (GPIO 后端)</td><td><strong>变</strong></td></tr>
+<tr><td><code>platform/arch/&lt;mcu&gt;/pwm_board.c</code> (PWM 后端)</td><td><strong>变</strong></td></tr>
+<tr><td><code>platform/arch/&lt;mcu&gt;/i2c_board.c</code> (I2C bus 后端)</td><td><strong>变</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>换 MCU 改一组 (3 份), 应用层一字不动。这是 platform 层抽象的真正威力。一外设一文件的好处: 加一种新外设 (uart / spi) 只新增 <code>uart_board.c</code> / <code>spi_board.c</code> 一份, 已有三份字节不动; review 时也能 <code>git log pwm_board.c</code> 直接拿 PWM 这一路的独立演化历史。</p>
+<p>差别在哪里? 三种外设并排比一过 (左 STM32 HAL, 右 NXP MCUXpresso SDK):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>外设</th><th><code>stm32/xxx_board.c</code> 调用</th><th><code>nxp/xxx_board.c</code> 调用</th></tr>
+</thead>
+<tbody>
+<tr><td>GPIO</td><td><code>HAL_GPIO_WritePin</code></td><td><code>GPIO_PinWrite</code></td></tr>
+<tr><td>PWM</td><td><code>__HAL_TIM_SET_COMPARE</code></td><td><code>PWM_UpdatePwmDutycycle</code></td></tr>
+<tr><td>I2C</td><td><code>HAL_I2C_Master_Transmit</code></td><td><code>LPI2C_MasterTransferBlocking</code></td></tr>
+<tr><td>时钟使能</td><td><code>__HAL_RCC_GPIOA_CLK_ENABLE</code></td><td>MCUXpresso <code>BOARD_BootClockRUN</code></td></tr>
+<tr><td>启动入口</td><td><code>platform_hw_{pin,pwm,i2c}_init()</code></td><td>同左 (签名一字不差)</td></tr>
+</tbody>
+</table>
+</div>
+<p>三外设三份后端, 厂家 SDK 类型 (<code>GPIO_TypeDef *</code> vs <code>GPIO_Type *</code>)、寄存器 API 名字、时钟机制全部锁在 <code>platform/arch/&lt;mcu&gt;/</code> 这一组文件里。这种厂家差异如果漏到 <code>drivers/led/led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code>, 换 MCU 要改三个子类 + 板级 + 应用层 – ch15 的金句“换硬件不改应用“就破了。</p>
+<p>GPIO 写一段并排:</p>
+<pre><code class="language-c">/* platform/arch/stm32/pin_board.c - GPIO 写 */
+static GPIO_TypeDef *const _gpio_table[] = {
+    GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, /* ... */
+};
+
+static void _stm32_pin_write(int32_t pin, int32_t value)
 {
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	int fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
+    GPIO_TypeDef *port = _gpio_table[PIN_PORT(pin)];
+    HAL_GPIO_WritePin(port, PIN_MASK(pin),
+                      value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
-<p>子类 <code>gpio_on</code> 调 <code>platform_gpio_write(self-&gt;pin, self-&gt;on_level)</code>，最终走到 <code>echo 1 &gt; /sys/class/gpio/gpioN/value</code>，触发内核 gpiolib 操作物理引脚。更现代的做法是 libgpiod，附录 C 会展开。</p>
-<p>同样，应用层 / 父类 / 子类 / 板级一字不改。</p>
+<pre><code class="language-c">/* platform/arch/nxp/pin_board.c - GPIO 写 */
+static GPIO_Type *const _gpio_table[] = {
+    GPIO1, GPIO2, GPIO3, GPIO4, GPIO5,
+};
+
+static void _nxp_pin_write(int32_t pin, int32_t value)
+{
+    GPIO_Type *port = _gpio_table[PIN_PORT(pin)];
+    GPIO_PinWrite(port, PIN_OFFSET(pin), value ? 1U : 0U);
+}
+</code></pre>
+<p>PWM 设占空比一段并排 (落到不同的 TIM PWM API):</p>
+<pre><code class="language-c">/* platform/arch/stm32/pwm_board.c - PWM 设占空比 */
+static int _stm32_pwm_set_duty(int32_t channel, uint8_t duty)
+{
+    uint32_t ccr = (uint32_t)duty * 1000U / 255U;   /* ARR=999 */
+    __HAL_TIM_SET_COMPARE(&amp;htim3, _pwm_channel_to_hal(channel), ccr);
+    return 0;
+}
+</code></pre>
+<pre><code class="language-c">/* platform/arch/nxp/pwm_board.c - PWM 设占空比 */
+static int _nxp_pwm_set_duty(int32_t channel, uint8_t duty)
+{
+    uint8_t pct = (uint8_t)((uint32_t)duty * 100U / 255U);
+    PWM_UpdatePwmDutycycle(PWM1, kPWM_Module_0,
+                           (pwm_channels_t)channel, kPWM_SignedCenterAligned, pct);
+    PWM_SetPwmLdok(PWM1, (1U &lt;&lt; kPWM_Module_0), true);
+    return 0;
+}
+</code></pre>
+<p>I2C 一段 master_xfer 并排 (落到 HAL 阻塞 / LPI2C 阻塞):</p>
+<pre><code class="language-c">/* platform/arch/stm32/i2c_board.c - I2C bus master_xfer */
+if (msgs[i].flags &amp; PLATFORM_I2C_RD)
+    st = HAL_I2C_Master_Receive(&amp;hi2c1, addr8, msgs[i].buf, msgs[i].len, 100);
+else
+    st = HAL_I2C_Master_Transmit(&amp;hi2c1, addr8, msgs[i].buf, msgs[i].len, 100);
+</code></pre>
+<pre><code class="language-c">/* platform/arch/nxp/i2c_board.c - I2C bus master_xfer */
+xfer.slaveAddress = (uint8_t)msgs[i].addr;
+xfer.direction    = (msgs[i].flags &amp; PLATFORM_I2C_RD) ? kLPI2C_Read : kLPI2C_Write;
+xfer.data         = msgs[i].buf;
+xfer.dataSize     = msgs[i].len;
+st = LPI2C_MasterTransferBlocking(LPI2C1, &amp;xfer);
+</code></pre>
+<p><code>drivers/led/*</code> 子类只调 <code>platform_pin_xxx / platform_pwm_xxx / platform_i2c_xxx</code> ops 表层接口, 跨 MCU 字节级不变。<code>platform/platform_*.c</code> dispatcher 维护 <code>static const struct platform_xxx_ops *_g_ops</code> 指针 (i2c 多一个 bus 槽), 启动期由 <code>platform/arch/&lt;mcu&gt;/{pin,pwm,i2c}_board.c</code> 三个 <code>platform_hw_*_init()</code> 函数各调一次 register 把 ops 填进来 – 上层调封装函数时框架内部 dispatch 到对应 MCU 的实现。这就是 ch11 ops 表多态在 ch15 platform 层的工业级落地。</p>
+<p>板级启动序列也是一字对照: <code>board_init</code> 里依次调 <code>platform_hw_pin_init() -&gt; platform_hw_pwm_init() -&gt; platform_hw_i2c_init()</code> 三行, STM32 / NXP 两家板级代码这三行完全一样, 改的只是链接的 <code>arch/stm32/</code> 还是 <code>arch/nxp/</code> 子目录里那 3 份后端。</p>
 <h2 id="1512-工业代码里的换硬件-diff长什么样"><a class="header" href="#1512-工业代码里的换硬件-diff长什么样">15.12 工业代码里的“换硬件 diff“长什么样</a></h2>
 <p>工业项目里这一章的精神已经渗透到每个层级。挑一个真实场景：报警子系统。</p>
 <p>需求：板子上有 8 路报警输出。客户 A 用 LED 灯提示，客户 B 接蜂鸣器，客户 C 接外接报警柱（24V 信号）。三家客户买的是同一个主控板，只有“报警这一路“硬件不同。</p>
@@ -633,17 +741,36 @@ int board_init(void)
 <p>ch19 / ch20 工业实战会展开真实主控板项目里的板级文件，看看一份 <code>board_init.c</code> 怎么管 30+ 路硬件。</p>
 <h2 id="1513-完整源码清单--跑一遍"><a class="header" href="#1513-完整源码清单--跑一遍">15.13 完整源码清单 + 跑一遍</a></h2>
 <p>把下面的代码块分别保存到对应文件，目录结构和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/15-platform/pc/"><code>oop-in-c/code/15-platform/pc/</code></a> 一致。<code>make &amp;&amp; ./demo</code> 即可跑通。</p>
-<p>8 个文件：</p>
-<pre><code>pc/
-├── main.c                 主程序入口
-├── app.h, app.c           应用层 - 三个业务函数
-├── leds.h                 板级对外暴露的 g_led_xxx 句柄声明
-├── board_init.c           板级 - 唯一认识硬件的文件
-├── led_base.h, led_base.c 父类 - led_base + led_base_init + 父类统一接口
-├── led.h, led.c           子类 - led_gpio / led_pwm / led_i2c
-├── container_of.h         与 ch13 同款 (最小可用版)
-└── Makefile               链接 ../../common/platform_pc.c
+<p>完整文件清单：</p>
+<pre><code>15-platform/
+├── pc/                              本节代码块, make &amp;&amp; ./demo 直接跑
+│   ├── main.c                       主程序入口
+│   ├── app.h, app.c                 应用层 - 三个业务函数
+│   ├── leds.h                       板级对外暴露的 g_led_xxx 句柄声明
+│   ├── board_init.c                 板级 - 唯一认识硬件的文件
+│   ├── led_base.h, led_base.c       父类 - led_base + ops 表 + 父类统一接口
+│   ├── led_gpio.h, led_gpio.c       子类一 - GPIO LED (on/off, set_brightness 走父类默认)
+│   ├── led_pwm.h, led_pwm.c         子类二 - PWM LED (三件套全填, 支持调光)
+│   ├── led_i2c.h, led_i2c.c         子类三 - I2C 扩展芯片 LED (on/off)
+│   ├── container_of.h               与 ch13 同款 (最小可用版)
+│   └── Makefile                     链接 ../../common/platform_pc.c
+├── drivers/led/                     设备驱动层·跨 MCU 不变
+│   ├── led_base.{h,c}               父类层 (调 platform_pin/pwm/i2c ops 接口)
+│   ├── led_gpio.{h,c}
+│   ├── led_pwm.{h,c}
+│   └── led_i2c.{h,c}
+├── platform/                        platform 接口层·跨 MCU 不变
+│   ├── platform_pin.{h,c}           ops 表 + register dispatcher
+│   ├── platform_pwm.{h,c}
+│   ├── platform_i2c.{h,c}
+│   └── arch/                        MCU 厂家差异收拢点
+│       ├── stm32/pin_board.c        STM32 HAL 实现
+│       └── nxp/pin_board.c          NXP MCUXpresso SDK 实现
+└── linux-driver/userspace/          Linux 用户态 (直接 libgpiod / sysfs / i2c-dev,
+                                                  没有 platform 层)
 </code></pre>
+<p>每个子类一份独立的 <code>.h / .c</code>，跟 <code>industrial/stm32_full/app/drivers/led/</code> 工业代码一字不差。教学上的好处：加一种新硬件 (例如 SPI 移位寄存器 LED) 只新增 <code>led_spi.h / led_spi.c</code> 一对文件，原有三个子类一字不动；review 时也能 <code>git log led_pwm.c</code> 直接拿到 PWM 这一路独立的演化历史。<code>led.h / led.c</code> 单文件版本 ch15 第一稿用过, 拆开后子类边界更清晰, ch16 / 附录 B / 附录 C 也都按这个组织.</p>
+<p><code>drivers/</code> + <code>platform/</code> + <code>platform/arch/&lt;mcu&gt;/</code> 这一组工业级跨 MCU 分层在本章正文 § 15.10 / § 15.11.5 已经讲过, 是 STM32 vs NXP “换 MCU 改一份 pin_board.c” 的代码兑现层, 不在本节的“代码块抄一遍跑通“流程里。<code>linux-driver/userspace/</code> 是 Linux 用户态实战代码 (没有 platform 层), 见 § 15.11.</p>
 <h3 id="文件-1mainc"><a class="header" href="#文件-1mainc">文件 1：<code>main.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
 #include "app.h"
@@ -724,7 +851,7 @@ void power_on_test(void)
 #ifndef LEDS_H
 #define LEDS_H
 
-#include "led.h"
+#include "led_base.h"
 
 extern struct led_base *g_led_error;
 extern struct led_base *g_led_status;
@@ -734,9 +861,13 @@ int board_init(void);
 
 #endif
 </code></pre>
+<p>应用层 <code>app.c</code> 只 <code>#include "leds.h"</code>, 看到的就是 <code>struct led_base *</code> 三个父类指针。这一份头从来不 <code>#include "led_gpio.h"</code> / <code>"led_pwm.h"</code> / <code>"led_i2c.h"</code>, 子类类型在应用层完全消失。</p>
 <h3 id="文件-5board_initc"><a class="header" href="#文件-5board_initc">文件 5：<code>board_init.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
 #include "leds.h"
+#include "led_gpio.h"
+#include "led_pwm.h"
+#include "led_i2c.h"
 #include &lt;stdio.h&gt;
 
 static struct led_gpio s_led_err;
@@ -782,7 +913,14 @@ int board_init(void)
 
 #include "platform.h"
 
-struct led_ops;     /* 前向声明, 完整定义在 led.h */
+struct led_base;
+
+struct led_ops {
+	int (*on)(struct led_base *me);                 /* 必填 */
+	int (*off)(struct led_base *me);                /* 必填 */
+	int (*set_brightness)(struct led_base *me,      /* 选填 */
+	                      uint8_t brightness);
+};
 
 struct led_base {
 	const struct led_ops *ops;
@@ -793,12 +931,16 @@ struct led_base {
 int led_base_init(struct led_base *me, const char *name,
                   const struct led_ops *ops);
 
+int led_on(struct led_base *me);
+int led_off(struct led_base *me);
+int led_set_brightness(struct led_base *me, uint8_t brightness);
+
 #endif
 </code></pre>
+<p><code>struct led_ops</code> 完整定义放在父类头里. 子类头 (led_gpio.h / led_pwm.h / led_i2c.h) 一行 <code>#include "led_base.h"</code> 就能拿到 ops 表类型, 不再需要前向声明 + 子类头反向暴露 ops 字段集.</p>
 <h3 id="文件-7led_basec"><a class="header" href="#文件-7led_basec">文件 7：<code>led_base.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
 #include "led_base.h"
-#include "led.h"
 #include &lt;assert.h&gt;
 #include &lt;stdio.h&gt;
 
@@ -844,58 +986,31 @@ int led_set_brightness(struct led_base *me, uint8_t b)
 	return me-&gt;ops-&gt;set_brightness(me, b);
 }
 </code></pre>
-<h3 id="文件-8ledh"><a class="header" href="#文件-8ledh">文件 8：<code>led.h</code></a></h3>
+<h3 id="文件-8led_gpioh--led_gpioc子类一"><a class="header" href="#文件-8led_gpioh--led_gpioc子类一">文件 8：<code>led_gpio.h</code> / <code>led_gpio.c</code>（子类一）</a></h3>
+<p><code>led_gpio.h</code>：</p>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-#ifndef LED_H
-#define LED_H
+#ifndef LED_GPIO_H
+#define LED_GPIO_H
 
 #include "led_base.h"
 
-struct led_ops {
-	int (*on)(struct led_base *me);                 /* 必填 */
-	int (*off)(struct led_base *me);                /* 必填 */
-	int (*set_brightness)(struct led_base *me,      /* 选填 */
-	                      uint8_t brightness);
-};
-
-int led_on(struct led_base *me);
-int led_off(struct led_base *me);
-int led_set_brightness(struct led_base *me, uint8_t brightness);
-
 struct led_gpio {
-	struct led_base base;
+	struct led_base base;       /* 父类, 第 0 字段 */
 	uint8_t         pin;
-	bool            on_level;
+	bool            on_level;   /* 1 = 高电平点亮, 0 = 低电平点亮 */
 };
+
 int led_gpio_init(struct led_gpio *me, const char *name,
                   uint8_t pin, bool on_level);
 
-struct led_pwm {
-	struct led_base base;
-	uint8_t         channel;
-	uint8_t         duty;
-};
-int led_pwm_init(struct led_pwm *me, const char *name,
-                 uint8_t channel, uint8_t duty);
-
-struct led_i2c {
-	struct led_base base;
-	uint8_t         bus;
-	uint8_t         addr;
-};
-int led_i2c_init(struct led_i2c *me, const char *name,
-                 uint8_t bus, uint8_t addr);
-
 #endif
 </code></pre>
-<h3 id="文件-9ledc"><a class="header" href="#文件-9ledc">文件 9：<code>led.c</code></a></h3>
+<p><code>led_gpio.c</code>：</p>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
-#include "led.h"
+#include "led_gpio.h"
 #include "container_of.h"
 #include "platform.h"
 #include &lt;stdio.h&gt;
-
-/* GPIO 子类 */
 
 static int gpio_on(struct led_base *me)
 {
@@ -917,6 +1032,7 @@ static int gpio_off(struct led_base *me)
 	return 0;
 }
 
+/* set_brightness 故意不填, GPIO 不支持调光, 走父类默认行为 */
 static const struct led_ops gpio_ops = {
 	.on  = gpio_on,
 	.off = gpio_off,
@@ -937,14 +1053,18 @@ int led_gpio_init(struct led_gpio *me, const char *name,
 	platform_gpio_write(pin, !on_level);    /* 上电先关灯 */
 	return 0;
 }
-
-/* PWM 子类 (三件套全填) + I2C 子类 (只填 on/off): 同套路, 见配套源码. */
 </code></pre>
+<h3 id="文件-9led_pwmh--led_pwmc--led_i2ch--led_i2cc子类二三"><a class="header" href="#文件-9led_pwmh--led_pwmc--led_i2ch--led_i2cc子类二三">文件 9：<code>led_pwm.h</code> / <code>led_pwm.c</code> + <code>led_i2c.h</code> / <code>led_i2c.c</code>（子类二、三）</a></h3>
+<p>PWM 子类 (三件套全填, 支持调光) + I2C 子类 (两件套, 只控开/关) 跟 GPIO 一字同套路：子类头里只装 struct + init 声明, 子类 .c 里 file-static 实现 + file-static const ops 表 + 公开的 init 函数。完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/15-platform/pc/"><code>oop-in-c/code/15-platform/pc/led_pwm.{h,c}</code></a> 和 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/15-platform/pc/"><code>led_i2c.{h,c}</code></a>。</p>
+<p>加一种新硬件 (例如 SPI 移位寄存器 LED) 就是新增一对 <code>led_spi.h / led_spi.c</code>，原有三个子类 0 改动，<code>board_init.c</code> 多挂一行实例。这就是 OOP 多态在文件组织层面的兑现。</p>
 <h3 id="文件-10makefile"><a class="header" href="#文件-10makefile">文件 10：<code>Makefile</code></a></h3>
 <pre><code class="language-makefile">CC      = gcc
 CFLAGS  = -Wall -Wextra -std=c99 -I../../common
 TARGET  = demo
-SRCS    = main.c app.c led.c led_base.c board_init.c ../../common/platform_pc.c
+SRCS    = main.c app.c \
+          led_base.c led_gpio.c led_pwm.c led_i2c.c \
+          board_init.c \
+          ../../common/platform_pc.c
 
 .PHONY: all clean run
 all: $(TARGET)
@@ -1000,6 +1120,155 @@ make
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1Zpo9BxEYG/">《C 语言·换硬件不改应用｜OOP 完整框架·全系列工具组装》</a></p>
 </blockquote>
+<h2 id="1515-什么时候不要-platform-层"><a class="header" href="#1515-什么时候不要-platform-层">15.15 什么时候不要 Platform 层</a></h2>
+<p>到这里你已经看完一整套 platform 抽象层. 别急着把它套到所有项目上.</p>
+<p>Platform 抽象层是工具, 不是教条. 工业级代码不等于“不管什么环境都自己写一套 platform_pin / platform_i2c / platform_pwm“. 判断标准只有一条: <strong>宿主环境有没有现成的设备模型</strong>. 没有就要自抽, 有就别重复造.</p>
+<p>四种环境拉平来看:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>环境</th><th>现成的设备模型</th><th>platform 抽象层</th></tr>
+</thead>
+<tbody>
+<tr><td>裸机 (STM32 + HAL)</td><td>无, HAL 只是寄存器封装</td><td>必须自抽</td></tr>
+<tr><td>简单 RTOS (FreeRTOS 单纯 kernel)</td><td>无, kernel 只管任务和同步</td><td>必须自抽</td></tr>
+<tr><td>带 device subsystem 的 RTOS (Zephyr / RT-Thread / NuttX)</td><td>有, 内核已抽好 device + driver</td><td>禁自抽</td></tr>
+<tr><td>Linux 用户态</td><td>有, libgpiod / i2c-dev / sysfs PWM</td><td>禁自抽, 直接用</td></tr>
+<tr><td>Linux 内核态驱动</td><td>有, driver model + bus 框架</td><td>禁自抽, 用 driver model</td></tr>
+</tbody>
+</table>
+</div>
+<p>HAL 不是设备模型. HAL 只是把 <code>GPIOA-&gt;BSRR = bit</code> 这种寄存器操作封了一层 <code>HAL_GPIO_WritePin</code>. 它没有“设备“概念, 没有“驱动注册“, 没有“统一接口“. 子类要换 STM32 / GD32 / 瑞萨, 应用层就崩. 这种环境必须自抽 platform 层.</p>
+<p>Linux 用户态完全相反. 内核已经把 GPIO 抽成 <code>/dev/gpiochipN</code>, libgpiod 一个 <code>gpiod_line_set_value</code> 跨芯片厂家通吃. 这时再写一份 <code>platform_pin_write → libgpiod_line_set_value</code>, 读者第一眼就会问 “为什么还要套一层”. 答不出来. 这就是反工程.</p>
+<p>这里要分清两件事. <strong>OOP 抽象</strong>和<strong>platform 抽象层</strong>不是一回事:</p>
+<ul>
+<li>OOP 抽象: <code>struct led_base</code> + 多子类多态 + 设备句柄统一对外. 解决的是“应用层不知道下层硬件细节“. 任何环境都该有.</li>
+<li>platform 抽象层: <code>platform_pin / platform_i2c</code> + ops 表 + register 机制. 解决的是“裸机没有设备模型, 自己造一个“. 只在没现成设备模型的环境有价值.</li>
+</ul>
+<p>OOP 抽象是必备. platform 抽象层是工程工具. 别把后者当成 OOP 的标配.</p>
+<p>后面三章给完整光谱. ch16 看 Linux 内核怎么做 platform 抽象, 内核版本是工业级原型. 附录 B 看裸机 STM32 自抽 platform 层, 是没有内核帮忙时的标准做法. 附录 C 看 Linux 用户态怎么直接用内核接口, 是“已经有现成设备模型时, 应用层别再叠一层“的反例教学.</p>
+<p>Platform 抽象层是工具, 不是工业级的标志. 看到一份 Linux 应用层代码自己抽 platform_pin, 第一反应应当是 “这一层是不是多余”. 看到一份裸机 STM32 代码不抽 platform 层, 应用直接调 HAL_GPIO_WritePin, 第一反应应当是 “换芯片就崩”. 工程判断力, 是分清这两种场景, 不是无脑套抽象.</p>
+<h2 id="1516-给真实工程的建议别自己写-platform-层"><a class="header" href="#1516-给真实工程的建议别自己写-platform-层">15.16 给真实工程的建议：别自己写 platform 层</a></h2>
+<p>讲到这里我得给你掏一句真心话: 这本书 ch15 / ch16 / 附录 B 教你怎么自抽 platform 层, 是为了让你看清机制. 真实工程里, 这一层尽量别自己写. 写出来就要自己维护.</p>
+<p><strong>资源不紧的项目, 用 Zephyr, 第一推荐.</strong> 几乎所有 MCU 项目都属于这一档 – 分层设计本身不占资源, 一份 device + driver 模型加上去, ROM 几 KB, RAM 几百字节, 现代 STM32 / nRF / ESP32 / GD32 都扛得住. Zephyr 内核已经把 device tree binding + driver_api ops 表 + initcall 全做完了. 你 ch15 / ch16 / ch17 学的所有 platform 抽象 + ops 多态 + 链接器收卡片, 在 Zephyr 里都是 builtin, 而且是 Linux Foundation 在维护, 跨芯片厂家的 driver 已经写好上千份, 你直接 <code>device_get_binding("gpio0")</code> 就能用.</p>
+<p><strong>RT-Thread 第二推荐.</strong> 国产 RTOS, 中文文档全, <code>rt_pin_write / rt_device_register</code> 一套接口和 ch16 教的 <code>gpio_chip</code> 多态 dispatch 一字不差. 国内项目和厂家芯片支持也到位, BSP 列表覆盖主流国产 MCU.</p>
+<p><strong>FreeRTOS 是裸机化 RTOS, 慎用.</strong> 它只是一个调度核 + 同步原语, 不带 device subsystem, 不带 driver model. 用 FreeRTOS 等于 “FreeRTOS + HAL + 你自己抽 platform 层”, 这本书 ch15 教的全套你得自己造一遍, 维护成本你扛. 简单板卡可以这么干, 中等以上规模 (10+ 路硬件 / 多客户多产品形态) 别这么干.</p>
+<p><strong>资源极紧但仍想用这套思想</strong>, 不要自己手写 platform 层. clone Zephyr 或 RT-Thread, 把它们的 driver framework 拔下来直接用 – driver 注册机制 + ops 表 + device tree 解析这一坨, Zephyr / RT-Thread 已经写了十几年, 上万种硬件验证过, 比你三周自抽出来的 ops 表稳得多. 你拔下来用就完了, 自己写一份是没意义的.</p>
+<p><strong>这本书 stm32_full 工程那一份 platform 层是教学示范.</strong> 让读者建立认知 – 看清 platform 抽象长什么样、ops 表怎么挂、register 机制怎么落. 真实工程里, 这一份你别自己写, 去用 Zephyr / RT-Thread.</p>
+<p><strong>MPU / SoC 平台直接用 Linux</strong>. 跑得起 Linux 内核的硬件, driver model + bus 框架 + device tree + sysfs / udev 全套完整, 你 ch16 / 附录 C 看到的就是工业级原型. 应用层走 libgpiod / iio / spidev, 内核驱动写在 driver_model 里, 全平台都不用自己抽 platform 层.</p>
+<p>把它合成一句话: <strong>MCU 用 Zephyr / RT-Thread, MPU / SoC 用 Linux, 全平台都不要自己抽 platform 层</strong>. 这才是工业级.</p>
+<p>那 ch15 这一章是不是白学了? 不是. 你学的是 Zephyr / RT-Thread / Linux 内核 driver model 在做什么 – 它们底下就是 ops 表 + 多子类多态 + 子类向上转型 + 父类统一接口, 一字不差. 没看过 ch15 / ch16 这一遍, 你打开 Zephyr 源码看 <code>gpio_driver_api</code>、打开 RT-Thread 源码看 <code>rt_pin_ops</code>, 第一反应是 “这函数指针表怎么这么乱”. 看完 ch15 / ch16, 你的反应是 “ops 表 + 子类填表, ch15 教过, 直接用”.</p>
+<p>学这本书是为了看懂别人的 platform 层, 不是为了让你自己写一个. 看懂了, 你就敢用别人写好的; 看不懂, 你才会被迫自己造一份糟糕版本.</p>
+<p>看完 § 15.11.5 的 <code>platform/arch/stm32</code> vs <code>platform/arch/nxp</code> 对照, 你应当看到: platform 层抽象的真正本质, 是把厂家差异 (<code>GPIO_TypeDef *</code> / <code>GPIO_Type *</code> / <code>HAL_GPIO_WritePin</code> / <code>GPIO_PinWrite</code>) 收拢到一份 <code>pin_board.c</code>。<code>drivers/led/*</code> 设备驱动层 + <code>platform/platform_*.c</code> 接口层跨 MCU 字节级不变, 唯一变化点是 <code>platform/arch/&lt;mcu&gt;/pin_board.c</code> 一份文件。换 MCU 改一份, 应用层一字不动。Linux / Zephyr / RT-Thread 内核已经做完同款工作, 所以应用层别再自抽。这就是上面 § 15.15 那张表的另一种写法: 没有内核 driver model 帮忙的环境 (裸机 / FreeRTOS) 自抽这层是在为换 MCU 留余地; 有 driver model 帮忙的环境 (Zephyr / RT-Thread / Linux) 自抽这层是在重复造轮子。</p>
+<p>最后一节 § 15.17 把 ch15 主线之外的 platform 层全貌补齐: 工业项目 platform 层完整有几个外设、I2C 为什么比 GPIO 多一层 bus + client、这一套设计跟 Linux i2c 子系统骨架的逐字对应关系。看完 § 15.17, 你看到的就不是 ch15 教学版三个外设, 而是整个 platform 抽象的完整光谱。</p>
+<h2 id="1517-工业-platform-层完整清单--i2c-二层--linux-i2c-子系统对照"><a class="header" href="#1517-工业-platform-层完整清单--i2c-二层--linux-i2c-子系统对照">15.17 工业 platform 层完整清单 + I2C 二层 + Linux i2c 子系统对照</a></h2>
+<h3 id="15171-工业项目-platform-层有多大"><a class="header" href="#15171-工业项目-platform-层有多大">15.17.1 工业项目 platform 层有多大</a></h3>
+<p>ch15 主线只展示 <code>platform_pin</code> / <code>platform_pwm</code> / <code>platform_i2c</code> 三个外设。真实工业项目 (本书 <code>industrial/platform_layer/</code> 脱敏版, 脱胎自一台 STM32H7 控制板) 覆盖一组 12 个 platform 接口:</p>
+<blockquote>
+<p>注: 表格列的是工业完整版 (<code>industrial/platform_layer/</code>) 的 ops 数·教学版 § 15.17.3 简化为只 <code>master_xfer</code>·让读者第一眼跑通。<code>slave_xfer / control</code> 在 industrial/ 实际工程里齐全·读者真机做完整工程参考 industrial/。</p>
+</blockquote>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>外设</th><th>ops 函数指针数</th><th>bus / device 二层?</th><th>文件量级</th></tr>
+</thead>
+<tbody>
+<tr><td>device</td><td>6 (init / open / close / read / write / control)</td><td>基类</td><td>~400 行</td></tr>
+<tr><td>pin</td><td>7</td><td>单层</td><td>~230 行</td></tr>
+<tr><td>pwm</td><td>1 (control 内 8 cmd)</td><td>单层</td><td>~280 行</td></tr>
+<tr><td><strong>i2c</strong></td><td><strong>3 (master_xfer / slave_xfer / control)</strong></td><td><strong>是, bus + client + msg</strong></td><td><strong>~370 行</strong></td></tr>
+<tr><td><strong>spi</strong></td><td><strong>2 (configure / xfer)</strong></td><td><strong>是, bus + device</strong></td><td><strong>~460 行</strong></td></tr>
+<tr><td>uart</td><td>5 (open / close / read / write / configure)</td><td>单层</td><td>~300 行</td></tr>
+<tr><td>adc / hwtimer / rtc / watchdog</td><td>各几条 ops</td><td>单层</td><td>各几十到几百行</td></tr>
+</tbody>
+</table>
+</div>
+<p>ch15 教学版选 3 个讲透机制, 完整 12 个接口看 <code>industrial/platform_layer/</code> (1:1 工业版, 已脱敏)。机制都是同一个 – ops 表 + register 注册 – 学一个推所有, 多出来的那 9 个看清 ops 表上挂什么函数即可。</p>
+<h3 id="15172-i2c-为什么比-gpio-多一层"><a class="header" href="#15172-i2c-为什么比-gpio-多一层">15.17.2 i2c 为什么比 GPIO 多一层</a></h3>
+<p>GPIO 是单点 IO, 一个 pin 一个值。i2c 是<strong>总线 + 多设备</strong>: 一条 i2c 总线上挂多颗芯片 (温度传感器 0x48 + EEPROM 0x50 + RTC 0x68 …), <strong>多颗芯片共享同一组 SDA / SCL 线</strong>。</p>
+<p>这一脚就要二层抽象:</p>
+<ul>
+<li><strong>bus 控制器层</strong> 管 SCL / SDA 时序、中断、DMA、<strong>多 client 抢同一总线的互斥锁</strong>。一颗 MCU 通常 1-4 条 i2c bus。</li>
+<li><strong>client 设备层</strong> 记录: 我挂在哪条 bus 上, 我的 7-bit 地址是多少。一颗芯片 (温度传感器 / EEPROM / IO expander) 一个 client。</li>
+</ul>
+<p>bus 由 board 启动期注册一次 (<code>platform_i2c_bus_register</code>), client 由具体外设驱动构造期填好 (启动期上层调一次拿到 bus 句柄, 挂进 client.bus 字段)。GPIO 没这个问题: 一个 pin 编号已经唯一定位一个引脚, 不存在“挂在哪个 GPIO 控制器上“的二层关系 (内核里其实有 <code>gpio_chip</code>, 但应用层基本不感知)。</p>
+<blockquote>
+<p><strong>二层抽象本身和 OS 无关</strong>: <code>industrial/platform_layer/</code> 的 <code>struct platform_i2c_bus_device</code> 里有 <code>osMutex</code> 字段, 解决“多线程多 client 抢同一 bus“的并发问题。教学版单线程跑, 去掉 mutex, <strong>保留 bus + client + msg 三个 struct 即可</strong> —— 二层是设计抽象, mutex 是 OS 落地, 两件事分开看。读者读教学版时把 mutex 想象不存在, 机制本身完全成立; 真上 RTOS / Linux 多线程时把 mutex 加回来, 调一行 osMutexAcquire / osMutexRelease 包住 master_xfer 即可, 三个 struct 字段不动。</p>
+</blockquote>
+<h3 id="15173-三个核心-struct--ops"><a class="header" href="#15173-三个核心-struct--ops">15.17.3 三个核心 struct + ops</a></h3>
+<p>ch15 教学版 <code>platform_i2c.h</code> 升级到 bus + client 二层后的核心三件:</p>
+<pre><code class="language-c">/* oop-in-c/code/15-platform/platform/platform_i2c.h, 教学简化版,
+   签名和 industrial/platform_layer/platform_i2c.h 工业版对齐 */
+
+#define PLATFORM_I2C_WR          0x0000
+#define PLATFORM_I2C_RD          0x0001
+#define PLATFORM_I2C_NO_START    0x0002
+
+struct platform_i2c_msg {
+    uint16_t addr;     /* 7-bit 从机地址 */
+    uint16_t flags;    /* WR / RD / NO_START */
+    uint16_t len;
+    uint8_t  *buf;
+};
+
+struct platform_i2c_bus_device_ops {
+    uint32_t (*master_xfer)(struct platform_i2c_bus_device *bus,
+                            struct platform_i2c_msg *msgs, uint32_t num);
+    /* 工业版还有 slave_xfer / control, 教学版省略 */
+};
+
+struct platform_i2c_bus_device {
+    const struct platform_i2c_bus_device_ops *ops;
+    /* 工业版还有 osMutex 锁 + parent device, 教学版省略 */
+};
+
+struct platform_i2c_client {
+    struct platform_i2c_bus_device *bus;   /* 我挂在哪条总线 */
+    uint16_t                        client_addr; /* 我是哪片 (例如 0x48) */
+};
+</code></pre>
+<p><code>led_i2c</code> 子类内嵌一个 <code>struct platform_i2c_client</code>, 启动期调 <code>led_i2c_init(me, name, bus, 0x20, 0x01)</code> 把 bus 句柄 + 客户端地址 + 控制寄存器一次填好。每次 <code>led_on / led_off</code> 拼一段 msg 走 <code>platform_i2c_transfer(self-&gt;client.bus, &amp;msg, 1)</code>。子类不直接碰 bus 控制器, 只通过 client 间接定位。</p>
+<p>教学包 <code>oop-in-c/code/15-platform/pc/</code> 端补了一份 <code>platform_i2c_pc.c</code>, 实现一个 <code>pc_i2c_bus</code>, 把 <code>master_xfer</code> 翻译成 stdout printf。<code>board_init</code> 启动期调一次 <code>platform_pc_i2c_init</code> 把 bus 注册进 dispatcher, 再 <code>platform_i2c_bus_get</code> 拿到 bus 句柄, 喂给 <code>led_i2c_init(&amp;s_led_net, "NET", i2c_bus, 0x3C, 0x00)</code> 装配 client。<code>led_on(g_led_network)</code> 走父类 dispatch 进 <code>i2c_on</code>, 拼 msg 走 <code>platform_i2c_transfer</code>, 落到 PC 后端打出:</p>
+<pre><code>[NET] led_on  -&gt; I2C client_addr=0x3C reg=0x00
+[I2C] addr=0x3C W len=2 data=00 01
+</code></pre>
+<p>第一行是子类层打出来的语义日志 (NET 灯亮, 走 0x3C 客户端 0x00 寄存器), 第二行是 bus 控制器层打出来的字节流 (寄存器地址 0x00 + 写入值 0x01 共 2 字节)。<strong>两行对应二层的两次 dispatch – 子类 -&gt; bus</strong>, 第一眼跑 demo 就看到二层兑现的可视化输出。换成 STM32 真机, 第二行 printf 换成 <code>HAL_I2C_Master_Transmit</code> 一行, 子类源码字节级不动, 这就是二层抽象在跨平台移植上的代价 = 0。</p>
+<h3 id="15174-应用层用例-温度传感器-max31827-脱敏后的工业代码"><a class="header" href="#15174-应用层用例-温度传感器-max31827-脱敏后的工业代码">15.17.4 应用层用例: 温度传感器 max31827 (脱敏后的工业代码)</a></h3>
+<p>工业项目里 max31827 这种温度传感器走 i2c 读 12-bit 温度。它持有 bus + 客户端地址, 一次 transfer 拼两段 msg:</p>
+<pre><code class="language-c">/* 简化自 industrial/, 真实工程的 max31827_temp_read */
+struct platform_i2c_msg msg[2];
+uint8_t tx_buf[1] = { 0x00 };  /* 寄存器地址 = 0x00 */
+uint8_t rx_buf[2];
+
+msg[0].addr  = dev-&gt;client.client_addr;  /* 0x48 */
+msg[0].buf   = tx_buf;
+msg[0].len   = 1;
+msg[0].flags = PLATFORM_I2C_WR;
+
+msg[1].addr  = dev-&gt;client.client_addr;
+msg[1].buf   = rx_buf;
+msg[1].len   = 2;
+msg[1].flags = PLATFORM_I2C_RD;
+
+uint32_t done = platform_i2c_transfer(dev-&gt;client.bus, msg, 2);
+/* msg[0] 写寄存器地址, msg[1] 用 Repeated-Start 接读 2 字节温度数据.
+ * done == 2 表示两段都成功. */
+</code></pre>
+<p><strong>两段 msg 一次 transfer 是 i2c 标准玩法 – write 寄存器地址 + Repeated-Start + read 数据</strong>。GPIO 没有这个东西: 你要读 GPIO 就直接 <code>platform_pin_read(pin)</code> 一行, 没有“先告诉对方我要读哪个寄存器“这一步。这就是 i2c 的 msg 数组语义为什么必须留出来。</p>
+<h3 id="15175-这套设计--linux-i2c-子系统的骨架"><a class="header" href="#15175-这套设计--linux-i2c-子系统的骨架">15.17.5 这套设计 = Linux i2c 子系统的骨架</a></h3>
+<p>把上面三个 struct 名字打开看, 你会发现一件让人发笑的事:</p>
+<blockquote>
+<p><code>struct platform_i2c_bus_device</code> = Linux <code>struct i2c_adapter</code></p>
+<p><code>struct platform_i2c_client</code> = Linux <code>struct i2c_client</code></p>
+<p><code>struct platform_i2c_msg</code> = Linux <code>struct i2c_msg</code></p>
+<p>连 “client” 这个命名都是直接借 Linux 的。写嵌入式 i2c 驱动的人, 学的就是 Linux i2c 子系统的骨架。</p>
+</blockquote>
+<p><code>master_xfer</code> 这个函数名也是 Linux 的: <code>struct i2c_algorithm</code> 里有一个 <code>int (*master_xfer)(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)</code>, 工业 platform 层和 ch15 教学版的签名一字不差, 就少了 <code>struct i2c_algorithm</code> 这一层封装 (Linux 把 ops 表抽到独立的 <code>i2c_algorithm</code> 结构体里, 一个 algorithm 可以被多个 adapter 复用; 工业版省了这一层, 直接把 ops 表挂到 bus 上)。</p>
+<p>ch11 已经看过这套对应 (RT-Thread <code>gpio_chip</code> vs Linux <code>gpio_chip</code>), ch18 / 附录 C 还会再次看到 (Linux i2c 子系统的内核驱动如何通过 <code>i2c_register_driver</code> 挂上 <code>i2c_adapter</code>)。本书的“工业代码 = Linux 内核子系统骨架“主线在 i2c 这一层兑现得最直白: 不需要任何类比, 字段一一对应。</p>
+<h3 id="15176-spi-也是同款二层"><a class="header" href="#15176-spi-也是同款二层">15.17.6 spi 也是同款二层</a></h3>
+<p>最后顺手点一句, 不展开:</p>
+<p>spi 也是 bus + device 二层 (一颗 MCU 1-4 条 SPI bus, 每 bus 挂多个 cs 片选下的设备)。机制和 i2c 同源 – 共享 SCK / MOSI / MISO 线, 用片选区分挂在 bus 上的多颗芯片。完整接口看 <code>industrial/platform_layer/platform_spi.h</code>, 字段对照 Linux <code>struct spi_master / struct spi_device</code>。</p>
+<p>那 12 个外设里, <strong>只有 i2c 和 spi 是二层</strong>。其他全是单层 – pin / pwm / uart / adc / hwtimer 这些都不存在 “一条总线挂多颗芯片” 的物理结构。看清楚二层只在 bus 类外设上需要, 你就抓到了 platform 层抽象的完整光谱: 大部分外设单层就够, 只有总线类外设升二层。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>你的框架完整了。但它只隔离了主板的变化（同一份应用，三种 LED 硬件混搭）。</p>
 <p>子类里这一行 <code>platform_gpio_write(self-&gt;pin, self-&gt;on_level)</code> 落到底，还是 STM32 的 BSRR、Linux 的 sysfs、瑞萨的 DR 寄存器。硬件名字一变，这一行就要重写。</p>

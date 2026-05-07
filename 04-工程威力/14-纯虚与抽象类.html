@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -201,8 +201,8 @@
 <p>编译器一句话不说就让你过了。它觉得你是故意填 NULL 的。</p>
 <p><img src="../assets/ch14/slide1_NULL崩溃.png" alt="NULL 崩溃"></p>
 <h2 id="142-必填策略--调用前-assert"><a class="header" href="#142-必填策略--调用前-assert">14.2 必填策略 · 调用前 assert</a></h2>
-<p>第一种做法：在父类的统一接口里加一行检查。<code>led.c</code> 实际写法：</p>
-<pre><code class="language-c">/* led.c */
+<p>第一种做法：在父类的统一接口里加一行检查。<code>led_base.c</code> 实际写法：</p>
+<pre><code class="language-c">/* led_base.c */
 int led_on(struct led_base *me)
 {
 	if (!me)
@@ -239,8 +239,8 @@ int led_off(struct led_base *me)
 }
 </code></pre>
 <p>每个不支持调光的子类都得写一个空函数，烦。</p>
-<p>更好的做法：把“安静跳过“的默认行为放到父类的统一接口里。<code>led.c</code> 实际写法：</p>
-<pre><code class="language-c">/* led.c */
+<p>更好的做法：把“安静跳过“的默认行为放到父类的统一接口里。<code>led_base.c</code> 实际写法：</p>
+<pre><code class="language-c">/* led_base.c */
 int led_set_brightness(struct led_base *me, uint8_t brightness)
 {
 	if (!me || !me-&gt;ops)
@@ -257,8 +257,8 @@ int led_set_brightness(struct led_base *me, uint8_t brightness)
 </code></pre>
 <p>子类填了 <code>set_brightness</code> 就走子类。子类没填，统一接口走默认。<strong>ops 表本身从来不改</strong>，NULL 就是 NULL，处理这个 NULL 的责任落在父类的统一接口上。</p>
 <p>GPIO 子类的 ops 表只填了 <code>on / off</code>，<code>set_brightness</code> 字段被零初始化为 NULL：</p>
-<pre><code class="language-c">/* led.c */
-static const struct led_ops gpio_ops = {
+<pre><code class="language-c">/* led_gpio.c */
+const struct led_ops led_ops_gpio = {
 	.on  = gpio_on,
 	.off = gpio_off,
 	/* set_brightness 故意不填 -- GPIO 灯没有亮度概念 */
@@ -410,6 +410,20 @@ public:
 </code></pre>
 <p>GPIO 灯虽然不支持真调光，亮度大于 50% 就开、小于就关，也是一种合理默认。</p>
 <p>默认行为是父类设计的责任。子类要的“非默认“才填 ops 字段。</p>
+<h3 id="1476-配套代码文件组织每个子类一个文件"><a class="header" href="#1476-配套代码文件组织每个子类一个文件">14.7.6 配套代码文件组织：每个子类一个文件</a></h3>
+<p>本章 <code>pc/</code> 目录沿用第 12、13 章的“每个子类一个文件“组织：</p>
+<pre><code>oop-in-c/code/14-pure-virtual/pc/
+├── led_base.h / led_base.c    led 父类字段集 + 共有 init + 父类统一接口（必填 + 选填）
+├── led.h                      led 公开接口集中点（ops 表字段集 + led_on/off/set_brightness 声明）
+├── led_gpio.h / led_gpio.c    GPIO 子类（只填 on / off，演示选填策略）
+├── led_pwm.h  / led_pwm.c     PWM 子类（三件套全填）
+├── sensor_base.h / .c         sensor 父类字段集 + 共有 init（独立 base 线）
+├── sensor.h    / sensor.c     sensor 父类统一接口（全必填 · 接口风格） + temp_sensor 子类
+├── container_of.h             第 13 章学的三步宏
+└── main.c                     跑 demo
+</code></pre>
+<p><code>led</code> 这条线和 <code>sensor</code> 这条线是两份完全独立的父类。<code>led_base</code> 演示必填 + 选填混合策略，<code>sensor_base</code> 演示全必填的接口策略。把它们放在同一个工程里，主要是让“同一份字段集类型 + 不同 NULL 处理纪律“在一次 <code>./demo</code> 里看全。</p>
+<p><code>sensor</code> 这条线本章只有一种子类（temp_sensor），写在 <code>sensor.c</code> 里，没有进一步拆分子类文件 – 单子类不需要“按子类一文件“组织。后续章节如果引入第二种 sensor 子类（比如 pressure_sensor），再拆出独立的 <code>pressure_sensor.h</code> / <code>.c</code>。</p>
 <h2 id="148-工程合同"><a class="header" href="#148-工程合同">14.8 工程合同</a></h2>
 <p>接口是一份合同 · 签了就必须全部履行。</p>
 <p><img src="../assets/ch14/slide6_CvsCpp.png" alt="金句"></p>
@@ -423,10 +437,9 @@ public:
 		}							\
 	} while (0)
 </code></pre>
-<p>错误日志写到非易失存储，下次开机能拉出来看哪一行炸了。完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/stm32-snippet/"><code>oop-in-c/code/14-pure-virtual/stm32-snippet/</code></a>。</p>
-<h2 id="1410-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1410-你现在的代码在-linux-用户态长什么样">14.10 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 用户态 assert 直接走 glibc 的实现，会把诊断信息打到 stderr 然后 abort。core dump 如果 ulimit 开了，gdb 拉出来能看到完整调用栈。</p>
-<p>完整 Linux 用户态 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/linux-snippet/"><code>oop-in-c/code/14-pure-virtual/linux-snippet/</code></a>。</p>
+<p>错误日志写到非易失存储，下次开机能拉出来看哪一行炸了。完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/platform-mcu/stm32/"><code>oop-in-c/code/14-pure-virtual/platform-mcu/stm32/</code></a>（用 <code>PIN_NUM('A', 13)</code> 编码 + <code>_gpio_table</code> 查表）。完整跑通的 STM32 工程见附录 B。</p>
+<h2 id="1410-linux-用户态完整工程"><a class="header" href="#1410-linux-用户态完整工程">14.10 Linux 用户态完整工程</a></h2>
+<p>Linux 用户态 assert 直接走 glibc 的实现，会把诊断信息打到 stderr 然后 abort。core dump 如果 ulimit 开了，gdb 拉出来能看到完整调用栈。子类内部直接调内核接口（GPIO 走 libgpiod，PWM 走 sysfs PWM）。“必填走 assert / 选填走父类默认行为“的纪律落在父类统一接口里，跟平台无关。判断标准见 § 15.15。完整跑通的工程见附录 C。</p>
 <h2 id="1411-工业代码里的策略选择"><a class="header" href="#1411-工业代码里的策略选择">14.11 工业代码里的策略选择</a></h2>
 <p>工业控制板的 led 模块用混合策略（on / off 必填，set_brightness 选填），和本章 14.3 节一致。motor 模块就不一样，motor_base 的 ops 表有 24 个 op，全部必填：</p>
 <pre><code class="language-c">struct motor_ops {
@@ -476,7 +489,7 @@ make
   [TEMP] read = 25 C
 </code></pre>
 <p>GPIO 灯调 set_brightness 走默认行为（“no dimming support, skip”），不崩。PWM 灯三件套全填，每次都走子类。sensor 三件套全必填，调过去都能进子类实现。</p>
-<p>如果你想体验“忘了填 on“的崩溃：把 <code>led_gpio_init</code> 里的 <code>led_base_init(&amp;me-&gt;base, name, &amp;gpio_ops);</code> 这一行注释掉，<code>me-&gt;base.ops</code> 就是没装上的状态，再编译跑，<code>led_on</code> 里的 assert 立刻报错。</p>
+<p>如果你想体验“忘了填 on“的崩溃：把 <code>led_gpio_init</code> 里的 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_gpio);</code> 这一行注释掉，<code>me-&gt;base.ops</code> 就是没装上的状态，再编译跑，<code>led_on</code> 里的 assert 立刻报错。</p>
 <h2 id="1413-视频回放"><a class="header" href="#1413-视频回放">14.13 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1ZeoxB5EGS/">《C 语言·虚函数不实现会怎样｜纯虚·虚函数·接口》</a></p>

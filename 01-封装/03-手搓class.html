@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -447,7 +447,7 @@ led.on(&amp;red);
 <p>字段不是越多越好。每加一个字段就是一份要维护的状态。<code>is_on</code> 这种“瞬时状态“和 <code>initialized</code> 这种“生命周期状态“放一个 struct 里都没问题，因为它们是同一个 motor 的属性。但如果你想塞“上次启动时间“、“累计运行小时”、“电流采样平均值“这些，那是另一个层次的数据（运维 / 监控），属于另一个模块的职责。</p>
 <p>第 4 章数据归位会讲清楚这件事。</p>
 <h2 id="38-你现在的代码在-stm32-上长什么样"><a class="header" href="#38-你现在的代码在-stm32-上长什么样">3.8 你现在的代码在 STM32 上长什么样</a></h2>
-<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/stm32-snippet/led_motor_stm32.c"><code>oop-in-c/code/03-handwritten-class/stm32-snippet/led_motor_stm32.c</code></a>）：</p>
+<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/platform-mcu/stm32/led_motor_stm32.c"><code>oop-in-c/code/03-handwritten-class/platform-mcu/stm32/led_motor_stm32.c</code></a>，<code>pin</code> 仍是 <code>PIN_NUM('A', 13)</code> 编码，详见第 1 章 § 1.x PIN_NUM 编码）：</p>
 <pre><code class="language-c">#include "platform.h"
 #include "stm32f4xx_hal.h"
 
@@ -455,19 +455,19 @@ void platform_gpio_init(uint8_t pin, uint8_t mode)
 {
 	GPIO_InitTypeDef cfg = {0};
 
-	__HAL_RCC_GPIOA_CLK_ENABLE();
+	_enable_port_clock(pin);
 
-	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Pin   = PIN_MASK(pin);
 	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
 	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
 	cfg.Pull  = GPIO_NOPULL;
 	cfg.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &amp;cfg);
+	HAL_GPIO_Init(PIN_PORT(pin), &amp;cfg);
 }
 
 void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
@@ -475,42 +475,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>真实工程里电机的 PWM 速度控制会写到 TIM 通道的 CCRx 寄存器，这里教学简化为 GPIO 高低电平。第 5 章会展开 HAL 怎么做这种映射。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="39-你现在的代码在-linux-用户态长什么样"><a class="header" href="#39-你现在的代码在-linux-用户态长什么样">3.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/linux-snippet/led_motor_linux.c"><code>oop-in-c/code/03-handwritten-class/linux-snippet/led_motor_linux.c</code></a>）：</p>
-<pre><code class="language-c">void platform_gpio_init(uint8_t pin, uint8_t mode)
-{
-	int fd = open("/sys/class/gpio/export", O_WRONLY);
-	if (fd &gt;= 0) {
-		dprintf(fd, "%u", (unsigned)pin);
-		close(fd);
-	}
-
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/direction", (unsigned)pin);
-	fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		const char *dir = (mode == GPIO_MODE_OUTPUT) ? "out" : "in";
-		write(fd, dir, strlen(dir));
-		close(fd);
-	}
-}
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	int fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
-}
-</code></pre>
-<p>Linux 把每个 GPIO 暴露成文件 <code>/sys/class/gpio/gpio13/value</code>，sysfs 接口。</p>
-<p><code>led.h</code> / <code>led.c</code> / <code>motor.h</code> / <code>motor.c</code> / <code>main.c</code> 还是一字不改。</p>
-<p>新内核推荐 libgpiod，附录 C 会展开。</p>
-<p>同样是函数式包装的教学简化版，第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
+<p>Linux 上同款抽象，完整工程见附录 C。</p>
 <h2 id="310-工业代码里的模块长什么样"><a class="header" href="#310-工业代码里的模块长什么样">3.10 工业代码里的模块长什么样</a></h2>
 <p>我做的工业控制板项目里，每个驱动模块都按这套命名规范组织。看几个真实模块的 <code>.h</code> 列名：</p>
 <pre><code>drivers/

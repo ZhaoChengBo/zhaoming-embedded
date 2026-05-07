@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -257,10 +257,13 @@ led_on(&amp;blue_led);
 <blockquote>
 <p><strong>关于 <code>pin</code> 这个参数</strong></p>
 <p>看到 <code>platform_gpio_write(me-&gt;pin, true)</code> 你可能会奇怪：真实 STM32 上 GPIO 既有 port (A/B/C/D)、又有 pin no (0-15)，怎么这里只有一个 <code>pin</code>？</p>
-<p>工业代码里 <code>pin</code> 是一个<strong>编码值</strong>，把 port + 引脚号塞进一个整数：</p>
-<pre><code class="language-c">#define PIN(port, num)   (((port) &lt;&lt; 4) | ((num) &amp; 0xF))
+<p>教学版用一个 <code>uint8_t pin</code> 同时表示 port 和 pin 号：高 4 位是 port (A=0、B=1、…、I=8)，低 4 位是 pin 号 (0-15)。比如 <code>pin = 0x0D</code> 就是 PA.13、<code>pin = 0x3C</code> 就是 PD.12、<code>pin = 0x8E</code> 就是 PI.14。一个字节里塞两条信息。</p>
+<p>编码宏长这样：</p>
+<pre><code class="language-c">#define PIN_NUM(port, num)   ((((port) - 'A') &lt;&lt; 4) | ((num) &amp; 0x0F))
+/* PIN_NUM('A', 13) = 0x0D, PIN_NUM('D', 12) = 0x3C */
 </code></pre>
-<p>调用方写 <code>PIN(D, 12)</code> 表示 PD12，port 信息藏在 pin 编码里。这样接口签名永远只有一个 <code>pin</code> 参数。Linux 内核 <code>gpio_set_value(unsigned int gpio, ...)</code> 是这套做法，工业控制板的 <code>platform_pin_write(int32_t pin, int32_t val)</code> 也是。第 15 章和附录 B 会把这条工业纪律展开。</p>
+<p>这套编码不是教学专用：和 <code>industrial/stm32_full/app/platform/arch/board/pin_board.c</code> 字节级一致（见附录 B）。读者过渡到工业版只多一层「字符串名 → uint8_t 编码」的解析（<code>platform_pin_get("PA.13")</code> 返回 <code>0x0D</code>），核心编码不变。</p>
+<p>早期章节为什么不直接上字符串名？因为字符串解析 + 查表机制 ch15 platform 层才登场，这里先用编码让「换 port + 换 pin」的概念跑通。Linux 内核 <code>gpio_set_value(unsigned int gpio, ...)</code> 用的是另一种类似思路（全局 gpio number），都是把 port + num 折成一个整数让接口签名干净。第 15 章和附录 B 会把这条工业纪律展开。</p>
 </blockquote>
 <p><img src="../assets/ch01/slide3_me递单子.png" alt="me = 递单子"></p>
 <p>把这个思路推广到所有操作（初始化、开、关、翻转、调亮度），就有了一个完整的 LED 模块。下面是节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/pc/led.c"><code>oop-in-c/code/01-three-leds/pc/led.c</code></a>：</p>
@@ -328,15 +331,16 @@ int led_set_brightness(struct led *me, uint8_t brightness)
 <p>应用层的调用是这样：</p>
 <pre><code class="language-c">struct led red_led, green_led, blue_led;
 
-led_init(&amp;red_led,   13);
-led_init(&amp;green_led, 14);
-led_init(&amp;blue_led,  15);
+led_init(&amp;red_led,   PIN_NUM('A', 13));   /* 0x0D = PA.13 */
+led_init(&amp;green_led, PIN_NUM('A', 14));   /* 0x0E = PA.14 */
+led_init(&amp;blue_led,  PIN_NUM('A', 15));   /* 0x0F = PA.15 */
 
 led_on(&amp;red_led);
 led_on(&amp;green_led);
 led_set_brightness(&amp;blue_led, 75);
 led_toggle(&amp;green_led);
 </code></pre>
+<p><code>PIN_NUM('A', 13)</code> 在 <code>common/platform.h</code> 里就是上面那行宏，展开成 <code>0x0D</code>。直接写 <code>led_init(&amp;red_led, 0x0D)</code> 也一样能跑。宏只是让人读着像 PA.13，跑起来字节完全相同。</p>
 <p>32 个重复函数砍到 6 个。再加 100 颗 LED，再开 100 张单子就行，函数一行不用加。</p>
 <h2 id="15-这个东西叫什么"><a class="header" href="#15-这个东西叫什么">1.5 这个东西叫什么</a></h2>
 <p>你刚才跟我做的事（把属于同一个东西的数据打包在一起，让函数通过 <code>me</code> 指针知道自己在操作谁），软件工程里有个名字。</p>
@@ -467,31 +471,50 @@ LDRB  r1, [r4, #2]      ; 取偏移 2 的字节, r1 = is_on
 <p><code>volatile</code> 关键字是必须的。它告诉编译器：这个地址的内容随时会变（硬件改的），不要缓存到寄存器里。否则编译器优化后可能“我刚才不是写过 0x58020018 了吗，再读还是同一个值，不用真的 load“，结果你以为写了，实际没写。</p>
 <p>这个领域叫 MMIO（Memory-Mapped I/O）：把硬件寄存器映射到 CPU 的地址空间，用普通的内存读写指令操作硬件。ch05 打开 HAL 库源码漫游时你能看到这种映射的真实形态。</p>
 <h2 id="18-你现在的-led-在-stm32-上长什么样"><a class="header" href="#18-你现在的-led-在-stm32-上长什么样">1.8 你现在的 LED 在 STM32 上长什么样</a></h2>
-<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/stm32-snippet/led_stm32.c"><code>oop-in-c/code/01-three-leds/stm32-snippet/led_stm32.c</code></a>）：</p>
+<p>先把 PC 端的位置摆正：<code>pc/</code> 不是“伪硬件模拟“，<strong>它是 platform 层的一种实现，和 STM32 / NXP / Linux 平等</strong>。同一份 <code>platform.h</code> 头声明四个函数 (<code>platform_gpio_init / deinit / write / read</code>)，PC 端 <code>common/platform_pc.c</code> 把 GPIO 操作翻译成 stdout printf，STM32 端 <code>platform-mcu/stm32/led_stm32.c</code> 翻译成 <code>HAL_GPIO_*</code> 写 BSRR 寄存器，Linux 端写 sysfs（附录 C 完整版本）。四份共用同一个对外签名，应用层 <code>led.c</code> 一字不动。</p>
+<p><code>pc/</code> 那份 printf 不是占位符，它是“在 PC 上跑得起来的 platform 层“。同样接受 <code>pin = 0x0D</code> 这种编码、同样按 <code>init / write / read / deinit</code> 四个动作来做事，区别只是输出目标从硬件引脚换成了终端日志。换硬件实现，应用层 <code>led.c</code> 一字不动。</p>
+<p>STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/platform-mcu/stm32/led_stm32.c"><code>oop-in-c/code/01-three-leds/platform-mcu/stm32/led_stm32.c</code></a>）：</p>
 <pre><code class="language-c">#include "led.h"
 #include "stm32f4xx_hal.h"
+
+/* pin 编码: 高 4 位 = port (A=0, B=1, ..., I=8), 低 4 位 = pin 号 */
+#define PIN_PORT_IDX(pin)   (((pin) &gt;&gt; 4) &amp; 0x0F)
+#define PIN_NO(pin)         ((pin) &amp; 0x0F)
+#define PIN_MASK(pin)       (1U &lt;&lt; PIN_NO(pin))
+
+static GPIO_TypeDef * const _gpio_table[] = {
+	GPIOA, GPIOB, GPIOC, GPIOD, GPIOE,
+	/* F/G/H/I 看 MCU 型号有没有, 没有就填 NULL */
+};
+#define PIN_PORT(pin)       (_gpio_table[PIN_PORT_IDX(pin)])
 
 void platform_gpio_init(uint8_t pin, uint8_t mode)
 {
 	GPIO_InitTypeDef cfg = {0};
 
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-
-	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	/* 按需开对应 port 时钟, 完整 switch 见配套源码 */
+	cfg.Pin   = PIN_MASK(pin);
 	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
 	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
 	cfg.Pull  = GPIO_NOPULL;
 	cfg.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &amp;cfg);
+	HAL_GPIO_Init(PIN_PORT(pin), &amp;cfg);
 }
 
 void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
-<p>注意一件事：<code>led.h</code>、<code>led.c</code>、<code>main.c</code> 一字不改。</p>
+<p>应用层调用就是：</p>
+<pre><code class="language-c">/* 假设 LED 接在 PA.13 / PA.14 / PA.15 */
+led_init(&amp;red_led,   0x0D);   /* PA.13 */
+led_init(&amp;green_led, 0x0E);   /* PA.14 */
+led_init(&amp;blue_led,  0x0F);   /* PA.15 */
+</code></pre>
+<p>板子上 LED 改接到 PD.12，那就传 <code>0x3C</code>。<code>led.c</code> 一行不动，<code>main.c</code> 只动初始化参数。</p>
+<p>注意一件事：<code>led.h</code>、<code>led.c</code> 一字不改。</p>
 <p>变化的只有 <code>platform_gpio_*</code> 这一层胶水。这就是平台抽象层最直接的威力。</p>
 <p><code>HAL_GPIO_WritePin</code> 调到底就是 1.7.6 里讲的写 BSRR 寄存器。如果你打开 ST 的 HAL 源码看 <code>stm32h7xx_hal_gpio.c</code>，会看到这一行：</p>
 <pre><code class="language-c">GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin;          /* SET   */
@@ -502,46 +525,7 @@ GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
 <p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.10 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
 <p>第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
 <h2 id="19-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#19-你现在的-led-在-linux-用户态长什么样">1.9 你现在的 LED 在 Linux 用户态长什么样</a></h2>
-<p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/linux-snippet/led_linux.c"><code>oop-in-c/code/01-three-leds/linux-snippet/led_linux.c</code></a>）：</p>
-<pre><code class="language-c">#include "led.h"
-#include &lt;fcntl.h&gt;
-#include &lt;unistd.h&gt;
-
-void platform_gpio_init(uint8_t pin, uint8_t mode)
-{
-	int fd = open("/sys/class/gpio/export", O_WRONLY);
-	if (fd &gt;= 0) {
-		dprintf(fd, "%u", (unsigned)pin);
-		close(fd);
-	}
-
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/direction", (unsigned)pin);
-	fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		const char *dir = (mode == GPIO_MODE_OUTPUT) ? "out" : "in";
-		write(fd, dir, strlen(dir));
-		close(fd);
-	}
-}
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	int fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
-}
-</code></pre>
-<p>Linux 把每个 GPIO 暴露成一个文件 <code>/sys/class/gpio/gpio13/value</code>。写 <code>'1'</code> 拉高，写 <code>'0'</code> 拉低。这种“把硬件当文件“的设计叫 sysfs，是 Linux 内核统一暴露驱动状态的标准接口（更现代的方案叫 libgpiod，附录 C 会展开）。</p>
-<p>注意：<code>led.h</code>、<code>led.c</code>、<code>main.c</code> 还是一字不改。这次变化的胶水是把 GPIO 操作转成 open / write / close。</p>
-<p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
-<p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），第 16 章会把它改成和 1.10 节工业代码一致的形态（gpio_chip 子系统）。</p>
+<p>Linux 上同款抽象，完整工程见附录 C。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
 <p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch（分发：走到对的实现）、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分两层：基类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。基类那两份长这样：</p>
@@ -651,7 +635,7 @@ led_toggle(green_led);
 <li>看到 <code>extern xxx_base *yyy;</code>，知道是别人创建好的句柄</li>
 </ul>
 <p>整套就是 struct + me 的工业放大版。你这一章学的核心，加上第 11 章的 ops 表演化，等于工业项目里所有驱动的骨架。</p>
-<p>反过来看，1.8 / 1.9 节给的 STM32 / Linux platform 层用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），完成这个对齐。</p>
+<p>反过来看，1.8 节给的 STM32 platform 层（以及附录 C 的 Linux 完整工程）用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），完成这个对齐。</p>
 <h2 id="111-跑一遍"><a class="header" href="#111-跑一遍">1.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make
@@ -664,34 +648,42 @@ make
 ========================================
 
 --- Init ---
-[GPIO] Pin13 init as OUTPUT
-[GPIO] Pin13 -&gt; LOW (OFF)
-  [LED] Pin13 initialized
-[GPIO] Pin14 init as OUTPUT
-[GPIO] Pin14 -&gt; LOW (OFF)
-  [LED] Pin14 initialized
+[GPIO] PA.13 init as OUTPUT
+[GPIO] PA.13 -&gt; LOW (OFF)
+  [LED] PA.13 initialized
+[GPIO] PA.14 init as OUTPUT
+[GPIO] PA.14 -&gt; LOW (OFF)
+  [LED] PA.14 initialized
 ...
 
 --- Turn on RED ---
-[GPIO] Pin13 -&gt; HIGH (ON)
-  [LED] Pin13 ON
+[GPIO] PA.13 -&gt; HIGH (ON)
+  [LED] PA.13 ON
 
 --- Turn on GREEN ---
-[GPIO] Pin14 -&gt; HIGH (ON)
-  [LED] Pin14 ON
+[GPIO] PA.14 -&gt; HIGH (ON)
+  [LED] PA.14 ON
 
 --- Turn on BLUE ---
-[GPIO] Pin15 -&gt; HIGH (ON)
-  [LED] Pin15 ON
+[GPIO] PA.15 -&gt; HIGH (ON)
+  [LED] PA.15 ON
 </code></pre>
-<p><code>led_on</code> 这个函数在 <code>led.c</code> 里只写了一次。但屏幕上 Pin13、Pin14、Pin15 都被点亮了。因为传入的 <code>me</code> 指针不同。</p>
-<p>完整输出和源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/"><code>oop-in-c/code/01-three-leds/</code></a>。</p>
+<p><code>led_on</code> 这个函数在 <code>led.c</code> 里只写了一次。但屏幕上 PA.13、PA.14、PA.15 都被点亮了。因为传入的 <code>me</code> 指针不同。</p>
+<p><code>[GPIO] PA.13 init as OUTPUT</code> 这一行不是 <code>led.c</code> 写的，是 <code>common/platform_pc.c</code> 写的。它把传进来的 <code>pin = 0x0D</code> 拆回 port 字母 <code>A</code> 和 pin 号 <code>13</code>，再 printf。STM32 上同一个 <code>0x0D</code> 走到 <code>platform-mcu/stm32/led_stm32.c</code> 里就被翻译成 HAL 库写 BSRR 寄存器，把真的 PA.13 引脚拉高。同一份编码、同一个签名、两份不同的 platform 实现。</p>
+<p>完整输出和源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/"><code>oop-in-c/code/01-three-leds/</code></a>。配套代码包目录结构：</p>
+<pre><code>01-three-leds/
+├── pc/                 PC 端 platform 实现（printf 翻译，gcc 一句编译）
+└── platform-mcu/
+    └── stm32/          STM32 端 platform 实现（HAL 写寄存器）
+</code></pre>
+<p>跨章共享的部分在 <code>oop-in-c/code/common/</code>：<code>platform.h</code> 是这本书每一章 <code>pc/</code> 都 #include 的对外接口头（也是 STM32 端 <code>led_stm32.c</code> 实现的同一个头），<code>platform_pc.c</code> 是 PC 端的 platform 实现。本章你看到的 <code>[GPIO] PA.13 ...</code> 日志就出自这一份。</p>
+<p>ch01-ch10 早期教学章节配套代码都简化为这两份对照（PC + STM32），让你专注 OOP 概念本身。Linux 用户态完整工程见附录 C，工业级 ops 表 / 多子类 / 多平台见 <code>industrial/</code> 目录和后面章节。</p>
 <h2 id="112-视频回放"><a class="header" href="#112-视频回放">1.12 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1PyDHB8E3Q/">《C 语言：三个 LED 你写了三份代码？一个挂号单的思路让你秒懂封装》</a></p>
 </blockquote>
-<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）和 STM32 / Linux / 工业代码的对照（1.8 到 1.10 节）。</p>
+<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）、STM32 真机对照（1.8 节）、工业代码全景（1.10 节）。Linux 用户态完整对照工程见附录 C。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>挂号单是敞开的。任何人都能直接 <code>red_led.pin = 999</code> 把它弄坏。你同事顺手改了一个值，所有 LED 全乱了。</p>
 <p>怎么把单子锁起来？下一章解决。</p>

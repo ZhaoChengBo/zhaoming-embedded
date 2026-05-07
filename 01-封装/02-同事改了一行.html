@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -450,7 +450,7 @@ red_led.pin = 999;                    /* 不 OK 绕过 API 直接写字段 */
 <p>Linux 内核的 kerneldoc 注释规范（内核源码里统一的注释格式）里用 <code>@private:</code> 标签写这件事。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
 <p>工业代码 review checklist 通常包含一条：<strong>任何 <code>xxx.field = ...</code> 形式的 PR，先确认字段不是 <code>/* private */</code>。是的话打回，走 setter API</strong>。这条规矩进 review 后，软 private 漏网概率压得很低。</p>
 <h2 id="27-你现在的-led-在-stm32-上长什么样"><a class="header" href="#27-你现在的-led-在-stm32-上长什么样">2.7 你现在的 LED 在 STM32 上长什么样</a></h2>
-<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c"><code>oop-in-c/code/02-static-hiding/stm32-snippet/led_stm32.c</code></a>）：</p>
+<p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/platform-mcu/stm32/led_stm32.c"><code>oop-in-c/code/02-static-hiding/platform-mcu/stm32/led_stm32.c</code></a>，<code>pin</code> 仍是 <code>PIN_NUM('A', 13)</code> 编码，详见第 1 章 § 1.x PIN_NUM 编码）：</p>
 <pre><code class="language-c">#include "platform.h"
 #include "stm32f4xx_hal.h"
 
@@ -458,19 +458,19 @@ void platform_gpio_init(uint8_t pin, uint8_t mode)
 {
 	GPIO_InitTypeDef cfg = {0};
 
-	__HAL_RCC_GPIOA_CLK_ENABLE();
+	_enable_port_clock(pin);
 
-	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Pin   = PIN_MASK(pin);
 	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
 	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
 	cfg.Pull  = GPIO_NOPULL;
 	cfg.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &amp;cfg);
+	HAL_GPIO_Init(PIN_PORT(pin), &amp;cfg);
 }
 
 void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
@@ -478,41 +478,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>软 private 在 ARM Cortex-M 上和 x86 上行为完全一致。它是工程纪律 + 编译期 <code>static</code> 锁，跨平台规则一致。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和 2.9 节工业代码对齐。</p>
 <h2 id="28-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#28-你现在的-led-在-linux-用户态长什么样">2.8 你现在的 LED 在 Linux 用户态长什么样</a></h2>
-<p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c"><code>oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c</code></a>）：</p>
-<pre><code class="language-c">void platform_gpio_init(uint8_t pin, uint8_t mode)
-{
-	int fd = open("/sys/class/gpio/export", O_WRONLY);
-	if (fd &gt;= 0) {
-		dprintf(fd, "%u", (unsigned)pin);
-		close(fd);
-	}
-
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/direction", (unsigned)pin);
-	fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		const char *dir = (mode == GPIO_MODE_OUTPUT) ? "out" : "in";
-		write(fd, dir, strlen(dir));
-		close(fd);
-	}
-}
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	int fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
-}
-</code></pre>
-<p>Linux 把每个 GPIO 暴露成文件 <code>/sys/class/gpio/gpio13/value</code>。写 <code>'1'</code> 拉高，写 <code>'0'</code> 拉低。这种“把硬件当文件“的设计叫 sysfs。</p>
-<p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 还是一字不改。</p>
-<p>这一节同样是函数式包装的教学简化形态，工业级用 ops 表。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
+<p>Linux 上同款抽象，完整工程见附录 C。</p>
 <h2 id="29-工业代码里的-led-长什么样"><a class="header" href="#29-工业代码里的-led-长什么样">2.9 工业代码里的 led 长什么样</a></h2>
 <p>我做的工业控制板项目里，LED 这一块的 <code>led_base.h</code> 是这样：</p>
 <pre><code class="language-c">/* led_base.h - 应用层只看这一份 */

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -413,7 +413,7 @@ INIT_APP_EXPORT(fn)       /* 段名 .rti_fn.6 */
 </code></pre>
 <p>完全一样的 <code>__attribute__((section()))</code> + 链接脚本合并 + 启动遍历。<code>rt_components_init()</code> 是它的 <code>do_initcalls</code>。</p>
 <p><strong>Zephyr</strong>：<code>SYS_INIT(fn, level, priority)</code>，level 取 PRE_KERNEL_1 / PRE_KERNEL_2 / POST_KERNEL / APPLICATION，机制同源。</p>
-<p><strong>裸机 STM32</strong>：自己定义 section + 链接脚本里加几行（详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/stm32-snippet/"><code>oop-in-c/code/17-initcall/stm32-snippet/</code></a>），main 里调一次 <code>do_initcalls()</code>。</p>
+<p><strong>裸机 STM32</strong>：自己定义 section + 链接脚本里加几行（详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/platform-mcu/stm32/"><code>oop-in-c/code/17-initcall/platform-mcu/stm32/</code></a>），main 里调一次 <code>do_initcalls()</code>。</p>
 <p>这不是 Linux 独有的魔法。这是 C 语言 + 链接器就能做到的事，任何 C 项目都能用。</p>
 <p><img src="../assets/ch17/slide6_RT-Thread对照.png" alt="RT-Thread / MCU 对照"></p>
 <h2 id="178-c-对比-c全局对象自动构造"><a class="header" href="#178-c-对比-c全局对象自动构造">17.8 C 对比 C++：全局对象自动构造</a></h2>
@@ -523,7 +523,7 @@ static int led_stm32_init(void)
 MODULE_INIT(led_stm32_init);
 </code></pre>
 <p><code>main</code> 里启动期 <code>do_initcalls()</code> 调一次。每加一个新驱动就多一份 <code>.c</code> + 一行 <code>MODULE_INIT</code>，<code>main</code> 0 改动，链接器自动把所有驱动收集到那个段里。</p>
-<p>完整说明见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/stm32-snippet/README.md"><code>oop-in-c/code/17-initcall/stm32-snippet/README.md</code></a>。</p>
+<p>完整说明见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/platform-mcu/stm32/README.md"><code>oop-in-c/code/17-initcall/platform-mcu/stm32/README.md</code></a>。</p>
 <h2 id="1711-你现在的代码在-linux-上长什么样"><a class="header" href="#1711-你现在的代码在-linux-上长什么样">17.11 你现在的代码在 Linux 上长什么样</a></h2>
 <p>Linux 用户态代码（不写内核驱动）也能用同一招。glibc 的 <code>__attribute__((constructor))</code> 把函数指针塞进 <code>.init_array</code> 段，crt0 启动期遍历。等价于你的 <code>MODULE_INIT</code>：</p>
 <pre><code class="language-c">__attribute__((constructor))

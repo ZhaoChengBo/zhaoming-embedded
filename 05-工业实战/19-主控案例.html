@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -188,64 +188,64 @@
 <p>为了让你从“驱动“看到“整块板的工程组织“，本章后半段还会展开三件工业级机制：设备如何被全局命名（设备句柄注册表）、驱动如何自动按依赖顺序启动（initcall 7 级）、主控板用了哪些中间件（环形缓冲、命令行 shell、日志系统）。这三件事是真实工业代码和教学版之间最具体的差距。</p>
 <h2 id="191-led-驱动最小继承范例"><a class="header" href="#191-led-驱动最小继承范例">19.1 LED 驱动：最小继承范例</a></h2>
 <p>挂号单一路推到工业代码会怎样？看这一段（节选自工业项目 <code>app/drivers/led/led_base.h</code>）：</p>
-<pre><code class="language-c">struct led_base_ops;
+<pre><code class="language-c">struct led_base;
 
-typedef struct {
-	struct led_base_ops *ops;
-} led_base_t;
+struct led_ops {
+	void (*led_on)(struct led_base *me);
+	void (*led_off)(struct led_base *me);
+};
 
-typedef struct led_base_ops {
-	void (*led_on)(led_base_t *me);
-	void (*led_off)(led_base_t *me);
-} led_base_ops_t;
+struct led_base {
+	const struct led_ops *ops;
+};
 
-void led_on(led_base_t *me);
-void led_off(led_base_t *me);
+void led_on(struct led_base *me);
+void led_off(struct led_base *me);
 </code></pre>
-<p>第 11 章你推出来的 <code>struct led_base + struct led_ops + ops 字段</code> 三件套，工业代码里一字不差。差别只有一处：工业代码用了 typedef（<code>led_base_t</code> 而不是 <code>struct led_base</code>）。这是这家公司的内部规范，和 Linux 内核风格不一样。书里用 Linux 内核风格，第 1 章 1.7.3 节解释过为什么。两种写法跑起来一模一样。</p>
-<p><code>led_base_t</code> 是基类。它只放公共字段：一个指向 ops 表的指针。任何具体的 LED（GPIO 拉线的、PWM 调亮度的、I²C 寄存器写的）都可以子类化它。</p>
+<p>第 11 章你推出来的 <code>struct led_base + struct led_ops + ops 字段</code> 三件套，工业代码里一字不差。整个仓库统一用 Linux 内核风格 <code>struct led_base</code>，不上 typedef 别名。第 1 章 1.7.3 节解释过为什么。</p>
+<p><code>struct led_base</code> 是基类。它只放公共字段：一个指向 ops 表的指针。任何具体的 LED（GPIO 拉线的、PWM 调亮度的、I²C 寄存器写的）都可以子类化它。</p>
 <p><code>led_base.c</code> 实现就两行：</p>
-<pre><code class="language-c">void led_on(led_base_t *me)
+<pre><code class="language-c">void led_on(struct led_base *me)
 {
 	return me-&gt;ops-&gt;led_on(me);
 }
 
-void led_off(led_base_t *me)
+void led_off(struct led_base *me)
 {
 	return me-&gt;ops-&gt;led_off(me);
 }
 </code></pre>
 <p>这是第 11 章的多态完整图景。<code>me-&gt;ops-&gt;led_on(me)</code> 一行，背后是 vtable 查表加间接跳转。</p>
 <p>GPIO 类型的子类（节选自工业项目 <code>app/drivers/led/led_gpio.h</code>）：</p>
-<pre><code class="language-c">typedef struct {
-	led_base_t base;            /* 基类放在第一个字段 */
-	int32_t    pin_num;
-	bool       light_level;     /* 高电平点亮还是低电平点亮 */
-} led_gpio_t;
+<pre><code class="language-c">struct led_gpio {
+	struct led_base base;        /* 基类放在第一个字段 */
+	int32_t         pin_num;
+	bool            light_level; /* 高电平点亮还是低电平点亮 */
+};
 
-platform_err_t led_gpio_init(led_gpio_t *me,
+platform_err_t led_gpio_init(struct led_gpio *me,
                              const char *pin_name,
                              bool light_level);
 </code></pre>
 <p>子类实现（节选自 <code>led_gpio.c</code>）：</p>
-<pre><code class="language-c">static void led_gpio_on(led_base_t *me)
+<pre><code class="language-c">static void led_gpio_on(struct led_base *me)
 {
-	led_gpio_t *led_gpio = (led_gpio_t *)me;
+	struct led_gpio *led_gpio = (struct led_gpio *)me;
 	platform_pin_write(led_gpio-&gt;pin_num, led_gpio-&gt;light_level);
 }
 
-static void led_gpio_off(led_base_t *me)
+static void led_gpio_off(struct led_base *me)
 {
-	led_gpio_t *led_gpio = (led_gpio_t *)me;
+	struct led_gpio *led_gpio = (struct led_gpio *)me;
 	platform_pin_write(led_gpio-&gt;pin_num, !led_gpio-&gt;light_level);
 }
 
-static led_base_ops_t ops = {
+static const struct led_ops ops = {
 	.led_on  = led_gpio_on,
 	.led_off = led_gpio_off,
 };
 
-platform_err_t led_gpio_init(led_gpio_t *me,
+platform_err_t led_gpio_init(struct led_gpio *me,
                              const char *pin_name,
                              bool light_level)
 {
@@ -266,19 +266,19 @@ platform_err_t led_gpio_init(led_gpio_t *me,
 }
 </code></pre>
 <p>四个细节值得注意。</p>
-<p><strong>一，基类放在第一个字段。</strong> <code>led_gpio_t</code> 的第一个字段是 <code>led_base_t base</code>。这样 <code>(led_base_t *)led_gpio</code> 强转是合法的（地址相同），向上转型代价为零。这是第 12 章你已经推过的事。</p>
-<p><strong>二，子类向下转型用 <code>(led_gpio_t *)me</code>。</strong> 因为 <code>base</code> 在第一个字段，子类指针和基类指针的数值地址相同。如果 <code>base</code> 不在第一个字段，就必须用 <code>container_of</code>。第 13 章讲过。</p>
-<p><strong>三，ops 表是 <code>static</code>。</strong> <code>static led_base_ops_t ops = { ... }</code> 全局唯一一份，所有 <code>led_gpio_t</code> 实例共享。这就是 C++ 编译器为每个 class 偷偷生成的 vtable，工业代码里手动写出来。</p>
+<p><strong>一，基类放在第一个字段。</strong> <code>struct led_gpio</code> 的第一个字段是 <code>struct led_base base</code>。这样 <code>(struct led_base *)led_gpio</code> 强转是合法的（地址相同），向上转型代价为零。这是第 12 章你已经推过的事。</p>
+<p><strong>二，子类向下转型用 <code>(struct led_gpio *)me</code>。</strong> 因为 <code>base</code> 在第一个字段，子类指针和基类指针的数值地址相同。如果 <code>base</code> 不在第一个字段，就必须用 <code>container_of</code>。第 13 章讲过。</p>
+<p><strong>三，ops 表是 <code>static const</code>。</strong> <code>static const struct led_ops ops = { ... }</code> 全局唯一一份，所有 <code>struct led_gpio</code> 实例共享。这就是 C++ 编译器为每个 class 偷偷生成的 vtable，工业代码里手动写出来。</p>
 <p><strong>四，<code>light_level</code> 这个字段是工程实践才会有的。</strong> 教学版只想“点亮 LED“，工业版要面对一个事实：硬件设计上，有的 LED 是高电平点亮（push-pull），有的是低电平点亮（共阳极接法）。<code>light_level = true</code> 表示高电平点亮。同一份 <code>led_gpio_on</code> 函数，靠这个字段服务两种硬件设计。</p>
-<p><strong>配置代码长什么样。</strong> <code>led_gpio_t</code> 实例不是在 <code>main</code> 里定义的，是在专门的配置文件里。节选自 <code>app/environment_cfg/led_cfg.c</code>：</p>
+<p><strong>配置代码长什么样。</strong> <code>struct led_gpio</code> 实例不是在 <code>main</code> 里定义的，是在专门的配置文件里。节选自 <code>app/environment_cfg/led_cfg.c</code>：</p>
 <pre><code class="language-c">#include "platform/platform_module_export.h"
 #include "led/led_gpio.h"
 
-led_base_t *green_led = NULL;
-led_base_t *red_led   = NULL;
+struct led_base *green_led = NULL;
+struct led_base *red_led   = NULL;
 
-static led_gpio_t green_led_instance;
-static led_gpio_t red_led_instance;
+static struct led_gpio green_led_instance;
+static struct led_gpio red_led_instance;
 
 static void led_cfg(void)
 {
@@ -289,26 +289,26 @@ static void led_cfg(void)
 		log_e("green led init failed");
 		return;
 	}
-	green_led = (led_base_t *)&amp;green_led_instance;
+	green_led = (struct led_base *)&amp;green_led_instance;
 
 	ret = led_gpio_init(&amp;red_led_instance, "PI.14", 0);
 	if (ret != PLATFORM_EOK) {
 		log_e("red led init failed");
 		return;
 	}
-	red_led = (led_base_t *)&amp;red_led_instance;
+	red_led = (struct led_base *)&amp;red_led_instance;
 }
 
 INIT_ENV_EXPORT(led_cfg);
 </code></pre>
 <p>应用层调用（在 <code>environment_cfg/environment_export.h</code> 里 extern 句柄之后）：</p>
-<pre><code class="language-c">extern led_base_t *green_led;
-extern led_base_t *red_led;
+<pre><code class="language-c">extern struct led_base *green_led;
+extern struct led_base *red_led;
 
 led_on(green_led);
 led_off(red_led);
 </code></pre>
-<p><code>green_led</code> 和 <code>red_led</code> 都是 <code>led_base_t *</code> 类型。应用层不需要知道它们是 GPIO 类型还是 PWM 类型还是 I²C 类型。这是第 12 章的向上转型威力：一个基类指针指所有 LED。</p>
+<p><code>green_led</code> 和 <code>red_led</code> 都是 <code>struct led_base *</code> 类型。应用层不需要知道它们是 GPIO 类型还是 PWM 类型还是 I²C 类型。这是第 12 章的向上转型威力：一个基类指针指所有 LED。</p>
 <p><code>INIT_ENV_EXPORT(led_cfg)</code> 是 19.6 节会展开的 initcall 注册宏，这里你先记一句话：链接器会把所有 <code>INIT_ENV_EXPORT</code> 的函数收集到一个段里，系统启动时自动调用。<code>main()</code> 不需要写一行 <code>led_gpio_init</code>。</p>
 <p>教学版（<code>oop-in-c/code/01-three-leds/</code>）和工业版的对比：</p>
 <div class="table-wrapper">
@@ -317,12 +317,12 @@ led_off(red_led);
 <tr><th>维度</th><th>教学版 ch01</th><th>工业版</th></tr>
 </thead>
 <tbody>
-<tr><td>基类</td><td><code>struct led { uint8_t pin; ... }</code></td><td><code>led_base_t { ops* }</code></td></tr>
-<tr><td>子类</td><td>没有</td><td><code>led_gpio_t { base, pin_num, light_level }</code></td></tr>
+<tr><td>基类</td><td><code>struct led { uint8_t pin; ... }</code></td><td><code>struct led_base { ops* }</code></td></tr>
+<tr><td>子类</td><td>没有</td><td><code>struct led_gpio { base, pin_num, light_level }</code></td></tr>
 <tr><td>接口</td><td>直接调用 <code>led_on(&amp;red_led)</code></td><td><code>led_on(red_led)</code> 内部 vtable 派发</td></tr>
 <tr><td>拉线方向</td><td>假设高电平点亮</td><td>字段 <code>light_level</code> 运行时区分</td></tr>
 <tr><td>引脚号类型</td><td><code>uint8_t</code></td><td>字符串 <code>"PI.15"</code> 经 <code>platform_pin_get</code> 查表</td></tr>
-<tr><td>实例定义</td><td><code>main()</code> 里手动 <code>struct led red;</code></td><td><code>*_cfg.c</code> 文件里 <code>static led_gpio_t red_instance;</code></td></tr>
+<tr><td>实例定义</td><td><code>main()</code> 里手动 <code>struct led red;</code></td><td><code>*_cfg.c</code> 文件里 <code>static struct led_gpio red_instance;</code></td></tr>
 <tr><td>启动顺序</td><td><code>main()</code> 里手动调 init</td><td><code>INIT_ENV_EXPORT(led_cfg)</code> 自动收集</td></tr>
 </tbody>
 </table>
@@ -331,25 +331,25 @@ led_off(red_led);
 <h2 id="192-eepromposix-风格的随机访问接口"><a class="header" href="#192-eepromposix-风格的随机访问接口">19.2 EEPROM：POSIX 风格的随机访问接口</a></h2>
 <p>LED 简单。它没有“事件“，只有“操作“。但凡涉及外设有自主行为（写入完成、数据上来了、出错了），就需要回调。</p>
 <p>EEPROM 是介于两者之间的过渡例子（节选自 <code>app/drivers/eeprom/eeprom_base.h</code>）：</p>
-<pre><code class="language-c">struct eeprom_ops;
+<pre><code class="language-c">struct eeprom_base;
 
-typedef struct {
-	struct eeprom_ops *ops;
-} eeprom_base_t;
-
-typedef struct eeprom_ops {
-	int32_t (*eeprom_read)(eeprom_base_t *dev, uint32_t pos,
+struct eeprom_ops {
+	int32_t (*eeprom_read)(struct eeprom_base *dev, uint32_t pos,
 	                       uint8_t *buffer, uint32_t size);
-	int32_t (*eeprom_write)(eeprom_base_t *dev, uint32_t pos,
+	int32_t (*eeprom_write)(struct eeprom_base *dev, uint32_t pos,
 	                        const uint8_t *buffer, uint32_t size);
-} eeprom_ops_t;
+};
 
-int32_t eeprom_read(eeprom_base_t *dev, uint32_t pos,
+struct eeprom_base {
+	const struct eeprom_ops *ops;
+};
+
+int32_t eeprom_read(struct eeprom_base *dev, uint32_t pos,
                     uint8_t *buffer, uint32_t size);
-int32_t eeprom_write(eeprom_base_t *dev, uint32_t pos,
+int32_t eeprom_write(struct eeprom_base *dev, uint32_t pos,
                      const uint8_t *buffer, uint32_t size);
 </code></pre>
-<p>骨架和 LED 一样：基类只放 ops，所有具体芯片（DS2433 1-Wire EEPROM、I²C EEPROM、SPI EEPROM）都子类化 <code>eeprom_base_t</code>。区别在 ops 表里多了 <code>pos</code> 和 <code>size</code> 参数：随机访问、可读可写。</p>
+<p>骨架和 LED 一样：基类只放 ops，所有具体芯片（DS2433 1-Wire EEPROM、I²C EEPROM、SPI EEPROM）都子类化 <code>struct eeprom_base</code>。区别在 ops 表里多了 <code>pos</code> 和 <code>size</code> 参数：随机访问、可读可写。</p>
 <p>为什么 read/write 返回 <code>int32_t</code> 不是 <code>bool</code>？返回值约定如下：</p>
 <div class="table-wrapper">
 <table>
@@ -378,29 +378,29 @@ if ((uint32_t)n &lt; 32) {
 /* 用前 n 字节 */
 </code></pre>
 <p>应用层句柄声明（<code>environment_cfg/environment_export.h</code>）：</p>
-<pre><code class="language-c">extern eeprom_base_t *sn_eeprom;
+<pre><code class="language-c">extern struct eeprom_base *sn_eeprom;
 </code></pre>
-<p><code>sn_eeprom</code> 用来存板级序列号。底层接的是 DS2433（1-Wire EEPROM 芯片），但应用层不知道也不需要知道。如果将来某一版硬件换成 I²C EEPROM，只要再写一个子类 <code>eeprom_i2c_t</code>，让 <code>sn_eeprom</code> 指过去，应用层一行不动。这是第 15 章“换硬件不改应用“在工业项目里的具体落地。</p>
+<p><code>sn_eeprom</code> 用来存板级序列号。底层接的是 DS2433（1-Wire EEPROM 芯片），但应用层不知道也不需要知道。如果将来某一版硬件换成 I²C EEPROM，只要再写一个子类 <code>struct eeprom_i2c</code>，让 <code>sn_eeprom</code> 指过去，应用层一行不动。这是第 15 章“换硬件不改应用“在工业项目里的具体落地。</p>
 <h2 id="193-温度传感器两层继承--同基类下挂多种芯片"><a class="header" href="#193-温度传感器两层继承--同基类下挂多种芯片">19.3 温度传感器：两层继承 + 同基类下挂多种芯片</a></h2>
-<p>LED 的子类只有一种（<code>led_gpio_t</code>）。EEPROM 的子类有两种（DS2433、I²C），但项目里只用了一种实现，没真正体现“多个子类共用基类“的威力。温度传感器是主控板上第一个真正多子类的驱动。</p>
+<p>LED 的子类只有一种（<code>struct led_gpio</code>）。EEPROM 的子类有两种（DS2433、I²C），但项目里只用了一种实现，没真正体现“多个子类共用基类“的威力。温度传感器是主控板上第一个真正多子类的驱动。</p>
 <p><strong>第一层：基类</strong> 节选自 <code>app/drivers/temp_sensor/temp_sensor_base.h</code>：</p>
-<pre><code class="language-c">struct temp_sensor_ops;
+<pre><code class="language-c">struct temp_sensor_base;
 
-typedef struct {
-	struct temp_sensor_ops *ops;
-} temp_sensor_base_t;
-
-typedef struct temp_sensor_ops {
-	platform_err_t (*temp_read)(temp_sensor_base_t *dev,
+struct temp_sensor_ops {
+	platform_err_t (*temp_read)(struct temp_sensor_base *dev,
 	                            float *temp_out);
-} temp_sensor_ops_t;
+};
 
-platform_err_t temp_sensor_read(temp_sensor_base_t *dev,
+struct temp_sensor_base {
+	const struct temp_sensor_ops *ops;
+};
+
+platform_err_t temp_sensor_read(struct temp_sensor_base *dev,
                                 float *temp_out);
 </code></pre>
 <p>基类极简：一个 <code>ops</code> 字段，一个 <code>temp_read</code> 虚方法。这反映温度传感器抽象层面的本质：<strong>给一个度数出来，单位摄氏度</strong>。所有温度传感器芯片，不管 I²C、SPI、单总线，本质都是这一件事。</p>
 <p>基类实现（节选自 <code>temp_sensor_base.c</code>）：</p>
-<pre><code class="language-c">platform_err_t temp_sensor_read(temp_sensor_base_t *dev, float *temp_out)
+<pre><code class="language-c">platform_err_t temp_sensor_read(struct temp_sensor_base *dev, float *temp_out)
 {
 	platform_err_t ret = PLATFORM_EOK;
 
@@ -425,13 +425,13 @@ exit:
 <pre><code class="language-c">#include "temp_sensor_base.h"
 #include "platform/platform_i2c.h"
 
-typedef struct {
-	temp_sensor_base_t base;
+struct max31827 {
+	struct temp_sensor_base base;
 	uint8_t dev_addr;
-	platform_i2c_bus_device_t *i2c_bus;
-} max31827_t;
+	struct platform_i2c_bus_device *i2c_bus;
+};
 
-platform_err_t max31827_init(max31827_t *dev,
+platform_err_t max31827_init(struct max31827 *dev,
                              const char *i2c_bus_name,
                              uint8_t dev_addr);
 </code></pre>
@@ -441,14 +441,14 @@ platform_err_t max31827_init(max31827_t *dev,
 #define TEMPERATURE_MASK            (0x0FFF)
 
 static platform_err_t
-max31827_temp_read(temp_sensor_base_t *dev, float *temp_out);
+max31827_temp_read(struct temp_sensor_base *dev, float *temp_out);
 
-static temp_sensor_ops_t max31827_ops = {
+static const struct temp_sensor_ops max31827_ops = {
 	.temp_read = max31827_temp_read,
 };
 
 platform_err_t
-max31827_init(max31827_t *dev, const char *i2c_bus_name,
+max31827_init(struct max31827 *dev, const char *i2c_bus_name,
               uint8_t dev_addr)
 {
 	if ((NULL == dev) || (NULL == i2c_bus_name))
@@ -465,14 +465,14 @@ max31827_init(max31827_t *dev, const char *i2c_bus_name,
 }
 
 static platform_err_t
-max31827_temp_read(temp_sensor_base_t *dev, float *temp_out)
+max31827_temp_read(struct temp_sensor_base *dev, float *temp_out)
 {
 	uint8_t tx_buf[1] = {0x00};       /* 寄存器地址：温度寄存器 */
 	uint8_t rx_buf[2] = {0x00, 0x00};
-	platform_i2c_msg_t msg[2];
+	struct platform_i2c_msg msg[2];
 	float temp;
 
-	max31827_t *self = (max31827_t *)dev;       /* 向下转型 */
+	struct max31827 *self = (struct max31827 *)dev;  /* 向下转型 */
 
 	msg[0].addr  = self-&gt;dev_addr;
 	msg[0].buf   = tx_buf;
@@ -503,19 +503,19 @@ max31827_temp_read(temp_sensor_base_t *dev, float *temp_out)
 }
 </code></pre>
 <p>这一份子类完整体现了所有教学版没讲透的工程细节，逐个看。</p>
-<p><strong>一，向下转型在第一行就发生。</strong> <code>max31827_t *self = (max31827_t *)dev;</code> 是 ch12-ch13 讲过的“基类指针拿回子类指针“。因为 <code>temp_sensor_base_t base</code> 是 <code>max31827_t</code> 的第一个字段，地址相同，强转合法。如果不放第一个字段，就必须用 <code>container_of</code>。</p>
+<p><strong>一，向下转型在第一行就发生。</strong> <code>struct max31827 *self = (struct max31827 *)dev;</code> 是 ch12-ch13 讲过的“基类指针拿回子类指针“。因为 <code>struct temp_sensor_base base</code> 是 <code>struct max31827</code> 的第一个字段，地址相同，强转合法。如果不放第一个字段，就必须用 <code>container_of</code>。</p>
 <p><strong>二，I²C 协议被压成两条 message。</strong> I²C 读外设寄存器的标准流程是“先写寄存器地址、再读 N 字节“。把这两步打包成 <code>platform_i2c_msg_t</code> 数组传给 <code>platform_i2c_transfer</code>，底层一次性发出，省去用户层处理 START / STOP / RESTART 的细节。返回值是“成功传输的 message 数“，等于 2 就成功。</p>
 <p><strong>三，原始数据是 16 位定点数。</strong> MAX31827 的温度寄存器格式：高字节先来，低字节后来，最高位是符号位，剩下 15 位中只有低 12 位有效（分辨率 0.0625 = 1/16，意味着最低 4 位表示小数部分，但寄存器格式把它编码到高位，所以读出来直接乘 0.0625 就得到摄氏度）。负数走二的补码：取反加一，再加上负号。</p>
-<p><strong>四，子类的 ops 是 <code>static</code>。</strong> <code>static temp_sensor_ops_t max31827_ops = { .temp_read = max31827_temp_read };</code> 全局唯一一份。即便系统里挂了 8 颗 MAX31827，也共用这一份 ops 表。这是 vtable 在工业代码里的标准写法。</p>
+<p><strong>四，子类的 ops 是 <code>static const</code>。</strong> <code>static const struct temp_sensor_ops max31827_ops = { .temp_read = max31827_temp_read };</code> 全局唯一一份。即便系统里挂了 8 颗 MAX31827，也共用这一份 ops 表。这是 vtable 在工业代码里的标准写法。</p>
 <p><strong>配置代码</strong> 节选自 <code>app/environment_cfg/temp_sensor_cfg.c</code>：</p>
 <pre><code class="language-c">#include "platform/platform_module_export.h"
 #include "temp_sensor/max31827.h"
 
-temp_sensor_base_t *temp_board = NULL;
+struct temp_sensor_base *temp_board = NULL;
 
 static void temperature_sensor_cfg(void)
 {
-	static max31827_t max31827_dev;
+	static struct max31827 max31827_dev;
 
 	platform_err_t ret = max31827_init(&amp;max31827_dev, "i2c4", 0x5A);
 	if (ret != PLATFORM_EOK) {
@@ -523,7 +523,7 @@ static void temperature_sensor_cfg(void)
 		return;
 	}
 
-	temp_board = (temp_sensor_base_t *)&amp;max31827_dev;
+	temp_board = (struct temp_sensor_base *)&amp;max31827_dev;
 }
 
 INIT_ENV_EXPORT(temperature_sensor_cfg);
@@ -539,23 +539,23 @@ if (temp_sensor_read(temp_board, &amp;t) == PLATFORM_EOK) {
 <p><strong>为什么不直接两层都合并到一层？</strong> 这个问题最容易问。“反正现在只有一颗 MAX31827，我直接写 <code>max31827_read(dev, &amp;t)</code> 不就好了，何必套个基类？”</p>
 <p>答案在硬件演化。同一块板第二版可能换 SHT31（带温湿度的 I²C 传感器），第三版可能换 NCT75（更便宜的 I²C 传感器），第四版可能为了高精度场合换 MAX31875（19 位精度）。每换一颗芯片，应用层（“过 70 度报警“那段逻辑）一行不动。新增子类挂上去，cfg 文件里 <code>temp_board</code> 指向新子类即可。</p>
 <p>教学版常见的错是看到只有一颗芯片就不抽基类，第二颗芯片来的时候发现应用层每个用到温度的地方都要改一遍，最后变成复制粘贴。基类抽象的成本是“多一层指针跳转“，收益是“任何时候硬件方案换芯片不改应用层“。工业项目里这笔账 99% 是值得做的。</p>
-<p><strong>和教学版 <code>struct led</code> 的差距详细对比。</strong> 把这一节的 <code>struct max31827_t</code> 和 ch01 的 <code>struct led</code> 摆一起，能数出教学版到工业版具体多了什么：</p>
+<p><strong>和教学版 <code>struct led</code> 的差距详细对比。</strong> 把这一节的 <code>struct max31827</code> 和 ch01 的 <code>struct led</code> 摆一起，能数出教学版到工业版具体多了什么：</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>#</th><th>维度</th><th>教学版 <code>struct led</code></th><th>工业版 <code>max31827_t</code></th></tr>
+<tr><th>#</th><th>维度</th><th>教学版 <code>struct led</code></th><th>工业版 <code>struct max31827</code></th></tr>
 </thead>
 <tbody>
 <tr><td>1</td><td>是否有继承层级</td><td>没有</td><td>两层（base + max31827）</td></tr>
-<tr><td>2</td><td>是否有虚函数表</td><td>没有</td><td>有 <code>temp_sensor_ops_t</code></td></tr>
+<tr><td>2</td><td>是否有虚函数表</td><td>没有</td><td>有 <code>struct temp_sensor_ops</code></td></tr>
 <tr><td>3</td><td>字段数</td><td>3（pin/brightness/is_on）</td><td>3（base/dev_addr/i2c_bus）但语义层级不同</td></tr>
 <tr><td>4</td><td>接口暴露范围</td><td>一颗具体 LED</td><td>整类温度传感器</td></tr>
 <tr><td>5</td><td>错误处理</td><td><code>return -1</code></td><td><code>platform_err_t</code> 共 10+ 种错误码</td></tr>
-<tr><td>6</td><td>总线抽象</td><td>直接 <code>platform_gpio_write</code></td><td>经 <code>platform_i2c_bus_device_find</code> 查表后 <code>platform_i2c_transfer</code></td></tr>
+<tr><td>6</td><td>总线抽象</td><td>直接 <code>platform_pin_write</code></td><td>经 <code>platform_i2c_bus_device_find</code> 查表后 <code>platform_i2c_transfer</code></td></tr>
 <tr><td>7</td><td>设备地址</td><td>引脚号 <code>uint8_t</code></td><td>I²C 地址 + bus 句柄</td></tr>
 <tr><td>8</td><td>数据解码</td><td>无（写 1 / 0）</td><td>16 位定点数解析 + 符号位 + 二的补码</td></tr>
-<tr><td>9</td><td>实例创建</td><td><code>struct led red;</code> 全局</td><td><code>static max31827_t dev;</code> 在 cfg 文件里</td></tr>
-<tr><td>10</td><td>句柄暴露</td><td>直接 <code>extern struct led red;</code></td><td><code>extern temp_sensor_base_t *temp_board;</code></td></tr>
+<tr><td>9</td><td>实例创建</td><td><code>struct led red;</code> 全局</td><td><code>static struct max31827 dev;</code> 在 cfg 文件里</td></tr>
+<tr><td>10</td><td>句柄暴露</td><td>直接 <code>extern struct led red;</code></td><td><code>extern struct temp_sensor_base *temp_board;</code></td></tr>
 <tr><td>11</td><td>启动注册</td><td><code>main()</code> 里调 init</td><td><code>INIT_ENV_EXPORT(cfg_func)</code> 自动</td></tr>
 </tbody>
 </table>
@@ -568,20 +568,21 @@ if (temp_sensor_read(temp_board, &amp;t) == PLATFORM_EOK) {
 
 typedef void (*fan_status_change_cb_t)(struct fan *me, uint32_t status);
 
-typedef struct fan {
+struct fan {
 	platform_device_t      uart_dev;
 	fan_status_change_cb_t status_change_cb;
 	uint32_t               status;
-} fan_t;
+};
 
-void fan_init(fan_t *me, const char *uart_name);
-platform_err_t fan_ctrl(fan_t *me, uint32_t level);
-uint32_t fan_status_get(fan_t *me);
-void fan_status_change_cb_register(fan_t *me, fan_status_change_cb_t cb);
+void fan_init(struct fan *me, const char *uart_name);
+platform_err_t fan_ctrl(struct fan *me, uint32_t level);
+uint32_t fan_status_get(struct fan *me);
+void fan_status_change_cb_register(struct fan *me,
+                                   fan_status_change_cb_t cb);
 </code></pre>
 <p>注意三件事。</p>
-<p><strong>一，没有 ops 表。</strong> 这个项目里风扇只接一种型号（UART 串口控制的智能风扇），没有第二种实现，所以没必要套虚函数表。OOP 不是规则，是工具。能简单解决的问题就别上多态。教学版常见的错误是“把所有 driver 都套上 ops 表“，工业代码不会这么干。这条规则反过来说也成立：将来真的多了一种风扇（比如 PWM 直驱的简单风扇），再把这个 <code>fan_t</code> 升级成 <code>fan_base_t</code> + 子类，迁移成本可控。</p>
-<p><strong>二，仍然是 struct + me。</strong> <code>fan_t</code> 有自己的字段（uart 设备句柄、回调指针、当前状态），所有函数第一个参数都是 <code>fan_t *me</code>。这就是第 1 章的封装基本盘，没有 ops 表也是封装。</p>
+<p><strong>一，没有 ops 表。</strong> 这个项目里风扇只接一种型号（UART 串口控制的智能风扇），没有第二种实现，所以没必要套虚函数表。OOP 不是规则，是工具。能简单解决的问题就别上多态。教学版常见的错误是“把所有 driver 都套上 ops 表“，工业代码不会这么干。这条规则反过来说也成立：将来真的多了一种风扇（比如 PWM 直驱的简单风扇），再把这个 <code>struct fan</code> 升级成 <code>struct fan_base</code> + 子类，迁移成本可控。</p>
+<p><strong>二，仍然是 struct + me。</strong> <code>struct fan</code> 有自己的字段（uart 设备句柄、回调指针、当前状态），所有函数第一个参数都是 <code>struct fan *me</code>。这就是第 1 章的封装基本盘，没有 ops 表也是封装。</p>
 <p><strong>三，状态变化回调。</strong> <code>fan_status_change_cb_register</code> 让上层注册一个函数：风扇档位变化时被调用。教学版思路是 <code>if (last_status != cur_status) printf(...)</code> 写在风扇内部，工业版是“我变了我告诉你，怎么处理是你的事“。这是依赖反转的最朴素形态。风扇模块不依赖具体的上层（应用层、状态机、日志系统），它只负责把变化事件喷出来。</p>
 <p>应用层注册：</p>
 <pre><code class="language-c">static void on_fan_status_changed(struct fan *me, uint32_t status)
@@ -600,7 +601,7 @@ void fan_status_change_cb_register(fan_t *me, fan_status_change_cb_t cb);
 fan_status_change_cb_register(fan_dev, on_fan_status_changed);
 </code></pre>
 <p>风扇驱动内部的事件喷射逻辑（节选）：</p>
-<pre><code class="language-c">static void fan_status_update_internal(fan_t *me, uint32_t new_status)
+<pre><code class="language-c">static void fan_status_update_internal(struct fan *me, uint32_t new_status)
 {
 	if (me-&gt;status == new_status)
 		return;     /* 没变化不喷 */
@@ -616,13 +617,13 @@ fan_status_change_cb_register(fan_dev, on_fan_status_changed);
 <p>驱动有了，应用层怎么找到具体的实例？教学版通常在 <code>main.c</code> 里 <code>struct led red_led;</code> 直接定义全局变量。工业项目几十个驱动几百个实例，全堆在 <code>main.c</code> 行不通。</p>
 <p>主控板项目用的方法是：每个驱动实例在自己的 <code>*_cfg.c</code> 文件里定义、在 <code>environment_cfg/environment_export.h</code> 里 extern 出来。节选：</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h */
-extern led_base_t *green_led;
-extern led_base_t *red_led;
+extern struct led_base *green_led;
+extern struct led_base *red_led;
 
-extern eeprom_base_t *sn_eeprom;
-extern fan_t *fan_dev;
-extern laser_base_t *laser;
-extern temp_sensor_base_t *temp_board;
+extern struct eeprom_base    *sn_eeprom;
+extern struct fan            *fan_dev;
+extern struct laser_base     *laser;
+extern struct temp_sensor_base *temp_board;
 </code></pre>
 <p>应用层写：</p>
 <pre><code class="language-c">#include "environment_cfg/environment_export.h"
@@ -632,9 +633,9 @@ fan_ctrl(fan_dev, 2);
 temp_sensor_read(temp_board, &amp;t);
 </code></pre>
 <p>不需要知道这些设备在哪里被构造、用什么参数构造。<code>environment_export.h</code> 是一份“全局名片夹“，所有跨模块共享的对象都在这里登记一次。</p>
-<p>注意类型：<code>led_base_t *</code>、<code>eeprom_base_t *</code>、<code>temp_sensor_base_t *</code>，全部是基类指针。应用层只能调基类接口（<code>led_on</code>、<code>eeprom_read</code>、<code>eeprom_write</code>、<code>temp_sensor_read</code>），不能调子类特有的方法。这是面向接口编程。</p>
+<p>注意类型：<code>struct led_base *</code>、<code>struct eeprom_base *</code>、<code>struct temp_sensor_base *</code>，全部是基类指针。应用层只能调基类接口（<code>led_on</code>、<code>eeprom_read</code>、<code>eeprom_write</code>、<code>temp_sensor_read</code>），不能调子类特有的方法。这是面向接口编程。</p>
 <h3 id="1951-这一套机制是-linux-设备树的精神同款"><a class="header" href="#1951-这一套机制是-linux-设备树的精神同款">19.5.1 这一套机制是 Linux 设备树的精神同款</a></h3>
-<p>读到这里你可能觉得这个 <code>*_cfg.c</code> 加 <code>extern *_base_t *handle;</code> 的写法很眼熟。它跟 Linux 设备树（Device Tree）和 Zephyr 的 <code>DEVICE_DT_INST_DEFINE</code> 是同一个解决思路的不同实现。</p>
+<p>读到这里你可能觉得这个 <code>*_cfg.c</code> 加 <code>extern struct *_base *handle;</code> 的写法很眼熟。它跟 Linux 设备树（Device Tree）和 Zephyr 的 <code>DEVICE_DT_INST_DEFINE</code> 是同一个解决思路的不同实现。</p>
 <p>Linux 设备树是一个 <code>.dts</code> 文本文件（编译成二进制 <code>.dtb</code>），描述系统里有哪些设备、各自挂哪条总线、什么参数。比如树莓派的某段 dts：</p>
 <pre><code>i2c1: i2c@7e804000 {
     compatible = "brcm,bcm2835-i2c";
@@ -659,7 +660,7 @@ temp_sensor_read(temp_board, &amp;t);
 <tr><td>描述形式</td><td><code>.dts</code> 文本文件</td><td><code>.dts</code> 编译期展开</td><td><code>*_cfg.c</code> C 文件</td></tr>
 <tr><td>解析时机</td><td>启动时运行时解析 dtb</td><td>编译期</td><td>启动时调 cfg 函数</td></tr>
 <tr><td>描述内容</td><td>compatible / reg / 总线</td><td>同左</td><td>bus name 字符串 + 设备地址</td></tr>
-<tr><td>句柄获取</td><td><code>device_get_binding(...)</code></td><td><code>DEVICE_DT_GET(...)</code></td><td><code>extern *_base_t *xxx;</code></td></tr>
+<tr><td>句柄获取</td><td><code>device_get_binding(...)</code></td><td><code>DEVICE_DT_GET(...)</code></td><td><code>extern struct *_base *xxx;</code></td></tr>
 <tr><td>加新设备</td><td>改 dts 重新编译</td><td>改 dts 重新编译</td><td>加 <code>*_cfg.c</code> 文件</td></tr>
 </tbody>
 </table>
@@ -744,8 +745,8 @@ if (uart3) {
 </code></pre>
 <p>每个驱动在自己的 cfg 文件里写一个 init 函数，挂上对应级别的 EXPORT 宏：</p>
 <pre><code class="language-c">/* environment_cfg/led_cfg.c (示意，简化) */
-static led_gpio_t green_led_obj;
-led_base_t *green_led = (led_base_t *)&amp;green_led_obj;
+static struct led_gpio green_led_obj;
+struct led_base *green_led = (struct led_base *)&amp;green_led_obj;
 
 static void green_led_setup(void)
 {
@@ -842,6 +843,10 @@ INIT_ENV_EXPORT(temp_sensor_cfg);  /* 温度传感器自带这一行 */
 <p>也就是说，<strong>同一级内部的顺序你不能强保证</strong>。你只能保证 BOARD 在 PREV 之前、PREV 在 DEVICE 之前。</p>
 <p>实际工程里这不是大问题：同一级的驱动通常是平行的（不互相依赖）。如果同一级的两个驱动有先后依赖（比如 LED 必须在蜂鸣器之前），那就把它们拆到不同级，或者在 cfg 里手动调。</p>
 <p>Linux 内核里也有同款问题，处理方式：在级别名后面加 <code>_sync</code> 子级（<code>device_initcall_sync</code>），或者通过 <code>late_initcall</code> 把那种“必须最后跑“的事情挂到第 7 级。主控板项目目前没有这种细分，是因为依赖关系简单到 7 级就足够。</p>
+<h3 id="1963-第-8-级独立段单元测试"><a class="header" href="#1963-第-8-级独立段单元测试">19.6.3 第 8 级独立段：单元测试</a></h3>
+<p>工业代码里 <code>platform_module_export.h</code> 实际比正文讲的多挂一个级别：<code>UNIT_TEST_EXPORT(fn)</code> 编号 “8”，专门收单元测试函数。它<strong>不被</strong> <code>platform_module_export_exec()</code> 调起，所以系统启动期不会跑测试。生产固件里这一段就是不会触发的死代码。</p>
+<p>调用方要跑单元测试时（PC mock 回归 / 测试固件 / 工厂下线检测），手动调一次 <code>platform_unit_test_exec()</code>，它把第 8 级整段函数指针 walk 一遍。日常 1-7 级和测试段 8 严格隔离：前者每次上电都跑，后者只在测试场景跑。</p>
+<p>为什么不让 <code>platform_module_export_exec</code> 把第 8 级一起调起来？因为单元测试和“启动期跑驱动“语义完全不同。生产固件绝不该跑测试代码副作用。这一条本身没新概念，只是把同一套链接器收集 + 段遍历按使用场景分了第二组段。读 <code>industrial/platform_layer/platform_module_export.h</code> 看到 <code>UNIT_TEST_EXPORT</code> 不必奇怪即可。</p>
 <h2 id="197-中间件主控板用的几个开源库"><a class="header" href="#197-中间件主控板用的几个开源库">19.7 中间件：主控板用的几个开源库</a></h2>
 <p>主控板项目里的 driver 不是孤立的。每个 driver 底下都用到几个中间件库吸收掉重复劳动。这一节列出最重要的几个，让你知道工业项目的中间件栈大概长什么样。</p>
 <p><strong>lwrb（lightweight ring buffer）。</strong> 轻量级环形缓冲区。用在 ADC 长时间采样场景：定时器中断里把 ADC 读数推进环形缓冲，应用层定期取走分析。固定大小，写满覆盖最旧。比手写 <code>float buf[N]; int idx;</code> 多两个能力：原子操作（无锁单生产单消费）、写满策略可配。这一类库 GitHub 上几十个，核心代码 200 行左右，工业项目随便选一个稳定版本扔进 <code>third_party/</code> 就用。</p>
@@ -871,9 +876,9 @@ SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0), temp_get,
 <tbody>
 <tr><td>1</td><td>错误处理</td><td><code>return -1</code></td><td><code>platform_err_t</code> 含 <code>EINVAL/EIO/ENOSYS/ETIMEOUT</code> 等 10+ 种</td></tr>
 <tr><td>2</td><td>NULL 校验</td><td><code>if (!me) return -1;</code></td><td>多层级深度校验（dev、ops、ops 表里的虚方法）</td></tr>
-<tr><td>3</td><td>总线访问</td><td>直接 <code>platform_gpio_write</code></td><td>经 <code>platform_i2c_bus_device_find</code> 查表后 <code>platform_i2c_transfer</code></td></tr>
+<tr><td>3</td><td>总线访问</td><td>直接 <code>platform_pin_write</code></td><td>经 <code>platform_i2c_bus_device_find</code> 查表后 <code>platform_i2c_transfer</code></td></tr>
 <tr><td>4</td><td>引脚标识</td><td><code>uint8_t pin</code></td><td>字符串 <code>"PI.15"</code> 经 <code>platform_pin_get</code> 查表</td></tr>
-<tr><td>5</td><td>句柄类型</td><td><code>extern struct led red_led;</code></td><td><code>extern led_base_t *red_led;</code> 基类指针</td></tr>
+<tr><td>5</td><td>句柄类型</td><td><code>extern struct led red_led;</code></td><td><code>extern struct led_base *red_led;</code> 基类指针</td></tr>
 <tr><td>6</td><td>实例创建位置</td><td><code>main()</code> 里全局变量</td><td>独立 <code>*_cfg.c</code> 文件里 <code>static</code> 实例</td></tr>
 <tr><td>7</td><td>启动</td><td><code>main()</code> 手动调 init</td><td>INIT_xxx_EXPORT 宏，链接器自动收集</td></tr>
 <tr><td>8</td><td>启动顺序</td><td>靠程序员记忆</td><td>7 级分组（BOARD → PREV → DEVICE → COMPONENT → ENV → APP → READY）</td></tr>
@@ -900,10 +905,12 @@ SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0), temp_get,
 <tr><th>文件</th><th>角色</th><th>章节正文里贴过的对应节选</th></tr>
 </thead>
 <tbody>
-<tr><td><code>led_base.h</code></td><td>基类接口（ops 表 + 基类 struct）</td><td>19.1 节“挂号单一路推到工业代码会怎样“代码块</td></tr>
-<tr><td><code>led_base.c</code></td><td>基类派发实现（穿过 vptr）</td><td>19.1 节“<code>led_base.c</code> 实现就两行“</td></tr>
-<tr><td><code>led_gpio.h</code></td><td>GPIO 子类接口</td><td>19.1 节“GPIO 类型的子类“</td></tr>
-<tr><td><code>led_gpio.c</code></td><td>GPIO 子类实现（含 <code>light_level</code> 字段）</td><td>19.1 节“子类实现“</td></tr>
+<tr><td><code>led_base.h</code></td><td>基类接口（ops 表 + 基类 struct + 三个公开 API）</td><td>19.1 节“挂号单一路推到工业代码会怎样“代码块</td></tr>
+<tr><td><code>led_base.c</code></td><td>基类派发实现（含三层 NULL 校验）</td><td>19.1 节“<code>led_base.c</code> 实现就两行“</td></tr>
+<tr><td><code>led_gpio.h</code></td><td>GPIO 拉线子类接口</td><td>19.1 节“GPIO 类型的子类“</td></tr>
+<tr><td><code>led_gpio.c</code></td><td>GPIO 拉线子类实现（含 <code>light_level</code> 字段 + <code>static const ops</code>）</td><td>19.1 节“子类实现“</td></tr>
+<tr><td><code>led_pwm.h</code> / <code>led_pwm.c</code></td><td>PWM 调亮度子类骨架（实现 <code>set_brightness</code>，演示“子类追加新能力“）</td><td>19.1 节正文末尾“PWM 子类、I²C 子类挂在同一基类下“延伸</td></tr>
+<tr><td><code>led_i2c.h</code> / <code>led_i2c.c</code></td><td>I²C 控制子类骨架（不实现 <code>set_brightness</code>，演示“换硬件不改应用“）</td><td>同上</td></tr>
 </tbody>
 </table>
 </div>

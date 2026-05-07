@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -418,58 +418,48 @@ struct led_ops {
 };
 </code></pre>
 <p>第 12 章主题是向上转型，应用层只调 <code>led_on / led_off</code>，<code>toggle</code> 在这一章用不上，先收缩成两字段，让代码更聚焦。<code>led_action_fn</code> typedef 也跟着撤掉，改成内联函数指针类型。typedef 一旦字段集不再统一就没意义。第 13 章及以后会按需要再重新加字段。</p>
-<p><code>led_base.h</code> / <code>led_base.c</code> 跟第 10、11 章一字不改地传下来：父类 <code>struct led_base</code> 字段集（<code>ops</code> + <code>name</code> + <code>is_on</code>）和通用 <code>led_base_init</code> 都还在，三种子类（GPIO / PWM / I2C）的 init 第一行都调 <code>led_base_init</code> 把对应的 ops 表填进去。这样哪天 base 加了一个公共字段（例如 <code>owner</code> / <code>lock</code>），只改 <code>led_base_init</code> 一个点，三种子类的 init 不用动。</p>
+<p><code>led_base.h</code> / <code>led_base.c</code> 跟第 10、11 章一字不改地传下来：父类 <code>struct led_base</code> 字段集（<code>ops</code> + <code>name</code> + <code>is_on</code>）和通用 <code>led_base_init</code> 都还在，三种子类（GPIO / PWM / I2C）的 init 第一行都调 <code>led_base_init</code> 把对应的 ops 表填进去。这样哪天 base 加了一个公共字段（例如 <code>owner</code> / <code>lock</code>），只改 <code>led_base_init</code> 一个点，三种子类的 init 不用动。父类统一接口 <code>led_on</code> / <code>led_off</code> 也搬到 <code>led_base.c</code> 里跟 <code>led_base_init</code> 同住，应用层 <code>#include "led.h"</code> 拿到 <code>struct led_ops</code> 字段集 + 两个父类接口声明就够用。</p>
+<p>文件组织相对第 11 章的另一处调整：三种子类各拆出独立的 <code>.h</code> / <code>.c</code>。</p>
+<pre><code>oop-in-c/code/12-upcasting/pc/
+├── led_base.h / led_base.c    父类字段集 + 共有 init + 父类统一接口
+├── led.h                      公开接口集中点（ops 表字段集 + led_on/off 声明）
+├── led_gpio.h / led_gpio.c    GPIO 子类（独立文件）
+├── led_pwm.h  / led_pwm.c     PWM 子类（独立文件）
+├── led_i2c.h  / led_i2c.c     I2C 子类（独立文件）
+├── leds.h    / board_init.c   板级 BSP（全局句柄 + 板级 init）
+└── main.c                     应用层
+</code></pre>
+<p>每个子类一对 <code>.h</code> / <code>.c</code> 是 Linux 内核和工业项目通用风格 – <code>git blame</code> 定位改动到具体子类、ABI 调整时只动一对文件。子类 <code>.c</code> 里的 <code>gpio_ops</code> / <code>pwm_ops</code> / <code>i2c_ops</code> 表分别提升为 <code>extern const struct led_ops led_ops_gpio</code> 等公开符号（第 11 章里也是这种风格），但应用层永远拿不到这些表 – 只有 <code>board_init.c</code> 这种“认识硬件“的位置 <code>#include "led_gpio.h"</code> 之类的子类头才能间接绑上。</p>
 <h2 id="129-你现在的代码在-stm32-上长什么样"><a class="header" href="#129-你现在的代码在-stm32-上长什么样">12.9 你现在的代码在 STM32 上长什么样</a></h2>
-<p>应用层 <code>main.c</code>、父类 <code>led.c</code>、板级 <code>board_init.c</code> 一字不改。<code>platform_pc.c</code> 替换成 <code>led_stm32.c</code>，里面是 <code>platform_gpio_xxx</code> 的真实 HAL 实现：</p>
+<p>应用层 <code>main.c</code>、父类 <code>led_base.c</code> 一字不改。<code>board_init.c</code> 里把 GPIO 子类的 pin 参数从 PC 占位换成真实板子的 PIN_NUM，PWM / I2C 不动。<code>platform_pc.c</code> 替换成 <code>platform-mcu/stm32/</code> 下三个文件 – 每个子类一个：<code>led_gpio.c</code> 装 GPIO 子类实现 + <code>platform_gpio_xxx</code> 真实 HAL 胶水（<code>PIN_NUM('A', 13)</code> 这套编码 <code>_gpio_table</code> 查表拿到 <code>GPIOA</code>）；<code>led_pwm.c</code> 装 PWM 子类实现 + TIM 操作；<code>led_i2c.c</code> 装 I2C 子类实现 + <code>HAL_I2C_Master_Transmit</code>：</p>
 <pre><code class="language-c">#include "led.h"
 #include "stm32f4xx_hal.h"
 
 void platform_gpio_init(uint8_t pin, uint8_t mode)
 {
 	GPIO_InitTypeDef cfg = {0};
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	_enable_port_clock(pin);
+	cfg.Pin   = PIN_MASK(pin);
 	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
 	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
 	cfg.Pull  = GPIO_NOPULL;
 	cfg.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &amp;cfg);
+	HAL_GPIO_Init(PIN_PORT(pin), &amp;cfg);
 }
 
 void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 /* ... deinit / read 同样直接调 HAL ... */
 </code></pre>
-<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/stm32-snippet/"><code>oop-in-c/code/12-upcasting/stm32-snippet/</code></a>。</p>
-<p>PWM 子类在真实硬件上会用 <code>HAL_TIM_PWM_Start</code> + <code>__HAL_TIM_SET_COMPARE</code>。I2C 子类会用 <code>HAL_I2C_Master_Transmit</code>。这两路不在本章 snippet 里，附录 B 有完整工程。</p>
+<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/platform-mcu/stm32/"><code>oop-in-c/code/12-upcasting/platform-mcu/stm32/</code></a>（含 <code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code> 三个子类文件 + STM32 版 <code>board_init.c</code>）。完整跑通的 STM32 工程见附录 B。</p>
+<p>PWM 子类在真实硬件上会用 <code>HAL_TIM_PWM_Start</code> + <code>__HAL_TIM_SET_COMPARE</code>。I2C 子类会用 <code>HAL_I2C_Master_Transmit</code>。</p>
 <p>本节展示的是 ch11 起整本书统一的函数式包装：<code>platform_gpio_init / platform_gpio_write / platform_gpio_deinit / platform_gpio_read</code> 四个函数声明在 <code>common/platform.h</code>，PC 上跑 printf 模拟，STM32 上跑真实 HAL。上层一字不改。</p>
-<h2 id="1210-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1210-你现在的代码在-linux-用户态长什么样">12.10 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>同样把 PC 版的 <code>platform_pc.c</code> 换成 <code>led_linux.c</code>，sysfs 版本写文件：</p>
-<pre><code class="language-c">#include "led.h"
-#include &lt;fcntl.h&gt;
-#include &lt;unistd.h&gt;
-#include &lt;stdio.h&gt;
-#include &lt;string.h&gt;
-
-void platform_gpio_write(uint8_t pin, bool value)
-{
-	char path[64];
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	int fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
-}
-
-/* ... init / deinit / read 同样走 sysfs ... */
-</code></pre>
-<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/linux-snippet/"><code>oop-in-c/code/12-upcasting/linux-snippet/</code></a>。</p>
+<h2 id="1210-linux-用户态完整工程"><a class="header" href="#1210-linux-用户态完整工程">12.10 Linux 用户态完整工程</a></h2>
+<p>Linux 上 GPIO / PWM / I2C 三种子类内部各自直接调内核暴露的 libgpiod / sysfs PWM / i2c-dev，内核已经把 platform 抽象做完了，应用层再套一层是反工程（§ 15.15）。应用层向上转型的招数和 PC / STM32 一字不变：拿 <code>&amp;xxx_led.base</code> 就是 <code>struct led_base *</code>，应用层只对父类指针编程。换的是子类内部实现，不是这一招。完整跑通的工程见附录 C。</p>
 <h2 id="1211-工业代码里的向上转型长什么样"><a class="header" href="#1211-工业代码里的向上转型长什么样">12.11 工业代码里的向上转型长什么样</a></h2>
 <p>工业控制板项目里，板级初始化是这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h（节选） */

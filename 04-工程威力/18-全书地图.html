@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -308,6 +308,9 @@ module_platform_driver(rk3x_i2c_driver);
 <p>每一行你学过的东西，内核里都有对应。分层一模一样。每一项一模一样。</p>
 <p><img src="../assets/ch18/slide5_映射总表.png" alt="映射总表"></p>
 <h2 id="186-c-对比-c-三组代码对照"><a class="header" href="#186-c-对比-c-三组代码对照">18.6 C 对比 C++ 三组代码对照</a></h2>
+<blockquote>
+<p>本节做 C vs C++ 对照·命名跟 C++ 习惯改成 <code>LedBase / LedOps</code> 大驼峰·和 ch01-ch17 的 <code>struct led_base / led_ops</code> 是同一套接口的不同命名形式·非新 API。</p>
+</blockquote>
 <p>接下来把你 18 章写的 C 代码，跟 C++ 的写法摆一起看。每一对，C++ 都帮你做了你亲手做的事。</p>
 <p>挑了三组最有戏的：多态 dispatch、向下转型、模块自动注册。</p>
 <h3 id="1861-多态-dispatch"><a class="header" href="#1861-多态-dispatch">18.6.1 多态 dispatch</a></h3>

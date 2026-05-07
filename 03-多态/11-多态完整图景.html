@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -202,8 +202,8 @@ for (int i = 0; i &lt; 3; ++i)
 <p>这一行 <code>led_on(all_leds[i])</code> 跑的时候。</p>
 <p>红灯走 <code>gpio_on</code>：拉引脚。
 蓝灯走 <code>pwm_on</code>：按 duty 配 PWM。
-绿灯走 <code>gpio_on</code>：拉引脚。</p>
-<p>同一行代码 <code>led_on(...)</code>，跑出三种不同行为。它怎么知道该调哪个？</p>
+绿灯走 <code>i2c_on</code>：通过 I2C 总线写控制寄存器。</p>
+<p>同一行代码 <code>led_on(...)</code>，跑出三种完全不同的硬件动作。它怎么知道该调哪个？</p>
 <p>总不能写 if 判断吧。“如果是 GPIO 就调这个，如果是 PWM 就调那个”。那加第三种 LED 又要改 if。你写的 if-else 比 LED 还多，确定是在写驱动还是做选择题。</p>
 <p><img src="../assets/ch11/slide1_问题展示.png" alt="问题展示"></p>
 <h2 id="112-答案在-ops-表里"><a class="header" href="#112-答案在-ops-表里">11.2 答案在 ops 表里</a></h2>
@@ -266,6 +266,9 @@ int led_off(struct led_base *me)
 	return me-&gt;ops-&gt;off(me);
 }
 </code></pre>
+<blockquote>
+<p>这是化简版。配套代码 <code>led_base.c</code> 实际加了 NULL + ops + ops-&gt;on 三层守护·防御性写法 ch14 § 14.2 详谈。</p>
+</blockquote>
 <p>为什么写在父类里？因为开灯是所有 LED 都具备的能力，不管你是 GPIO 灯、PWM 灯还是 I2C 灯，都得能开。所有 LED 共有的能力，就在父类统一实现。<code>led_off</code> 也一样。父类定义接口，子类各自实现。</p>
 <p>来看效果：</p>
 <pre><code class="language-c">led_on(&amp;gpio_led.base);    /* 走 gpio_on，拉引脚 */
@@ -347,7 +350,8 @@ for (auto led : all_leds)
 <h3 id="1172-dispatch-在内存里走的两步"><a class="header" href="#1172-dispatch-在内存里走的两步">11.7.2 dispatch 在内存里走的两步</a></h3>
 <p><code>me-&gt;ops-&gt;on(me)</code> 这一行展开就是两次访存加一次跳转。先从 <code>me</code> 这块内存里取出 <code>ops</code> 字段（base 第一个字段，偏移 0），拿到 ops 表的地址；再从 ops 表里取出 <code>on</code> 字段（ops 第一个字段，偏移 0），拿到目标函数地址；最后跳过去执行，参数 <code>me</code> 已经在那。</p>
 <p>红灯：<code>me-&gt;ops</code> 指向 <code>led_ops_gpio</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>gpio_on</code>。落到 <code>gpio_on(me)</code>。
-蓝灯：<code>me-&gt;ops</code> 指向 <code>led_ops_pwm</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>pwm_on</code>。落到 <code>pwm_on(me)</code>。</p>
+蓝灯：<code>me-&gt;ops</code> 指向 <code>led_ops_pwm</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>pwm_on</code>。落到 <code>pwm_on(me)</code>。
+绿灯：<code>me-&gt;ops</code> 指向 <code>led_ops_i2c</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>i2c_on</code>。落到 <code>i2c_on(me)</code>。</p>
 <p>同一行代码 <code>me-&gt;ops-&gt;on(me)</code>，因为 <code>me</code> 不同，两跳之后落在不同的函数。这就是 dispatch 在内存里实际发生的事。</p>
 <h3 id="1173-加新-led-不改老代码"><a class="header" href="#1173-加新-led-不改老代码">11.7.3 加新 LED 不改老代码</a></h3>
 <p>“加新 LED” 有两种情况，先分清楚再讲省什么。</p>
@@ -374,10 +378,10 @@ struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
 <p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>
 <p>三个字段还是两个字段，dispatch 机制完全一样：通过 <code>me-&gt;ops</code> 找到表，按名字调到对的实现。</p>
 <h2 id="118-你现在的代码在-stm32-上长什么样"><a class="header" href="#118-你现在的代码在-stm32-上长什么样">11.8 你现在的代码在 STM32 上长什么样</a></h2>
-<p>STM32 端 <code>led_base.h / led_base.c / led.h / led.c / main.c</code> 一字不改。<code>platform_gpio_xxx</code> 这一组封装函数还是 ch01 那套：</p>
+<p>STM32 端 <code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / led_pwm.h / led_pwm.c / led_i2c.h / led_i2c.c / main.c</code> 一字不改。<code>platform_gpio_xxx</code> 这一组封装函数还是 ch01 那套（用 <code>PIN_NUM('A', 13)</code> 编码 port + 引脚号，<code>_gpio_table</code> 查表拿到 <code>GPIOA / GPIOB / ...</code>）：</p>
 <pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
@@ -389,23 +393,15 @@ struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
 	MX_GPIO_Init();
 
 	struct led_gpio red_led;
-	led_gpio_init(&amp;red_led, "red", 13);
+	led_gpio_init(&amp;red_led, "red", PIN_NUM('A', 13));
 	led_on(&amp;red_led.base);
 	/* ... */
 }
 </code></pre>
 <p>这一节 platform 层用的是函数式包装的教学简化版（几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>），和 ch01 起一字不变。真正工业级的 platform 抽象用 ops 表的形式做成可切换。这件事第 16 章会专门展开。</p>
-<h2 id="119-你现在的代码在-linux-用户态长什么样"><a class="header" href="#119-你现在的代码在-linux-用户态长什么样">11.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端 sysfs 实现一字不改：</p>
-<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
-{
-	int fd = open("/sys/class/gpio/gpioN/value", O_WRONLY);
-	write(fd, value ? "1" : "0", 1);
-	close(fd);
-}
-</code></pre>
-<p>启动时跑一段 sysfs export，把要用的 GPIO 编号 export 出来；之后所有 LED 通过 <code>platform_gpio_xxx</code> 封装函数走到 sysfs。<code>led_base / led / main.c</code> 一字不改。</p>
-<p>同 11.8 节，platform 层用的是函数式包装的教学简化版。第 16 章会演化成 ops 表的可切换形态，让一份 firmware 同时持有 PC / STM32 / Linux 三套 platform 实例运行时切换。</p>
+<p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/platform-mcu/stm32/"><code>oop-in-c/code/11-polymorphism/platform-mcu/stm32/</code></a>（每个子类一个文件：<code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code>，分别走 HAL_GPIO_* / HAL_TIM_PWM_* / HAL_I2C_Master_Transmit）。完整跑通的 STM32 工程见附录 B。</p>
+<h2 id="119-linux-用户态完整工程"><a class="header" href="#119-linux-用户态完整工程">11.9 Linux 用户态完整工程</a></h2>
+<p>Linux 上 GPIO / PWM / I2C 三种子类各自直接调内核暴露的 libgpiod / sysfs PWM / i2c-dev，应用层 <code>led_base / main.c</code> 一字不改，“换硬件不改应用“在 Linux 上兑现成“换子类内部实现”。完整跑通的工程见附录 C。</p>
 <h2 id="1110-工业代码里的多态"><a class="header" href="#1110-工业代码里的多态">11.10 工业代码里的多态</a></h2>
 <p>工业控制板项目里的 LED 驱动到这一章已经和书里你写的几乎一模一样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
@@ -434,31 +430,28 @@ make
 <p>输出节选：</p>
 <pre><code>========================================
   led_on / led_off / led_toggle
-  Same call, different behavior per LED.
+  Same call, three behaviors per LED kind.
 ========================================
 
   [base] "red" common init done, ops=XXXXXXXX
-[GPIO] Pin13 init as OUTPUT
-[GPIO] Pin13 -&gt; LOW (OFF)
+[GPIO] PA.13 init as OUTPUT
+[GPIO] PA.13 -&gt; LOW (OFF)
   [GPIO] sub-class init done (pin=13)
   [base] "blue" common init done, ops=YYYYYYYY
   [PWM] sub-class init done (channel=1, duty=70)
-  [base] "green" common init done, ops=XXXXXXXX
-[GPIO] Pin17 init as OUTPUT
-[GPIO] Pin17 -&gt; LOW (OFF)
-  [GPIO] sub-class init done (pin=17)
+  [base] "green" common init done, ops=ZZZZZZZZ
+  [I2C] sub-class init done (addr=0x20, reg=0x01)
 
 --- Loop over led_base * array, call led_on ---
  idx=0:
-[GPIO] Pin13 -&gt; HIGH (ON)
+[GPIO] PA.13 -&gt; HIGH (ON)
   [GPIO] "red" ON
  idx=1:
   [PWM] "blue" ON  (channel 1, duty=70)
  idx=2:
-[GPIO] Pin17 -&gt; HIGH (ON)
-  [GPIO] "green" ON
+  [I2C] "green" ON  (addr=0x20 reg=0x01 val=0x01)
 </code></pre>
-<p>注意 ops 地址：红灯和绿灯都打到 <code>XXXXXXXX</code>（共享同一张 <code>led_ops_gpio</code> 表），蓝灯打到 <code>YYYYYYYY</code>（<code>led_ops_pwm</code>）。具体地址因 build 环境会变，关键是看红灯绿灯共享同一地址，蓝灯不同。同一个循环，三颗 LED 各自 dispatch 到对的实现。</p>
+<p>注意 ops 地址：三颗灯各自指向不同的 ops 表（<code>led_ops_gpio</code> / <code>led_ops_pwm</code> / <code>led_ops_i2c</code>），具体地址因 build 环境会变。同一个循环，三种硬件机制（拉引脚、配 duty、写 I2C 寄存器）各自 dispatch 到对的实现，应用层一字不知谁是谁。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/"><code>oop-in-c/code/11-polymorphism/</code></a>。</p>
 <h2 id="1112-视频回放"><a class="header" href="#1112-视频回放">11.12 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>

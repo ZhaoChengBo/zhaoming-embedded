@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -400,20 +400,19 @@ int led_base_init(struct led_base *me, const struct led_ops *ops) {
 <p>两边讲的是同一件事：三个函数指针装进 ops 表，按名字访问，运行时各自指向不同实现。换字段不影响 ops 表的设计本身。读视频以视频画面为准，跑代码以代码包为准，两种字段都能演示“对象自带操作表“这件事。</p>
 <p><code>set_brightness</code> 在 PC 上跑不出可视化亮度变化，所以代码包里改成了 <code>toggle</code>。开关来回切换，终端能看到。</p>
 <h2 id="107-你现在的代码在-stm32-上长什么样"><a class="header" href="#107-你现在的代码在-stm32-上长什么样">10.7 你现在的代码在 STM32 上长什么样</a></h2>
-<p>STM32 端胶水还是 ch01 那套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/10-vptr/stm32-snippet/led_stm32.c"><code>oop-in-c/code/10-vptr/stm32-snippet/led_stm32.c</code></a>）：</p>
+<p>STM32 端胶水还是 ch01 那套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/10-vptr/platform-mcu/stm32/led_gpio.c"><code>oop-in-c/code/10-vptr/platform-mcu/stm32/led_gpio.c</code></a>，每个子类一个文件：<code>led_gpio.c</code> 装 GPIO 实现 + <code>platform_gpio_*</code> 胶水；<code>led_pwm.c</code> 装 PWM 实现 + TIM 操作；pin 仍是 <code>PIN_NUM('A', 13)</code> 编码，详见第 1 章 § 1.x PIN_NUM 编码）：</p>
 <pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
-<p><code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / main.c</code> 一字不改。</p>
+<p><code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / led_pwm.h / led_pwm.c / main.c</code> 一字不改。</p>
 <p>但 <code>sizeof(struct led_base)</code> 从 8 字节涨到 12 字节（在 32 位 ARM 上 <code>ops</code> 4 + <code>name</code> 4 + <code>is_on</code> 1 + padding 3）。100 颗 LED 多用 400 字节 RAM。换来的是应用层完全不知道“调谁“这件事，加新 LED 不改驱动核心。在 STM32H7（1MB RAM）上完全划得来；在 ATmega328（2KB RAM）上要算账。</p>
 <p>本节用的是函数式包装的 platform 抽象层，是教学简化版（<code>platform_gpio_init / platform_gpio_write</code> 几个独立函数）。真正工业级的 platform 抽象用 ops 表的形式，把所有 platform 操作打包进一个 struct，应用层通过指针访问。第 16 章会把 platform 层按这个套路重构一遍，和工业代码对齐。</p>
 <h2 id="108-你现在的代码在-linux-用户态长什么样"><a class="header" href="#108-你现在的代码在-linux-用户态长什么样">10.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端的 sysfs 实现（<code>led_linux.c</code>）一字不改。</p>
-<p>进程的 <code>.rodata</code> 段里多出 <code>led_ops_gpio / led_ops_pwm</code> 两张 const 表（每张 12 字节）。每个 LED 实例的 <code>.bss</code> 中多 4-8 字节的 <code>ops</code> 指针（32 位 4 字节，64 位 8 字节）。</p>
-<p>同 10.7 节，本节 platform 层是函数式包装的教学简化版。工业级用 ops 表式，第 16 章演化推导。</p>
+<p>Linux 上 GPIO 子类内部直接调 libgpiod，应用层和 base 层一字不改（完整工程见附录 C）。Linux 用户态没有 platform 抽象层，内核 driver model 已经把 platform 抽象做完了，应用层再套一层是反工程（§ 15.15）。</p>
+<p>进程的 <code>.rodata</code> 段里多出 <code>led_ops_gpio / led_ops_pwm</code> 两张 const 表（每张 12 字节）。每个 LED 实例的 <code>.bss</code> 中多 4-8 字节的 <code>ops</code> 指针（32 位 4 字节，64 位 8 字节）。这一笔账和 PC / STM32 一样，跨平台一致。</p>
 <h2 id="109-工业代码里的-base--ops-字段"><a class="header" href="#109-工业代码里的-base--ops-字段">10.9 工业代码里的 base + ops 字段</a></h2>
 <p>工业控制板项目里的 <code>led_base</code> 长这样：</p>
 <pre><code class="language-c">struct led_base {

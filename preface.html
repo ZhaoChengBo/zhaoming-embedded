@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-0f4fc518.js"></script>
+        <script src="toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -264,7 +264,7 @@
 <h2 id="怎么动手"><a class="header" href="#怎么动手">怎么动手</a></h2>
 <p><strong>有经验的工程师可以完全不跑代码</strong>。书里每段代码每行的意图都讲透了，不开 IDE 也能完全理解。扫读一遍就走的话也对得起这本书。</p>
 <p>如果你刚入行或者想要更强的体感，跑一次代码会让你印象深刻。特别是第一次看到三颗 LED 共用一份函数被同一行 <code>led_on()</code> 依次点亮的时候。</p>
-<p>每章对应一个 <code>oop-in-c/code/&lt;章节名&gt;/</code> 目录，里面是完整可编译的代码。第 1 章对应 <code>oop-in-c/code/01-three-leds/</code>，目录里 <code>pc/</code> 子目录是完整可跑的 PC 模拟版，<code>stm32-snippet/</code> 和 <code>linux-snippet/</code> 是 STM32、Linux 端的等效片段。</p>
+<p>每章对应一个 <code>oop-in-c/code/&lt;章节名&gt;/</code> 目录，里面是完整可编译的代码。第 1 章对应 <code>oop-in-c/code/01-three-leds/</code>，目录里 <code>pc/</code> 子目录是完整可跑的 PC 模拟版；STM32 / Linux 真机端的完整工程跨章节统一收在 ch15 <code>15-platform/</code> 的 <code>drivers/</code> + <code>platform/</code> + <code>linux-driver/</code> 一组目录里 (见 ch15 § 15.13)·前 14 章每章不再单独贴 STM32 / Linux 端片段。</p>
 <p>跑代码三步：</p>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make

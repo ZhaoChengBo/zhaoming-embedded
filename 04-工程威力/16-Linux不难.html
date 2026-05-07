@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -357,16 +357,17 @@ static void gpio_led_set(struct led_classdev *led_cdev,
 <p>ST 的 HAL 库（<code>HAL_GPIO_WritePin</code> 那一套）经常被人当作 platform 抽象的例子。其实不是。HAL 库是“绑死 STM32 一家 + 函数式包装“，<code>HAL_GPIO_WritePin(GPIOA, ...)</code> 里的 GPIOA 是 STM32 寄存器布局的 typedef，绑得死死的。换到瑞萨 RA 上 GPIOA 这个符号都不存在。</p>
 <p>真正的 platform 层是抽象到“任何 SoC 都能实现“的程度。ops 表才是 platform 层的标准形态。HAL 库是 platform 层下面、绑死单家的实现，你用的时候只是 platform 层的一个具体子类。</p>
 <h2 id="1610-你现在的代码在-stm32--linux-上长什么样"><a class="header" href="#1610-你现在的代码在-stm32--linux-上长什么样">16.10 你现在的代码在 STM32 / Linux 上长什么样</a></h2>
-<p>ch16 是工程哲学章，没有“STM32 snippet“，你已经会的 ch15 platform_ops 就是 STM32 端的样子。</p>
+<p>ch16 是工程哲学章，本章 STM32 端没有特殊代码片段，你已经会的 ch15 platform_ops 就是 STM32 端的样子。</p>
 <p>如果你想把本章 pc/ 里山寨的 gpio_chip 框架移植到 STM32 裸机上，做法是：</p>
 <ol>
 <li>把 <code>vendor_a_set</code> 里的 printf 替换成真实的 BSRR 写入。</li>
 <li>启动期（或下一章的 initcall）调一次 <code>gpiochip_add(&amp;vendor_a_chip)</code>。</li>
 <li>led 驱动一行不改。</li>
 </ol>
-<p>效果就是“一份 leds-gpio.c 跑在不同 SoC 上“，这就是 Linux 内核的工作模式。</p>
-<p>详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/stm32-snippet/"><code>oop-in-c/code/16-linux-style/stm32-snippet/</code></a>。</p>
-<p>Linux 端的“snippet“就是内核源码本身（如何获取内核源码做本地参考见附录 D，下面是 v6.6 LTS 的关键路径）：</p>
+<p>效果就是“一份 leds-gpio.c 跑在不同 SoC 上“，这就是 Linux 内核的工作模式。详见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/platform-mcu/stm32/"><code>oop-in-c/code/16-linux-style/platform-mcu/stm32/</code></a>。</p>
+<p>Linux 用户态视角是另一档代码: <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/linux-driver/userspace/"><code>oop-in-c/code/16-linux-style/linux-driver/userspace/</code></a> 给一份 libgpiod 最小例——应用层一行 <code>gpiod_line_set_value(line, 1)</code>，跨进程 syscall 进内核之后跑的就是本章 16.5 节那一套 <code>gc-&gt;set</code> 多态 dispatch（真身，不是山寨）。pc/ 是教学版骨架，linux-driver/userspace/ 是产品上每天跑的应用层调用形态。</p>
+<p>LED 这种通用外设, Linux 内核 mainline 已经有 <code>drivers/leds/leds-gpio.c</code> 标准内核驱动 (上千种板子用过), 这本书不再重写一份“教学用 LED 内核驱动“ (过度演示). 真要写新硬件的内核驱动, 先看 § 16.14 三步判断流程。</p>
+<p>Linux 内核侧的“snippet“就是内核源码本身（如何获取内核源码做本地参考见附录 D，下面是 v6.6 LTS 的关键路径）：</p>
 <ul>
 <li><code>include/linux/gpio/driver.h</code> 第 415 行：<code>struct gpio_chip</code> 真身</li>
 <li><code>drivers/gpio/gpiolib.c</code> 第 3245 行：<code>gpiod_set_value</code></li>
@@ -765,7 +766,88 @@ make
 </code></pre>
 <p><code>led_gpio_brightness_set</code> 这个驱动函数对两个 LED 调同一行 <code>gpiod_set_value</code>。红灯走 vendorA 的寄存器（DR_REG），绿灯走 vendorB 的寄存器（BSRR 风格）。驱动一行不改。</p>
 <p>这就是 Linux 内核驱动作者每天的工作模式。</p>
-<h2 id="1613-视频回放"><a class="header" href="#1613-视频回放">16.13 视频回放</a></h2>
+<h2 id="1613-不只是-linuxzephyr--rt-thread-也是同款"><a class="header" href="#1613-不只是-linuxzephyr--rt-thread-也是同款">16.13 不只是 Linux：Zephyr / RT-Thread 也是同款</a></h2>
+<p>ch16 前面一整章给你看的是 Linux 内核 <code>gpio_chip</code> 子系统. 读到这里很自然要问: 那其他 RTOS 呢, 是不是只有 Linux 这么干. 不是. 凡是带 device subsystem 的 RTOS 都是同款, 内核已经把 platform 层做完, 应用层别再抽.</p>
+<p><strong>Zephyr</strong> 用 device tree binding + driver model, 编译期从 <code>.dts</code> 文件生成 device 实例, 应用层拿到一个 <code>const struct device *</code> 直接用:</p>
+<pre><code class="language-c">/* Zephyr 应用层调 GPIO·内核已经做完 platform 抽象·应用层直接用 */
+const struct device *gpio = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+gpio_pin_configure(gpio, 17, GPIO_OUTPUT);
+gpio_pin_set(gpio, 17, 1);
+</code></pre>
+<p><code>gpio_pin_set</code> 内部走 <code>gpio_driver_api</code> 这张 ops 表 dispatch 到 <code>gpio_nrfx.c</code> / <code>gpio_stm32.c</code> 之类的具体芯片实现. 你 ch16 学的 <code>gc-&gt;set</code> 多态 dispatch 一字不差, 字段名换成 <code>port_set_masked_raw</code> 而已.</p>
+<p><strong>RT-Thread</strong> 走 <code>rt_device_register</code> / <code>rt_device_find</code> / <code>rt_device_open</code> / <code>rt_device_read/write/control</code> 一套接口. PIN / serial / i2c / spi 各自一个子类, 父类是 <code>struct rt_device</code>. 应用层直接调高层 API:</p>
+<pre><code class="language-c">/* RT-Thread 应用层·rt_pin_write 内部走 ops dispatch·和 ch15 教学版一字不差 */
+rt_pin_mode(LED_PIN, PIN_MODE_OUTPUT);
+rt_pin_write(LED_PIN, PIN_HIGH);
+</code></pre>
+<p><code>rt_pin_write</code> 内部走 <code>struct rt_pin_ops</code> (16.9.3 节贴过), <code>pin_write</code> 函数指针落到具体 SoC 的实现. 和这本书 ch15 自抽的 platform 层骨架一字不差, 只是字段更全.</p>
+<p><strong>NuttX</strong> 也一样. 它走 POSIX 风格的 character device + driver_model. GPIO 挂 <code>/dev/gpioN</code> 节点, 应用层 <code>open / write / ioctl</code> 就够, 内核底下走 driver registration. 跟 Linux 用户态接口同款.</p>
+<p>把四种环境拉平对照:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>环境</th><th>platform 抽象层</th><th>谁做的</th></tr>
+</thead>
+<tbody>
+<tr><td>裸机 + HAL</td><td>必须自抽</td><td>你自己 (ch15 / 附录 B 教的)</td></tr>
+<tr><td>带 device subsystem 的 RTOS (Zephyr / RT-Thread / NuttX)</td><td>禁自抽</td><td>内核做完, 直接用</td></tr>
+<tr><td>Linux 用户态</td><td>禁自抽</td><td>内核做完, 直接 libgpiod (附录 C 实战)</td></tr>
+<tr><td>Linux 内核态驱动</td><td>禁自抽</td><td>用 driver model (本章 16.5 节讲的 gpio_chip)</td></tr>
+</tbody>
+</table>
+</div>
+<p>裸机那一行是 ch15 + 附录 B 的主战场, 没人帮你, 你必须自抽. 中间两行是这一节的重点, 内核已经把 platform 层做完, 应用层 / 业务层再套一层 <code>platform_pin → rt_pin_write</code> 就是过度封装. 这种代码评审里很常见, 第一眼看像架构师, 仔细一看是把内核已经抽好的接口又包了一遍, 没拦下任何变化, 反而多了一层没意义的 indirection.</p>
+<p>把 RT-Thread 应用代码套一层 <code>platform_pin → rt_pin_write</code> 和把 Linux 用户态套一层 <code>platform_pin → libgpiod_line_set_value</code> 是同一种错. 内核已经做完的事别重做.</p>
+<blockquote>
+<p>这本书 ch15 教你怎么自抽 platform 层. 它的反面同样重要: 看到内核已经抽好的环境 (Linux / Zephyr / RT-Thread / NuttX), 别再抽. 自抽 platform 不是工业级的标志, <strong>会判断什么时候不抽才是</strong>. 这是 ch15 / ch16 / 附录 B / 附录 C 四个章节合起来想送给你的工程判断力.</p>
+</blockquote>
+<h2 id="1614-应用层驱动-vs-内核层驱动怎么选"><a class="header" href="#1614-应用层驱动-vs-内核层驱动怎么选">16.14 应用层驱动 vs 内核层驱动：怎么选</a></h2>
+<p>上一节讲清楚了“内核已做完别再抽“. 但 Linux 这一档环境上还有第二个问题: 你要写一个新硬件的驱动, 写在哪一层. 应用层 (libgpiod / sysfs / iio / spidev / i2c-dev) 还是内核层 (driver model / kernel module). 工程师面试聊到这一关, 一半人答不清楚. 这一节给你一份判断表.</p>
+<p>先把两种位置的差别拉平来看:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>维度</th><th>应用层 (libgpiod / sysfs / iio / spidev)</th><th>内核层 (driver model / kmod)</th></tr>
+</thead>
+<tbody>
+<tr><td>开发难度</td><td>低 (gdb / strace / printf, 崩了重启进程)</td><td>高 (KGDB / printk / qemu, 崩了 kernel panic)</td></tr>
+<tr><td>故障影响</td><td>进程挂, 系统不挂</td><td>内核挂, 全挂</td></tr>
+<tr><td>实时性</td><td>受用户态调度, 有 jitter</td><td>ISR / softirq, 延迟低</td></tr>
+<tr><td>性能</td><td>syscall + 数据拷贝</td><td>零拷贝 / DMA, 直接 ioremap</td></tr>
+<tr><td>多进程共享</td><td>要 IPC (mmap / dbus / socket)</td><td>内核里多进程透明共享</td></tr>
+<tr><td>Licensing</td><td>可闭源 (你自己产品的 license)</td><td>GPL (内核接口要求)</td></tr>
+<tr><td>部署</td><td>拷贝二进制就行</td><td>重编内核, 或 DKMS 动态模块</td></tr>
+</tbody>
+</table>
+</div>
+<p>7 个维度里, 前三行决定 “能不能写在应用层”, 后四行决定 “写在应用层划不划算”. 对照表硬记没意思, 给你一个三步判断流程, 真做项目的时候按顺序问:</p>
+<p><strong>第一步</strong>: Linux 内核已经有这一颗硬件的驱动, 而且接口够用. 直接用, 别写. 99% 的 GPIO / I2C / SPI / UART / 温度传感器 / 加速度计在内核 mainline 里已经有, 接口齐, 你写完一份新驱动, 维护一辈子. 内核里已有的, 直接 <code>apt install libgpiod-dev</code> + <code>gpiod_line_set_value</code>, 完事.</p>
+<p><strong>第二步</strong>: 内核没有, 或者厂家给的源码不开源 (做不到合并 mainline). 这时才轮到 “应用层 OR 内核层”. 看四件事:</p>
+<ul>
+<li>中断密度: 高频 (&gt; 1 kHz) + 抖动敏感, 用户态调度顶不住, 内核层. 低频 + 抖动可容忍, 应用层够.</li>
+<li>延迟要求: us 级, 内核层. ms 级, 应用层够.</li>
+<li>多进程并发访问: 多个进程要共享同一颗设备, 内核层 (driver 提供 device 节点, 多进程 open 同一个 fd). 单进程独占, 应用层够.</li>
+<li>数据吞吐: &gt; 100 MB/s + 零拷贝刚需, 内核层 + DMA. 否则应用层 syscall 也跑得动.</li>
+</ul>
+<p><strong>第三步</strong> (跨平台兜底): 这是 MCU 不是 Linux 跑的硬件, 资源紧张到上不了完整内核, 但仍想要 device + driver 这套思想. 答案不是 “在 FreeRTOS 上自抽一份 platform 层”, 是 <strong>clone Zephyr 或 RT-Thread, 把它们的 driver framework 拔下来直接用</strong>. driver 注册 + ops 表 + device tree 解析人家写了十几年, 你三周自抽的版本和它没法比. 完整论述见 ch15 § 15.16 给真实工程的建议.</p>
+<p>举一个常见例子: 你要给一颗外接温度传感器写驱动. 走应用层还是内核层?</p>
+<ul>
+<li>中断密度低 (温度采样 1 Hz / 10 Hz 就够), 延迟不敏感 (温度变化慢), 单进程独占 (一个采集任务读), 数据吞吐小. 四件事全往应用层这边倒.</li>
+<li>应用层版本: <code>int fd = open("/dev/i2c-1");  ioctl(fd, I2C_SLAVE, 0x48);  read(fd, buf, 2);</code> 几十行代码, gdb 调试, 崩了重启进程, 闭源没问题. 半天搞定.</li>
+<li>内核层版本: 写一份 i2c_driver, 注册 hwmon device, 走 sysfs 出温度. 一千行代码, KGDB 调试, 崩了 kernel panic, 必须 GPL 出来. 三周搞定.</li>
+</ul>
+<p>你猜结果. 工业项目里 99% 的温度传感器走应用层. <strong>能在应用层做的事就不要进内核</strong>, 这是 Linux 内核社区自己的纪律, 也是工程判断力.</p>
+<p>什么时候真要写内核驱动? 一个反例: 高速雷达 ADC, 1 MSPS 采样率 + DMA + ms 级延迟容忍上限. 这种应用层抗不住调度抖动, syscall + 拷贝吃不消, 必须写内核驱动用零拷贝 mmap / iio_buffer 暴露给用户态. 这一档项目一年遇不到几个.</p>
+<p>判断三句话总结:</p>
+<ol>
+<li>内核已有内核驱动且满足 -&gt; 直接用 libgpiod / iio / spidev, 不写.</li>
+<li>没有 -&gt; 按延迟 / 中断密度 / 多进程需求选位置, 默认应用层, 上面四件有一件命中再上内核层.</li>
+<li>MCU 资源紧仍想要这套 -&gt; clone Zephyr / RT-Thread 拔现成框架, 别自抽.</li>
+</ol>
+<blockquote>
+<p>写驱动的本事不在于会写, 在于会判断 “这一层该不该有”. 工业代码里最贵的不是开发时间, 是 5 年后还能不能维护得动. 走对位置, 维护成本砍 10 倍.</p>
+</blockquote>
+<h2 id="1615-视频回放"><a class="header" href="#1615-视频回放">16.15 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV13WofBcEmv/">《C 语言·为什么 Linux 一点都不难·Platform 层·分层威力·AI 时代》</a></p>
 </blockquote>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -190,11 +190,11 @@
 <p>子控板项目里水平电机驱动 <code>h_motor</code> 把这三件事一次性解决。下面围绕它展开整章，再把垂直电机 <code>v_motor</code> 作为对照，把 Platform 抽象层 UART/I²C/SPI 三栈看一遍，最后给出跨 MCU 移植清单。</p>
 <h2 id="201-24-个虚方法的-ops-表"><a class="header" href="#201-24-个虚方法的-ops-表">20.1 24 个虚方法的 ops 表</a></h2>
 <p>节选自子控板项目 <code>app/drivers/h_motor/h_motor_base.h</code>：</p>
-<pre><code class="language-c">typedef struct {
+<pre><code class="language-c">struct h_motor_base_ops {
 	void (*motor_stop)(struct h_motor_base *me);
 	void (*motor_start)(struct h_motor_base *me);
 	void (*move_velocity_mode)(struct h_motor_base *me,
-	                            h_motor_base_move_dir_t dir);
+	                            enum h_motor_base_move_dir dir);
 	void (*move_relative_mode)(struct h_motor_base *me, double move_mm);
 	void (*move_absolute_mode)(struct h_motor_base *me, double pos_mm);
 	void (*velocity_set)(struct h_motor_base *me, int32_t velocity);
@@ -203,7 +203,7 @@
 	void (*manual_mode)(struct h_motor_base *me, bool is_manual);
 	void (*status_get)(struct h_motor_base *me);
 	bool (*status_get_sync)(struct h_motor_base *me,
-	                        h_motor_base_status_t *status);
+	                        struct h_motor_base_status *status);
 	void (*cur_pos_get)(struct h_motor_base *me);
 	void (*enable)(struct h_motor_base *me, bool enable);
 	void (*home)(struct h_motor_base *me);
@@ -222,7 +222,7 @@
 	                                   uint16_t current_001a);
 	void (*i2t_peak_time_set)(struct h_motor_base *me,
 	                           uint16_t time_ms);
-} h_motor_base_ops_t;
+};
 </code></pre>
 <p>24 个函数指针。这是这本书里你看到的最大的 ops 表。</p>
 <p>逐组看这些方法在解决什么问题：</p>
@@ -247,37 +247,38 @@
 </div>
 <p>这些方法不是凭空想出来的。它们是真正的工业控制板对电机驱动的全部需求。在 ACM 伺服电机上，每个虚方法对应一次“把命令打包成厂家私有协议帧、推进工作队列、由工作线程异步走 UART 发出去“的过程：</p>
 <pre><code class="language-c">/* 节选自 h_motor_acm.c 内部，简化示意 */
-typedef struct {
+struct acm_work {
 	uint8_t  cmd;       /* 厂家私有命令字节, 例如速度 / 位置 / I2T 限流 */
 	int32_t  arg;
-} acm_work_t;
+};
 
-static void acm_velocity_set(h_motor_base_t *me, int32_t velocity)
+static void acm_velocity_set(struct h_motor_base *me, int32_t velocity)
 {
-	h_motor_acm_t *self = (h_motor_acm_t *)me;
-	acm_work_t work = {
+	struct h_motor_acm *self = (struct h_motor_acm *)me;
+	struct acm_work work = {
 		.cmd = ACM_CMD_VELOCITY_SET,
 		.arg = velocity,
 	};
 	osMessageQueuePut(self-&gt;work_queue, &amp;work, 0, 0);
 }
 
-static void acm_following_err_limit_set(h_motor_base_t *me, double limit_mm)
+static void acm_following_err_limit_set(struct h_motor_base *me,
+                                        double limit_mm)
 {
-	h_motor_acm_t *self = (h_motor_acm_t *)me;
+	struct h_motor_acm *self = (struct h_motor_acm *)me;
 	int32_t limit_cnt = (int32_t)(limit_mm * self-&gt;encoder_cnt_per_mm);
-	acm_work_t work = {
+	struct acm_work work = {
 		.cmd = ACM_CMD_FOLLOWING_ERR_SET,
 		.arg = limit_cnt,
 	};
 	osMessageQueuePut(self-&gt;work_queue, &amp;work, 0, 0);
 }
 
-static void acm_i2t_peak_current_set(h_motor_base_t *me,
+static void acm_i2t_peak_current_set(struct h_motor_base *me,
                                      uint16_t current_001a)
 {
-	h_motor_acm_t *self = (h_motor_acm_t *)me;
-	acm_work_t work = {
+	struct h_motor_acm *self = (struct h_motor_acm *)me;
+	struct acm_work work = {
 		.cmd = ACM_CMD_I2T_PEAK_SET,
 		.arg = current_001a,
 	};
@@ -316,8 +317,8 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 <p>伺服电机通过 UART 走厂家私有协议下命令。下完命令到电机响应，中间有几毫秒的等待。期间应用层不能干等。但应用层调用 <code>h_motor_velocity_set(h_motor_dev, 200)</code> 这一行写起来必须像同步的（基类层封装函数内部走 <code>me-&gt;ops-&gt;velocity_set(me, 200)</code> 把命令推进队列）。</p>
 <p>工业代码的解法是：每个电机实例自带一个工作线程加消息队列。所有 ops 调用先把命令推进队列，立刻返回；工作线程把队列里的命令一条条取出来，按厂家协议组帧、从 UART 发出去、等响应，必要时通过回调通知应用层。</p>
 <p>节选自 <code>app/drivers/h_motor/h_motor_acm.h</code>：</p>
-<pre><code class="language-c">typedef struct {
-	h_motor_base_t base;      /* 基类放在第一字段 */
+<pre><code class="language-c">struct h_motor_acm {
+	struct h_motor_base base;        /* 基类放在第一字段 */
 
 	platform_device_t  uart_dev;
 	int32_t            clutch_pin;
@@ -331,11 +332,11 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 	osThreadId_t       work_thread;    /* 工作线程 */
 	osThreadId_t       rx_thread;
 
-	h_motor_acm_rx_buf_t rx_buf;
-	uint32_t             rcv_last_byte_ticks;
+	struct h_motor_acm_rx_buf rx_buf;
+	uint32_t                  rcv_last_byte_ticks;
 
-	Button                  fault_detect_btn;
-	h_motor_base_status_t   status;
+	Button                     fault_detect_btn;
+	struct h_motor_base_status status;
 
 	double  encoder_cnt_per_mm;
 	int32_t max_following_error;
@@ -344,61 +345,61 @@ static void acm_i2t_peak_current_set(h_motor_base_t *me,
 	bool    i2t_reg_unsupported;
 	uint8_t debug_print_cnt;
 	uint32_t last_work_id;
-} h_motor_acm_t;
+};
 </code></pre>
 <p>注意几个工程实践的细节。</p>
-<p><strong><code>base</code> 字段放第一位。</strong> 子类 struct 的第一个字段是基类对象 <code>h_motor_base_t base</code>，向上转型零代价（ch12 已讲透）。命名上整个项目（教学版的 <code>led_basic</code> / <code>v_motor</code>、工业版的 <code>h_motor</code>）统一叫 <code>base</code>，避免读者读到这一段时还要在脑里切换“哦这块叫 super 那块叫 base“。Linux 内核里也常见 <code>dev</code> / <code>parent</code> / <code>super</code> 等变体写法，叫什么不重要，<strong>一个项目内部一致</strong>才是工程纪律。</p>
+<p><strong><code>base</code> 字段放第一位。</strong> 子类 struct 的第一个字段是基类对象 <code>struct h_motor_base base</code>，向上转型零代价（ch12 已讲透）。命名上整个项目（教学版的 <code>led_basic</code> / <code>v_motor</code>、工业版的 <code>h_motor</code>）统一叫 <code>base</code>，避免读者读到这一段时还要在脑里切换“哦这块叫 super 那块叫 base“。Linux 内核里也常见 <code>dev</code> / <code>parent</code> / <code>super</code> 等变体写法，叫什么不重要，<strong>一个项目内部一致</strong>才是工程纪律。</p>
 <p><strong>两个工作线程加两个消息队列。</strong> <code>work_queue + work_thread</code> 处理“应用层下来的命令“，<code>rx_queue + rx_thread</code> 处理“电机串口响应数据“。两套独立避免死锁（命令线程在等响应时不会卡死接收线程）。</p>
 <p><strong>fault_detect_btn。</strong> 故障检测引脚被当成“按键“对待。<code>Button</code> 来自 MultiButton 库，专门做去抖动加长按 / 短按 / 双击事件。把硬件故障引脚的电平变化也当作“按键事件“统一处理。这是教学版从来想不到的细节。</p>
 <p><strong>最大值字段（max_following_error / max_motor_current / max_i2t_sum）。</strong> 运行期间持续记录峰值。出问题时这些字段是黄金调试信息，能告诉你“电机最大跟随误差到多少“、“瞬时电流多大”。教学版不会写这种东西，工业版离了就是黑盒。</p>
 <p><strong><code>i2t_reg_unsupported</code> 标志位。</strong> 适配同型号但不同固件版本的伺服电机：旧固件没有 I²t 寄存器，标志位置 <code>true</code> 后 ops 里相关函数变 no-op。教学版常忽略“同一颗芯片不同固件“这种工业现实。</p>
 <p><strong><code>last_work_id</code>。</strong> 命令排序号。把命令推进 work_queue 时打一个 id，处理完一条响应一条。配合 <code>debug_print_cnt</code> 调试时能精确知道“哪条命令响应丢了“。</p>
 <p>构造函数（节选）：</p>
-<pre><code class="language-c">typedef struct {
+<pre><code class="language-c">struct h_motor_acm_init_param {
 	const char *uart_name;
 	const char *clutch_pin_name;
 	const char *rev_en_pin_name;
 	const char *en_pin_name;
 	const char *fwd_pin_name;
 	const char *fault_detect_pin_name;
-} h_motor_acm_init_param_t;
+};
 
-void h_motor_acm_init(h_motor_acm_t *me,
-                      h_motor_acm_init_param_t *init_param);
+void h_motor_acm_init(struct h_motor_acm *me,
+                      struct h_motor_acm_init_param *init_param);
 </code></pre>
 <p>构造参数全是字符串引脚名（“PE.0”、“PE.1” 等）。具体引脚号通过 <code>platform_pin_get(name)</code> 查表得到。这是 platform 抽象的核心：上层代码不写“PE_0 = 0x4801080C“，只写字符串名字。换芯片只改 platform 层的引脚名表。</p>
 <h2 id="203-v_motor-子类同一个基类指针指两种完全不同的电机"><a class="header" href="#203-v_motor-子类同一个基类指针指两种完全不同的电机">20.3 v_motor 子类：同一个基类指针指两种完全不同的电机</a></h2>
 <p>子控板上还有一路垂直电机。它和水平电机硬件方案完全不同：水平电机是 ACM 伺服电机（UART + 厂家私有命令协议），垂直电机是 IFX007T H 桥 PWM 控制的直流电机。控制方式天差地别。</p>
 <p>垂直电机基类（节选自 <code>app/drivers/v_motor/v_motor_base.h</code>）：</p>
-<pre><code class="language-c">typedef enum {
+<pre><code class="language-c">enum v_motor_base_dir {
 	V_MOTOR_BASE_MOVE_DOWN = 0,
 	V_MOTOR_BASE_MOVE_UP,
 	V_MOTOR_BASE_MOVE_STOP,
-} v_motor_base_dir_t;
+};
 
-typedef struct {
+struct v_motor_base_ops {
 	void (*motor_stop)(struct v_motor_base *me);
 	void (*motor_move)(struct v_motor_base *me,
-	                   v_motor_base_dir_t dir);
+	                   enum v_motor_base_dir dir);
 	void (*fault_clear)(struct v_motor_base *me);
-} v_motor_base_ops_t;
+};
 
-typedef struct v_motor_base {
-	const v_motor_base_ops_t *ops;
-	v_motor_base_dir_t move_state;
+struct v_motor_base {
+	const struct v_motor_base_ops *ops;
+	enum v_motor_base_dir move_state;
 	v_motor_move_status_changed v_motor_move_status_changed_cb;
 	v_motor_err_cb_t err_cb;
-} v_motor_base_t;
+};
 </code></pre>
 <p>只有 3 个 ops 方法（停 / 走 / 清故障），加 2 个回调（状态变化 / 错误）。比水平电机简单一个量级。原因是直流电机没有“绝对定位“的概念，能力域窄得多。</p>
 <p>IFX007T 子类的教学最小内核（节选自 <code>v_motor_ifx007t.h</code>）：</p>
-<pre><code class="language-c">typedef struct {
-	v_motor_base_t base;       /* 基类放在第一字段 */
+<pre><code class="language-c">struct v_motor_ifx007t {
+	struct v_motor_base base;    /* 基类放在第一字段 */
 	int32_t ctrl_1_pin;
 	int32_t ctrl_2_pin;
 	int32_t sleep1_pin;
 	int32_t sleep2_pin;
-} v_motor_ifx007t_t;
+};
 </code></pre>
 <p>IFX007T 是英飞凌一颗 H 桥驱动芯片。两个控制引脚 + 两个使能引脚。<code>motor_move(UP)</code> 在子类里就是把 <code>ctrl_1_pin</code> 拉高、<code>ctrl_2_pin</code> 拉低、两个 sleep 拉高使能；<code>motor_move(DOWN)</code> 反过来；<code>motor_move(STOP)</code> 把两个 ctrl 都拉低。简单到几行 GPIO 操作就完成。</p>
 <blockquote>
@@ -406,8 +407,8 @@ typedef struct v_motor_base {
 </blockquote>
 <p>应用层接口风格完全统一：</p>
 <pre><code class="language-c">/* environment_cfg/environment_export.h */
-extern h_motor_base_t *h_motor_dev;
-extern v_motor_base_t *v_motor_dev;     /* 同样是 *_base 类型 */
+extern struct h_motor_base *h_motor_dev;
+extern struct v_motor_base *v_motor_dev;     /* 同样是 *_base 类型 */
 
 /* 应用层调封装函数，看不到 ops 表 */
 h_motor_move_absolute(h_motor_dev, 1500.0);
@@ -416,23 +417,23 @@ v_motor_move(v_motor_dev, V_MOTOR_BASE_MOVE_UP);
 <p><code>h_motor_move_absolute</code> / <code>v_motor_move</code> 是 <code>h_motor.c</code> / <code>v_motor.c</code> 里的封装函数（同 ch01 1.10 节 <code>led_on</code> 套路），内部走 <code>me-&gt;ops-&gt;move_absolute_mode(me, ...)</code> / <code>me-&gt;ops-&gt;motor_move(me, ...)</code> dispatch 到具体电机实现（ACM 伺服 / IFX007T H 桥）。</p>
 <p>垂直电机是另一组 base + ops 表（接口比水平电机简单，因为直流电机的能力域窄）。两个基类不互相继承，是平行的。</p>
 <p>这反映一个 OOP 设计原则：<strong>继承沿“能力 / 接口的相似度“建，不沿“硬件的相似度“建</strong>。水平电机和垂直电机在硬件层面相似度最低，但因为它们都得“被应用层用同一种方式驱动“,所以各自有一个独立的 base 接口。教学版常犯的错是看到“这两个东西都是电机“就硬塞到一个基类里，最后发现各种“水平电机的方法垂直电机不需要“、“垂直电机的方法水平电机不支持”，被迫加 <code>if (motor_type == HORIZONTAL) ... else ...</code>，多态退化成手动派发。</p>
-<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，理论上只在 <code>v_motor_base_ops_t</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
+<p>子控板项目这一招让水平电机的 24 虚方法和垂直电机的 3 虚方法各自独立演化，互不污染。某一天垂直电机上 PWM 调速能力，理论上只在 <code>struct v_motor_base_ops</code> 加一行 <code>void (*speed_set)(...)</code>，水平电机一行不动。这是“把变化关在它原本属于的位置“。单一职责原则在 driver 层级的体现。</p>
 <p>实际仓库里产品级 <code>v_motor_ifx007t.c</code> 走的是另一条路：根本不在 ops 表新加 <code>speed_set</code>，而是直接把 PWM 软启动 + 加减速曲线塞进 <code>motor_move</code> 内部由工作线程异步跑出来。原因是直流电机的速度策略（起步占空多少、ramp 多长、什么时候踩限位降速）本身是机械相关硬编码的。上层应用层永远只说“往上走“或“停“，不需要也不应该参数化“以多少占空走“。两条路都合法：能力域真的扩出来一档独立 setter，就加 ops；能力还在“开 / 关 / 方向“原本三个虚方法的语义内，就吸收进子类内部。设计判断的依据始终是<strong>应用层视角能力是否真的多一档</strong>。</p>
 <h2 id="204-三种回调状态位置错误"><a class="header" href="#204-三种回调状态位置错误">20.4 三种回调：状态、位置、错误</a></h2>
 <p>电机异步地往应用层喷三种事件：状态变化、位置变化、错误。每种独立一个回调。</p>
-<pre><code class="language-c">typedef void (*status_cb_t)(h_motor_base_status_t *status,
+<pre><code class="language-c">typedef void (*status_cb_t)(struct h_motor_base_status *status,
                             struct h_motor_base *me);
 typedef void (*cur_pos_cb_t)(double pos_mm,
                              struct h_motor_base *me);
-typedef void (*err_cb_t)(h_motor_base_err_id_t err_id,
+typedef void (*err_cb_t)(enum h_motor_base_err_id err_id,
                          struct h_motor_base *me);
 
-typedef struct h_motor_base {
-	h_motor_base_ops_t *ops;
+struct h_motor_base {
+	const struct h_motor_base_ops *ops;
 	status_cb_t  status_cb;
 	cur_pos_cb_t cur_pos_cb;
 	err_cb_t     err_cb;
-} h_motor_base_t;
+};
 </code></pre>
 <p>应用层注册：</p>
 <pre><code class="language-c">h_motor_base_status_get_cb_register(h_motor_dev, on_motor_status);
@@ -451,26 +452,27 @@ typedef void (*encoder_cur_pos_get_cb_t)(struct encoder *me, double cur_pos);
 typedef void (*encoder_fw_version_cb_t)(struct encoder *me, uint32_t ver);
 typedef void (*encoder_glitch_cnt_cb_t)(struct encoder *me, uint32_t cnt);
 
-typedef struct encoder {
-	platform_spi_device_t  *spi_dev;
-	int32_t                 overspeed_pin;
-	int32_t                 reserved_pin0;
-	int32_t                 reserved_pin1;
+struct encoder {
+	struct platform_spi_device *spi_dev;
+	int32_t                     overspeed_pin;
+	int32_t                     reserved_pin0;
+	int32_t                     reserved_pin1;
 	encoder_cur_pos_get_cb_t cur_pos_get_cb;
 	encoder_fw_version_cb_t  fw_ver_cb;
 	encoder_glitch_cnt_cb_t  glitch_cnt_cb;
 	osMessageQueueId_t       work_queue;
 	osThreadId_t             work_thread;
-} encoder_t;
+};
 
-void encoder_init(encoder_t *me, encoder_init_param_t *init_param);
-void encoder_cur_pos_get(encoder_t *me);
-void encoder_cur_pos_cb_register(encoder_t *me,
+void encoder_init(struct encoder *me,
+                  struct encoder_init_param *init_param);
+void encoder_cur_pos_get(struct encoder *me);
+void encoder_cur_pos_cb_register(struct encoder *me,
                                  encoder_cur_pos_get_cb_t cb);
 </code></pre>
 <p>只一种实现（项目里就只有一种 SPI 编码器），没有 ops 表。但仍然是 struct + me + 三种回调 + 工作线程的完整结构。</p>
 <p><strong>位置开关。</strong> 节选自 <code>app/drivers/position_switch/position_switch.h</code>：</p>
-<pre><code class="language-c">typedef struct position_switch {
+<pre><code class="language-c">struct position_switch {
 	int32_t top_stop_pin;
 	int32_t top_dece_pin;
 	int32_t bottom_stop_pin;
@@ -482,20 +484,20 @@ void encoder_cur_pos_cb_register(encoder_t *me,
 	Button bottom_stop_btn;
 	Button bottom_dece_btn;
 	Button home_btn;
-} position_switch_t;
+};
 </code></pre>
 <p>5 个限位开关塞进一个 struct，每个开关用 <code>Button</code> 库做去抖。一个统一的 <code>status_change_cb</code> 把哪个开关变化了通过 enum 参数告诉上层：</p>
-<pre><code class="language-c">typedef enum {
+<pre><code class="language-c">enum position_switch_id {
 	POSITION_SWITCH_TOP_STOP = 0,
 	POSITION_SWITCH_TOP_DECE,
 	POSITION_SWITCH_BOTTOM_STOP,
 	POSITION_SWITCH_BOTTOM_DECE,
 	POSITION_SWITCH_HOME,
-} position_switch_id_t;
+};
 
-typedef void (*position_swich_change_cb_t)(position_switch_id_t id,
-                                            position_switch_status_t status,
-                                            struct position_switch *me);
+typedef void (*position_swich_change_cb_t)(enum position_switch_id id,
+                                           enum position_switch_status status,
+                                           struct position_switch *me);
 </code></pre>
 <p>教学版会犯的错：5 个开关写 5 份 driver 代码。或者反过来：把 5 个开关塞到 5 个 ops 函数里。两个都不对。这里的解法是“概念上属于同一个东西的多个开关“打包成一个 struct，事件类型用 enum 区分。</p>
 <h2 id="206-platform-层uart--i²c--spi-的统一抽象"><a class="header" href="#206-platform-层uart--i²c--spi-的统一抽象">20.6 Platform 层：UART / I²C / SPI 的统一抽象</a></h2>
@@ -512,7 +514,7 @@ arch/cortex_m7/...       # ARM Cortex-M7 实现
 board/h7_evb/...         # 这块板子的引脚映射
 </code></pre>
 <p>UART 抽象的接口（节选自 <code>platform_uart.h</code>）：</p>
-<pre><code class="language-c">typedef struct platform_uart_configure {
+<pre><code class="language-c">struct platform_uart_configure {
 	uint32_t baud_rate;
 	uint32_t data_bits   :4;
 	uint32_t stop_bits   :2;
@@ -521,50 +523,50 @@ board/h7_evb/...         # 这块板子的引脚映射
 	uint32_t invert      :1;
 	uint32_t flowcontrol :1;
 	uint32_t reserved    :5;
-} platform_uart_configure_t;
+};
 
-typedef struct platform_uart_device {
-	struct platform_device parent;             /* 嵌入通用 device 基类 */
+struct platform_uart_device {
+	struct platform_device parent;        /* 嵌入通用 device 基类 */
 	const struct platform_uart_ops *uart_ops;
-	platform_uart_configure_t configure;
-} platform_uart_dev_t;
+	struct platform_uart_configure configure;
+};
 
-typedef struct platform_uart_ops {
-	platform_err_t (*open)(platform_uart_dev_t *dev);
-	platform_err_t (*close)(platform_uart_dev_t *dev);
-	uint32_t (*read)(platform_uart_dev_t *dev,
+struct platform_uart_ops {
+	platform_err_t (*open)(struct platform_uart_device *dev);
+	platform_err_t (*close)(struct platform_uart_device *dev);
+	uint32_t (*read)(struct platform_uart_device *dev,
 	                 uint32_t pos, void *pbuf, uint32_t size);
-	uint32_t (*write)(platform_uart_dev_t *dev,
+	uint32_t (*write)(struct platform_uart_device *dev,
 	                  uint32_t pos, const void *pbuf, uint32_t size);
-	platform_err_t (*configure)(platform_uart_dev_t *dev,
-	                            platform_uart_configure_t *cfg);
-} platform_uart_ops_t;
+	platform_err_t (*configure)(struct platform_uart_device *dev,
+	                            struct platform_uart_configure *cfg);
+};
 
-platform_err_t platform_hw_uart_register(platform_uart_dev_t *dev,
+platform_err_t platform_hw_uart_register(struct platform_uart_device *dev,
                                          const char *name, void *pdata);
 </code></pre>
-<p>注意第一个字段 <code>struct platform_device parent</code>：这是<strong>两层继承</strong>。<code>platform_uart_dev_t</code> 继承通用 <code>platform_device</code>（提供 register / find / open / close 这些通用接口），自己再加 UART 特有的 <code>uart_ops</code> 和 <code>configure</code>。这就是 ch12 讲过的“基类放第一个字段“在 platform 层的应用。</p>
+<p>注意第一个字段 <code>struct platform_device parent</code>：这是<strong>两层继承</strong>。<code>struct platform_uart_device</code> 继承通用 <code>struct platform_device</code>（提供 register / find / open / close 这些通用接口），自己再加 UART 特有的 <code>uart_ops</code> 和 <code>configure</code>。这就是 ch12 讲过的“基类放第一个字段“在 platform 层的应用。</p>
 <p>应用层（或者驱动层）调用：</p>
-<pre><code class="language-c">platform_uart_dev_t *uart3 = (platform_uart_dev_t *)
-                             platform_device_find("uart3");
+<pre><code class="language-c">struct platform_uart_device *uart3 = (struct platform_uart_device *)
+                                     platform_device_find("uart3");
 uart3-&gt;uart_ops-&gt;configure(uart3, &amp;my_cfg);
 uart3-&gt;uart_ops-&gt;open(uart3);
 uart3-&gt;uart_ops-&gt;write(uart3, 0, data, len);
 </code></pre>
-<p>完全是第 11 章的多态形态：每个具体硬件 UART 实现一组 <code>platform_uart_ops_t</code> 函数，挂到 <code>platform_uart_dev_t.uart_ops</code>。SPI、I²C 同结构。</p>
+<p>完全是第 11 章的多态形态：每个具体硬件 UART 实现一组 <code>struct platform_uart_ops</code> 函数，挂到 <code>struct platform_uart_device.uart_ops</code>。SPI、I²C 同结构。</p>
 <p>I²C 抽象用 message 数组的形式（前一章 max31827 用过）：</p>
-<pre><code class="language-c">typedef struct {
+<pre><code class="language-c">struct platform_i2c_msg {
 	uint16_t addr;       /* 设备地址 */
 	uint16_t flags;      /* PLATFORM_I2C_WR / PLATFORM_I2C_RD */
 	uint16_t len;
 	uint8_t *buf;
-} platform_i2c_msg_t;
+};
 
-uint32_t platform_i2c_transfer(platform_i2c_bus_device_t *bus,
-                               platform_i2c_msg_t *msgs, uint32_t num);
+uint32_t platform_i2c_transfer(struct platform_i2c_bus_device *bus,
+                               struct platform_i2c_msg *msgs, uint32_t num);
 </code></pre>
 <p>一次 <code>platform_i2c_transfer(bus, msgs, 2)</code> 完成“先写寄存器地址、再读两字节“的标准 I²C 序列。Linux 内核 <code>i2c_transfer</code> 同款 API。</p>
-<p>SPI 抽象用 <code>platform_spi_device_t</code> 表示一个具体片选下的设备（不是 SPI 总线）：每个 SPI 设备绑定一根 CS 引脚 + 时钟相位 / 极性配置。一条 SPI 总线挂多个设备时，每个设备一个 <code>platform_spi_device_t</code> 实例。</p>
+<p>SPI 抽象用 <code>struct platform_spi_device</code> 表示一个具体片选下的设备（不是 SPI 总线）：每个 SPI 设备绑定一根 CS 引脚 + 时钟相位 / 极性配置。一条 SPI 总线挂多个设备时，每个设备一个 <code>struct platform_spi_device</code> 实例。</p>
 <p>应用层一行查表 <code>platform_device_find("uart3")</code> 拿到设备指针，剩下全靠 vtable 派发。<strong>换 MCU 不改一行应用层代码</strong>。这是第 15 章“换硬件不改应用“的真实落地，比 ch15 教学版的样子复杂多了，但抽象骨架完全一样。</p>
 <h2 id="207-跨-mcu-移植清单什么会变--什么不会变"><a class="header" href="#207-跨-mcu-移植清单什么会变--什么不会变">20.7 跨 MCU 移植清单：什么会变 / 什么不会变</a></h2>
 <p>子控板现在跑在 STM32H743。如果要移植到 i.MX RT1170（恩智浦 Cortex-M7）或者 GD32H7（兆易创新国产 Cortex-M7），具体改什么？</p>
@@ -618,7 +620,7 @@ LPUART_GetDefaultConfig(&amp;config);
 config.baudRate_Bps = 115200;
 LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 </code></pre>
-<p>平台层把这种差异完全吸收。<code>platform_uart_ops_t</code> 的 <code>write</code> 实现内部用哪家 HAL 函数完全不影响驱动层和应用层。</p>
+<p>平台层把这种差异完全吸收。<code>struct platform_uart_ops</code> 的 <code>write</code> 实现内部用哪家 HAL 函数完全不影响驱动层和应用层。</p>
 <p>这就是为什么这本书前 18 章铺垫的所有 OOP 抽象在工业项目里<strong>真的有用</strong>：8 万行代码移植到新 MCU，只动 5%~15%。如果没有这套抽象，每次换 MCU 等于推倒重写。</p>
 <h2 id="208-子控板的-initcall-顺序"><a class="header" href="#208-子控板的-initcall-顺序">20.8 子控板的 initcall 顺序</a></h2>
 <p>子控板用的 initcall 7 级和主控板一样（都是参考 RT-Thread 实现）。但各级里跑的具体内容不同：</p>
@@ -679,7 +681,7 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 <p>第二，工作线程 + 消息队列的具体实现绑定在 RTOS 上（CMSIS-RTOS2 API），脱离 RTOS 移植到 PC 模拟需要重写一遍同步原语，对 OOP 教学价值有限。</p>
 <p>20.2 节正文已经把 OOP 角度的全部要点讲清楚：</p>
 <ul>
-<li>子类把 <code>h_motor_base_t base</code> 放第一字段（向上转型零代价）</li>
+<li>子类把 <code>struct h_motor_base base</code> 放第一字段（向上转型零代价）</li>
 <li>工作线程 + 消息队列把异步操作翻译成“看起来同步“的接口</li>
 <li>故障检测引脚通过 <code>Button</code> 库当成“按键事件“统一处理</li>
 <li>性能监控字段（<code>max_following_error / max_motor_current / max_i2t_sum</code>）持续记录峰值</li>
@@ -701,7 +703,7 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 <li>减速区限位 + 三层超时保护</li>
 <li>IS 引脚电流采样 + EMA 滤波 + 连续超阈过流故障判断</li>
 </ol>
-<p>OOP 骨架完全不变：<code>v_motor_base_t</code> 的 3 个 ops + 1 个错误回调，子类内部把所有这些异步行为塞进工作线程 + 周期定时器。应用层永远只见 <code>v_motor_base_move(motor, UP)</code> 这一句普通函数调用。这就是 ch20 想讲透的核心：工程现实里“几行 GPIO“ 之上扛住的细节再多，OOP 抽象层一字不动。</p>
+<p>OOP 骨架完全不变：<code>struct v_motor_base</code> 的 3 个 ops + 1 个错误回调，子类内部把所有这些异步行为塞进工作线程 + 周期定时器。应用层永远只见 <code>v_motor_base_move(motor, UP)</code> 这一句普通函数调用。这就是 ch20 想讲透的核心：工程现实里“几行 GPIO“ 之上扛住的细节再多，OOP 抽象层一字不动。</p>
 <h3 id="20103-编码器--位置开关205-节"><a class="header" href="#20103-编码器--位置开关205-节">20.10.3 编码器 / 位置开关（20.5 节）</a></h3>
 <p>20.5 节贴的是 <code>encoder.h</code> + <code>position_switch.h</code> 两个 struct 定义和回调签名。<strong>完整 <code>.c</code> 实现没有放进仓库</strong>。</p>
 <p>20.5 节正文要传达的核心是反面教材：单实现驱动不要硬上 ops 表（<code>struct + me</code> 就够），多个相似硬件信号（5 个限位开关）要打包成一个 struct + enum 区分而不是 5 份独立 driver。这两条 OOP 原则跟具体 <code>.c</code> 实现无关，所以仓库里没有放完整实现。</p>
@@ -718,7 +720,7 @@ LPUART_Init(LPUART3, &amp;config, CLOCK_GetFreq(kCLOCK_OscRc48MDiv2));
 </tbody>
 </table>
 </div>
-<p>I²C / SPI 的接口在仓库里没有单独贴出来，因为骨架跟 UART 同构（设备 struct + ops 表 + 字符串名字注册表查找）。20.6 节正文里贴的 <code>platform_i2c_msg_t</code> 结构和 <code>platform_i2c_transfer</code> 接口是 I²C 抽象的核心；SPI 抽象按 <code>platform_spi_device_t</code> 一句话讲过：每个具体片选下的设备一个实例，绑定 CS 引脚 + 时钟相位 / 极性。</p>
+<p>I²C / SPI 的接口在仓库里没有单独贴出来，因为骨架跟 UART 同构（设备 struct + ops 表 + 字符串名字注册表查找）。20.6 节正文里贴的 <code>struct platform_i2c_msg</code> 结构和 <code>platform_i2c_transfer</code> 接口是 I²C 抽象的核心；SPI 抽象按 <code>struct platform_spi_device</code> 一句话讲过：每个具体片选下的设备一个实例，绑定 CS 引脚 + 时钟相位 / 极性。</p>
 <p>具体硬件后端（<code>platform_uart_stm32h7.c</code> / <code>platform_uart_imxrt.c</code> 等）依赖各家 MCU 的 HAL 库，跟 OOP 教学主线无关，仓库里不放。</p>
 <h3 id="20105-完整工程参考"><a class="header" href="#20105-完整工程参考">20.10.5 完整工程参考</a></h3>
 <p>如果你想看一份<strong>完整、可跑、跨 STM32 / Linux 双后端</strong>的工程（不是接口骨架而是完整可编译版本），看附录 B 和附录 C：</p>

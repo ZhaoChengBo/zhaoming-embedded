@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -486,7 +486,7 @@ led_on(&amp;red_led);
 <p>继承在这里不是“应用层多了一种东西要学“，是“驱动层内部少抄了一些代码“。应用层从 ch01 一字不改的核心模式（<code>xxx_init + xxx_on</code>）一直延续，变的只是 init 多了一个 <code>name</code> 参数。</p>
 <p>这件事是这本书的底色：每一章引入一个新机制，应用层永远稳定。变的是驱动层内部如何把“重复“和“扩展“分离。这是工业代码做大也做不烂的核心。</p>
 <h2 id="68-你现在的代码在-stm32-上长什么样"><a class="header" href="#68-你现在的代码在-stm32-上长什么样">6.8 你现在的代码在 STM32 上长什么样</a></h2>
-<p>STM32 端的胶水还是 ch01 那套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/stm32-snippet/led_stm32.c"><code>oop-in-c/code/06-inherit-pain/stm32-snippet/led_stm32.c</code></a>）：</p>
+<p>STM32 端的胶水还是 ch01 那套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/platform-mcu/stm32/led_stm32.c"><code>oop-in-c/code/06-inherit-pain/platform-mcu/stm32/led_stm32.c</code></a>，<code>pin</code> 仍是 <code>PIN_NUM('A', 13)</code> 编码，详见第 1 章 § 1.x PIN_NUM 编码）：</p>
 <pre><code class="language-c">#include "led_gpio.h"
 #include "stm32f4xx_hal.h"
 
@@ -494,19 +494,19 @@ void platform_gpio_init(uint8_t pin, uint8_t mode)
 {
 	GPIO_InitTypeDef cfg = {0};
 
-	__HAL_RCC_GPIOA_CLK_ENABLE();
+	_enable_port_clock(pin);
 
-	cfg.Pin   = (uint16_t)(1U &lt;&lt; pin);
+	cfg.Pin   = PIN_MASK(pin);
 	cfg.Mode  = (mode == GPIO_MODE_OUTPUT) ?
 	            GPIO_MODE_OUTPUT_PP : GPIO_MODE_INPUT;
 	cfg.Pull  = GPIO_NOPULL;
 	cfg.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &amp;cfg);
+	HAL_GPIO_Init(PIN_PORT(pin), &amp;cfg);
 }
 
 void platform_gpio_write(uint8_t pin, bool value)
 {
-	HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin),
+	HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin),
 	                  value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 </code></pre>
@@ -514,23 +514,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>继承的所有变化都在驱动层内部。平台胶水的写法不变，因为基类抽象的是“驱动数据怎么组织“，不是“硬件怎么访问“。</p>
 <p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。真正工业级用虚函数表（ops 表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="69-你现在的代码在-linux-用户态长什么样"><a class="header" href="#69-你现在的代码在-linux-用户态长什么样">6.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端同理（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/linux-snippet/led_linux.c"><code>oop-in-c/code/06-inherit-pain/linux-snippet/led_linux.c</code></a>）：</p>
-<pre><code class="language-c">void platform_gpio_write(uint8_t pin, bool value)
-{
-	char path[64];
-	int fd;
-
-	snprintf(path, sizeof(path),
-	         "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-	fd = open(path, O_WRONLY);
-	if (fd &gt;= 0) {
-		write(fd, value ? "1" : "0", 1);
-		close(fd);
-	}
-}
-</code></pre>
-<p>胶水写法和 ch01 完全一致。<code>led_base.c / led_gpio.c / led_pwm.c / main.c</code> 一字不改。</p>
-<p>同 6.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。第 16 章会把它改成 ops 表式（gpio_chip 子系统）。</p>
+<p>Linux 上同款抽象，完整工程见附录 C。</p>
 <h2 id="610-工业代码里的基类长什么样"><a class="header" href="#610-工业代码里的基类长什么样">6.10 工业代码里的基类长什么样</a></h2>
 <p>工业控制板项目里，base 抽象是这样的（不是完整代码，是片段）：</p>
 <pre><code class="language-c">/* drivers/led/led.h */

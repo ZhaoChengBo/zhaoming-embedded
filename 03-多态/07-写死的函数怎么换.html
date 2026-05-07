@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1b74ef73.js";
+            window.path_to_searchindex_js = "../searchindex-67634d26.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0f4fc518.js"></script>
+        <script src="../toc-5415c1d2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -380,30 +380,16 @@ gpio_action_fn fp;        /* 简洁多了 */
 <p>C99 没能改这个语法，因为改了会破坏巨量历史代码。C++11 加了 lambda + <code>auto</code> 让你能绕开它。Rust 用 <code>fn(...)</code> 类型，干净多了。</p>
 <p>C 的丑语法保留下来不是因为它好，是因为它来不及改。</p>
 <h2 id="77-你现在的代码在-stm32-上长什么样"><a class="header" href="#77-你现在的代码在-stm32-上长什么样">7.7 你现在的代码在 STM32 上长什么样</a></h2>
-<p>本章只演示函数指针变量这个工具本身，还没把它和具体 LED 驱动结构挂起来，所以 STM32 端没有引入新的胶水。<code>gpio_on</code> 这种函数在 STM32 上的实现还是 ch01 那一套：</p>
+<p>本章只演示函数指针变量这个工具本身，还没把它和具体 LED 驱动结构挂起来，所以 STM32 端没有引入新的胶水。<code>gpio_on</code> 这种函数在 STM32 上的实现还是 ch01 那一套（pin 仍是 <code>PIN_NUM('A', 13)</code> 编码，详见第 1 章 § 1.x PIN_NUM 编码）：</p>
 <pre><code class="language-c">void gpio_on(uint8_t pin)
 {
-    HAL_GPIO_WritePin(GPIOA, (uint16_t)(1U &lt;&lt; pin), GPIO_PIN_SET);
+    HAL_GPIO_WritePin(PIN_PORT(pin), PIN_MASK(pin), GPIO_PIN_SET);
 }
 </code></pre>
 <p>应用层多了一行声明：<code>void (*fp)(uint8_t)</code>。把 <code>gpio_on</code> 存进 <code>fp</code>，再通过 <code>fp</code> 调用，跑出来的指令序列和直接调 <code>gpio_on</code> 几乎一样，多一次 LDR + 一次间接 BLX。在 STM32 这种 MCU 上完全无感。</p>
 <p>下一章把 <code>fp</code> 当作参数传给 <code>test_led</code>，开始有真实的工程含义。</p>
 <h2 id="78-你现在的代码在-linux-用户态长什么样"><a class="header" href="#78-你现在的代码在-linux-用户态长什么样">7.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端 <code>gpio_on</code> 的实现还是 ch01 那一套（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/linux-snippet/led_linux.c"><code>oop-in-c/code/07-function-pointer/linux-snippet/led_linux.c</code></a>）：</p>
-<pre><code class="language-c">void gpio_on(uint8_t pin)
-{
-    char path[64];
-    int fd;
-    snprintf(path, sizeof(path),
-             "/sys/class/gpio/gpio%u/value", (unsigned)pin);
-    fd = open(path, O_WRONLY);
-    if (fd &gt;= 0) {
-        write(fd, "1", 1);
-        close(fd);
-    }
-}
-</code></pre>
-<p>应用层把 <code>gpio_on</code> 存进 <code>fp</code>、通过 <code>fp</code> 调用，行为和直接调 <code>gpio_on</code> 等价。Linux 用户态的 branch predictor 比 MCU 强得多，间接调用开销几乎看不出来。</p>
+<p>完整工程见附录 C。Linux 端 <code>gpio_on</code> 写 sysfs，应用层把 <code>gpio_on</code> 存进 <code>fp</code>、通过 <code>fp</code> 调用，行为和直接调 <code>gpio_on</code> 等价。Linux 用户态的 branch predictor 比 MCU 强得多，间接调用开销几乎看不出来。</p>
 <h2 id="79-跑一遍"><a class="header" href="#79-跑一遍">7.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/07-function-pointer/pc
 make
