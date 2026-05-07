@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1e7679c3.js";
+            window.path_to_searchindex_js = "../searchindex-cb5cdb0f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0f4fc518.js"></script>
@@ -350,14 +350,25 @@ for (auto led : all_leds)
 蓝灯：<code>me-&gt;ops</code> 指向 <code>led_ops_pwm</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>pwm_on</code>。落到 <code>pwm_on(me)</code>。</p>
 <p>同一行代码 <code>me-&gt;ops-&gt;on(me)</code>，因为 <code>me</code> 不同，两跳之后落在不同的函数。这就是 dispatch 在内存里实际发生的事。</p>
 <h3 id="1173-加新-led-不改老代码"><a class="header" href="#1173-加新-led-不改老代码">11.7.3 加新 LED 不改老代码</a></h3>
-<p>加第 100 种 LED 怎么改代码？</p>
+<p>“加新 LED” 有两种情况，先分清楚再讲省什么。</p>
+<p><strong>情况一·同种 LED 多挂几颗（加实例）。</strong> 比如板子本来 5 个 GPIO 指示灯，现在要再挂 10 个：</p>
+<pre><code class="language-c">struct led_gpio led_pwr;   led_gpio_init(&amp;led_pwr, "PWR", 5);
+struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
+/* ... 重复 10 次 ... */
+</code></pre>
+<p><code>led_gpio_init</code> 一行不改，<code>led_ops_gpio</code> 一行不改。这是<strong>封装</strong>的好处：把“GPIO 灯怎么开“封在 <code>led_gpio_init</code> 里，外面想挂几个挂几个。</p>
+<p><strong>情况二·加一种新硬件实现（加种类）。</strong> 比如新一代板子换了 LED 方案，从 GPIO 改成 SPI 总线上的 LED 驱动 IC。这是当前代码完全没见过的硬件机制，但加它的步骤是机械化的：</p>
 <ol>
-<li>写一个 <code>const struct led_ops led_ops_xxx</code>，填 3 个函数</li>
-<li>写一个 <code>led_xxx_init</code> 函数，里面调 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_xxx)</code></li>
-<li>完了</li>
+<li>写 <code>struct led_spi</code>，装 SPI 总线号、片选引脚等私有字段</li>
+<li>写 <code>spi_on / spi_off / spi_toggle</code> 三个函数</li>
+<li>写 <code>const struct led_ops led_ops_spi = { .on = spi_on, ... }</code></li>
+<li>写 <code>led_spi_init</code>，里面调 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_spi)</code></li>
 </ol>
-<p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。所有应用层代码一行不改。</p>
-<p>这就是函数指针表 + base + dispatch 这一套在工程上的好处：加新功能不动老代码，老代码不会被加新东西改坏。</p>
+<p>完了。</p>
+<p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。GPIO 和 PWM 那两份老代码一行不改。所有调用 <code>led_on(...)</code> 的应用代码一行不改。</p>
+<p>这是<strong>多态 + dispatch</strong> 的好处，OOP 圈叫“开放-封闭原则“（OCP）：对扩展开放（加新种类随便加），对修改关闭（老代码不动）。</p>
+<p><strong>两层好处叠加。</strong> 第一层（封装）让“挂 50 个同种 LED“是一行 init 的事；第二层（多态 + dispatch）让“加一种新硬件机制“只动新文件，老文件全不动。两层加起来，工业代码才能做到“骨架不变，不断长出新模块“。</p>
+<p>工业现场 LED 种类真实不会超过 5-6 种（GPIO 指示灯 + PWM 状态灯 + I2C 数码管 + SPI 矩阵 + WS2812 灯条已经覆盖大多数产品），但每种下面挂几十个实例很常见。这套机制让两个轴都自由：种类轴靠 dispatch，实例轴靠封装。</p>
 <h3 id="1174-配套代码-ops-字段说明"><a class="header" href="#1174-配套代码-ops-字段说明">11.7.4 配套代码 ops 字段说明</a></h3>
 <p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>

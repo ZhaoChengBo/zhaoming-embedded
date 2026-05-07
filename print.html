@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1e7679c3.js";
+            window.path_to_searchindex_js = "searchindex-cb5cdb0f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0f4fc518.js"></script>
@@ -3842,15 +3842,69 @@ green-&gt;ops-&gt;on(green); /* 走 i2c_on  */
 <p>C++ 还做了一件 C 没做的事：<strong>自动判断</strong>对象有没有 virtual 函数。没有的话不加这个指针，省一份对象内存。C 里你写不写 ops 字段是手动决定的。</p>
 <p><img src="assets/ch10/slide6_CvsCpp.png" alt="C 对比 C++"></p>
 <h2 id="106-视频里没讲透的几个细节"><a class="header" href="#106-视频里没讲透的几个细节">10.6 视频里没讲透的几个细节</a></h2>
-<h3 id="1061-ops-是-const-还是-const-指针"><a class="header" href="#1061-ops-是-const-还是-const-指针">10.6.1 ops 是 const 还是 const 指针</a></h3>
-<pre><code class="language-c">const struct led_ops *ops;
+<h3 id="1061-const-在-led_ops-前还是--后语义反过来"><a class="header" href="#1061-const-在-led_ops-前还是--后语义反过来">10.6.1 const 在 led_ops 前还是 <code>*</code> 后·语义反过来</a></h3>
+<p>新人看到下面这两行常分不清：</p>
+<pre><code class="language-c">const struct led_ops *ops;       /* 工业代码这么写 */
+struct led_ops * const ops;      /* 含义反过来 */
 </code></pre>
-<p><code>const</code> 在 <code>struct led_ops</code> 后面，修饰的是 <code>struct led_ops</code>（左边的），含义是“指向常量 <code>led_ops</code> 的指针“。指针 <code>ops</code> 本身是变量，可以改 <code>me-&gt;ops = ...</code>；但 <code>me-&gt;ops-&gt;on = ...</code> 不行（指向的内容是 const）。</p>
-<p>如果把 const 写在指针后面：</p>
-<pre><code class="language-c">struct led_ops * const ops;
+<p>差一个 <code>const</code> 的位置，能干的事和不能干的事调换。下面给两个记忆心法和一张速查表，看完不再被 const 卡住。</p>
+<p><strong>心法 1·const 紧贴谁，就锁谁。</strong> <code>const</code> 这个关键字看它紧贴的是哪个词：紧贴类型 <code>struct led_ops</code>，锁的是“指向的内容“（不能改 <code>me-&gt;ops-&gt;on = ...</code>）；紧贴 <code>*</code>，锁的是“指针自己“（不能改 <code>me-&gt;ops = ...</code>）。</p>
+<pre><code class="language-c">const struct led_ops *ops;       /* const 紧贴 led_ops, 锁内容 */
+struct led_ops * const ops;      /* const 紧贴 *, 锁指针 */
 </code></pre>
-<p>含义反了：const 修饰的是 <code>ops</code> 这个指针本身。不能改 <code>me-&gt;ops = ...</code>，但能改 <code>me-&gt;ops-&gt;on = ...</code>。</p>
-<p>工业代码用第一种。表本身常量（不能改实现），但字段位置可以重新赋值（极端场景下运行时换 ops 表）。Linux 内核 <code>file_operations</code> 全是这种风格。</p>
+<p>看一眼 <code>const</code> 写在哪个词旁边，就知道锁的是哪一边。</p>
+<p><strong>心法 2·在 <code>*</code> 处画一刀。</strong> 把声明从 <code>*</code> 处切开，两边各自看：</p>
+<pre><code>const struct led_ops  |  *  ops;        左边带 const, 锁内容
+struct led_ops        |  * const ops;   右边带 const, 锁指针
+</code></pre>
+<p><code>*</code> 左边写的是“指向的东西长什么样“，右边写的是“指针本身什么属性“。哪边出现 <code>const</code>，哪边就被锁住。初学时建议每个 const 声明都画一刀，几次之后形成肌肉记忆。</p>
+<p><strong>一个容易混淆的等价写法。</strong> 下面这两行<strong>完全等价</strong>：</p>
+<pre><code class="language-c">const struct led_ops *ops;       /* 标准写法 */
+struct led_ops const *ops;       /* 等价写法 */
+</code></pre>
+<p>按“const 紧贴谁锁谁“看：两行里 <code>const</code> 都紧贴 <code>struct led_ops</code>，都是锁内容。位置在前在后不影响语义。读源码遇到第二种不要慌，和第一种是一回事。</p>
+<p>C 标准的严格规则是“const 修饰它紧邻的左边，左边没东西时修饰右边“。这条规则严谨但反直觉，回到“紧贴谁锁谁“心法就够用，覆盖所有情况。</p>
+<p><strong>4 种组合速查：</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>写法</th><th>内容 <code>me-&gt;ops-&gt;on</code></th><th>指针 <code>me-&gt;ops</code></th><th>等价写法</th></tr>
+</thead>
+<tbody>
+<tr><td><code>const T *ops</code></td><td>锁·不能改</td><td>可改</td><td><code>T const *ops</code></td></tr>
+<tr><td><code>T * const ops</code></td><td>可改</td><td>锁·不能改</td><td>（唯一写法）</td></tr>
+<tr><td><code>const T * const ops</code></td><td>锁</td><td>锁</td><td><code>T const * const ops</code></td></tr>
+<tr><td><code>T *ops</code></td><td>可改</td><td>可改</td><td>（唯一写法）</td></tr>
+</tbody>
+</table>
+</div>
+<p>工业代码绝大多数选第一种 <code>const T *</code>。下面说为什么。</p>
+<p><strong>为什么用 <code>const T *</code>，而不是双锁。</strong> 先排除两种：</p>
+<ul>
+<li><code>T *ops</code>（无 const），两边都开放，没人这么写，因为 ops 表内容被任意改是一颗大 bug</li>
+<li><code>T * const ops</code>（只锁指针），在 ops 这种场景几乎用不到，因为它允许改 <code>me-&gt;ops-&gt;on = ...</code>，这才是真正危险的事</li>
+</ul>
+<p>剩下两种是真正候选：</p>
+<ul>
+<li><code>const T *ops</code>，锁内容，不锁指针</li>
+<li><code>const T * const ops</code>，双锁</li>
+</ul>
+<p>为什么不直接双锁？最硬的原因：双锁后 <code>me-&gt;ops</code> 字段任何后续赋值都不行，连 <code>init</code> 函数都没法给它填值：</p>
+<pre><code class="language-c">struct led_base {
+    const struct led_ops * const ops;     /* 假设双锁 */
+};
+
+int led_base_init(struct led_base *me, const struct led_ops *ops) {
+    me-&gt;ops = ops;     /* 编译错: assignment of read-only member */
+}
+</code></pre>
+<p>所以工业代码必须用 <code>const T *</code>，让 <code>me-&gt;ops</code> 在 init 时能被赋值。这同时也打开了“运行时换整张表“的可能，常见场景两个：</p>
+<p>第一·LED 模式切换。调试期跑 GPIO 模式，产品阶段切到 PWM 模式。运行时 <code>me-&gt;ops = &amp;led_ops_pwm;</code> 重新指，整张表换掉。</p>
+<p>第二·驱动适配多版本硬件。同一份驱动代码，根据硬件版本号决定 <code>me-&gt;ops = &amp;ops_v1</code> 还是 <code>me-&gt;ops = &amp;ops_v2</code>，跑在不同代板子上，应用层不感知。</p>
+<p>总之：<strong>只锁内容，不锁指针</strong>。每个 ops 表的实现固定（不准有人手贱改 <code>gpio_on</code> 的指向），但留 <code>me-&gt;ops</code> 这个口子，init 和运行时切换都合法。</p>
+<pre><code class="language-c">const struct led_ops *ops;       /* 工业代码标准写法 */
+</code></pre>
+<p>记住这一行，读 Linux 内核的 <code>file_operations</code>、<code>inode_operations</code>、<code>kobj_type</code> 这些表时不会再被 const 卡住，它们都是 <code>const T *</code> 风格，原因和这里一样：init 时要能赋值，运行时保留切换的可能。</p>
 <h3 id="1062-sizeofled_base-多了几个字节"><a class="header" href="#1062-sizeofled_base-多了几个字节">10.6.2 sizeof(led_base) 多了几个字节</a></h3>
 <p>ch09 之前的 <code>led_base</code>：</p>
 <pre><code class="language-c">struct led_base {
@@ -4128,14 +4182,25 @@ for (auto led : all_leds)
 蓝灯：<code>me-&gt;ops</code> 指向 <code>led_ops_pwm</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>pwm_on</code>。落到 <code>pwm_on(me)</code>。</p>
 <p>同一行代码 <code>me-&gt;ops-&gt;on(me)</code>，因为 <code>me</code> 不同，两跳之后落在不同的函数。这就是 dispatch 在内存里实际发生的事。</p>
 <h3 id="1173-加新-led-不改老代码"><a class="header" href="#1173-加新-led-不改老代码">11.7.3 加新 LED 不改老代码</a></h3>
-<p>加第 100 种 LED 怎么改代码？</p>
+<p>“加新 LED” 有两种情况，先分清楚再讲省什么。</p>
+<p><strong>情况一·同种 LED 多挂几颗（加实例）。</strong> 比如板子本来 5 个 GPIO 指示灯，现在要再挂 10 个：</p>
+<pre><code class="language-c">struct led_gpio led_pwr;   led_gpio_init(&amp;led_pwr, "PWR", 5);
+struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
+/* ... 重复 10 次 ... */
+</code></pre>
+<p><code>led_gpio_init</code> 一行不改，<code>led_ops_gpio</code> 一行不改。这是<strong>封装</strong>的好处：把“GPIO 灯怎么开“封在 <code>led_gpio_init</code> 里，外面想挂几个挂几个。</p>
+<p><strong>情况二·加一种新硬件实现（加种类）。</strong> 比如新一代板子换了 LED 方案，从 GPIO 改成 SPI 总线上的 LED 驱动 IC。这是当前代码完全没见过的硬件机制，但加它的步骤是机械化的：</p>
 <ol>
-<li>写一个 <code>const struct led_ops led_ops_xxx</code>，填 3 个函数</li>
-<li>写一个 <code>led_xxx_init</code> 函数，里面调 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_xxx)</code></li>
-<li>完了</li>
+<li>写 <code>struct led_spi</code>，装 SPI 总线号、片选引脚等私有字段</li>
+<li>写 <code>spi_on / spi_off / spi_toggle</code> 三个函数</li>
+<li>写 <code>const struct led_ops led_ops_spi = { .on = spi_on, ... }</code></li>
+<li>写 <code>led_spi_init</code>，里面调 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_spi)</code></li>
 </ol>
-<p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。所有应用层代码一行不改。</p>
-<p>这就是函数指针表 + base + dispatch 这一套在工程上的好处：加新功能不动老代码，老代码不会被加新东西改坏。</p>
+<p>完了。</p>
+<p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。GPIO 和 PWM 那两份老代码一行不改。所有调用 <code>led_on(...)</code> 的应用代码一行不改。</p>
+<p>这是<strong>多态 + dispatch</strong> 的好处，OOP 圈叫“开放-封闭原则“（OCP）：对扩展开放（加新种类随便加），对修改关闭（老代码不动）。</p>
+<p><strong>两层好处叠加。</strong> 第一层（封装）让“挂 50 个同种 LED“是一行 init 的事；第二层（多态 + dispatch）让“加一种新硬件机制“只动新文件，老文件全不动。两层加起来，工业代码才能做到“骨架不变，不断长出新模块“。</p>
+<p>工业现场 LED 种类真实不会超过 5-6 种（GPIO 指示灯 + PWM 状态灯 + I2C 数码管 + SPI 矩阵 + WS2812 灯条已经覆盖大多数产品），但每种下面挂几十个实例很常见。这套机制让两个轴都自由：种类轴靠 dispatch，实例轴靠封装。</p>
 <h3 id="1174-配套代码-ops-字段说明"><a class="header" href="#1174-配套代码-ops-字段说明">11.7.4 配套代码 ops 字段说明</a></h3>
 <p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>
