@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -336,7 +336,7 @@ for (auto led : all_leds)
 <li><strong>统一空指针检查</strong>：<code>me</code>、<code>me-&gt;ops</code>、<code>me-&gt;ops-&gt;on</code> 任意一个为 NULL 都会崩。胶水函数集中检查</li>
 <li><strong>API 稳定</strong>：哪天 dispatch 机制改了（比如加日志、加 hook、上 trace），改一个 <code>led_on</code> 函数，所有调用方不用动</li>
 </ol>
-<p>工业代码的硬规则：不直接走 ops 表，所有 dispatch 走基类层包装的统一函数。<code>led_on / led_off / led_toggle</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
+<p>工业代码的硬规则：不直接走 ops 表，所有 dispatch 走父类层包装的统一函数。<code>led_on / led_off / led_toggle</code> 是对外 API，<code>me-&gt;ops-&gt;on</code> 是内部实现细节。</p>
 <p>打开 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/pc/led_base.c"><code>oop-in-c/code/11-polymorphism/pc/led_base.c</code></a> 看 <code>led_on</code> 实际函数体：</p>
 <pre><code class="language-c">int led_on(struct led_base *me)
 {

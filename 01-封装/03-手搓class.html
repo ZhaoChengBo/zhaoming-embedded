@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -502,7 +502,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <li>生命周期 = <code>xxx_init / xxx_deinit</code></li>
 <li>类型名 = <code>xxx_t</code>（这是工业项目历史决定，本书统一用 <code>struct xxx</code>）</li>
 </ul>
-<p><code>xxx_base</code> 是抽象基类（属于第 6 章继承的内容），<code>xxx_gpio</code> / <code>ds2433</code> / <code>max31827</code> 是具体实现。这层结构对应“虚函数表 + 具体设备的 ops 表“，是第 9 章到第 11 章的内容。</p>
+<p><code>xxx_base</code> 是抽象父类（属于第 6 章继承的内容），<code>xxx_gpio</code> / <code>ds2433</code> / <code>max31827</code> 是具体实现。这层结构对应“虚函数表 + 具体设备的 ops 表“，是第 9 章到第 11 章的内容。</p>
 <p>到这里你能看出：你这一章学的命名规范，是工业代码的“地基“。50 个驱动文件全按这个规范命名，新人接手不用读所有文档，看文件名 + 函数名就知道哪个是哪个。</p>
 <h2 id="311-跑一遍"><a class="header" href="#311-跑一遍">3.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/03-handwritten-class/pc

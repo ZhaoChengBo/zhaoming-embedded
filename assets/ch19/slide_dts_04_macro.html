@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:50px 80px;
+    position:relative;
+  }
+  .title{font-size:60px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:50px;text-align:center;letter-spacing:1px}
+
+  .steps{
+    display:flex;flex-direction:column;gap:22px;
+    width:100%;max-width:1500px;
+  }
+  .step-row{
+    display:flex;align-items:center;gap:24px;
+  }
+  .step-label{
+    flex:0 0 200px;
+    text-align:right;
+    font-size:22px;font-weight:700;color:#666;
+    line-height:1.4;
+  }
+  .step-label .num{
+    display:block;font-size:16px;color:#E8633A;font-weight:800;letter-spacing:2px;
+    margin-bottom:4px;
+  }
+  .step-card{
+    flex:1;
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:14px;
+    padding:24px 32px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+  }
+  .step-card.green{border-left:6px solid #2A8C4A}
+  .step-card.purple{border-left:6px solid #5F3DC4}
+  .step-card.orange{border-left:6px solid #E8633A}
+
+  .code{
+    font-family:"Cascadia Code","Consolas","Courier New",monospace;
+    font-size:26px;line-height:1.6;color:#333;
+  }
+  .code-small{font-size:22px}
+  .kw{color:#7B5EA7;font-weight:600}
+  .fn{color:#E8633A;font-weight:600}
+  .tp{color:#2A8C4A;font-weight:600}
+  .cm{color:#999;font-style:italic;font-size:18px}
+  .hl-orange{background:#FFEDD5;padding:2px 8px;border-radius:4px}
+  .hl-purple{background:#EDE9FE;padding:2px 8px;border-radius:4px}
+  .hl-green{background:#E8F5E9;padding:2px 8px;border-radius:4px}
+
+  .step-note{
+    font-size:18px;color:#888;margin-top:8px;line-height:1.5;
+  }
+
+  .arrow-down{
+    text-align:center;font-size:32px;color:#E8633A;
+    margin:-4px 0 -4px 200px;
+  }
+
+  .footer-quote{
+    margin-top:50px;
+    font-size:34px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">DT_NODELABEL <span class="accent">宏拼接 · 不是字符串解析</span></div>
+<div class="subtitle">编译器看到的是 token · 不是文本</div>
+
+<div class="steps">
+
+  <div class="step-row">
+    <div class="step-label">
+      <span class="num">STEP 1</span>
+      读者写
+    </div>
+    <div class="step-card orange">
+      <div class="code"><span class="hl-orange"><span class="fn">DT_NODELABEL</span>(leds)</span></div>
+      <div class="step-note">驱动代码里一行 · 自然得像调函数</div>
+    </div>
+  </div>
+
+  <div class="arrow-down">&darr;</div>
+
+  <div class="step-row">
+    <div class="step-label">
+      <span class="num">STEP 2</span>
+      gen_defines.py<br>生成 token
+    </div>
+    <div class="step-card purple">
+      <div class="code"><span class="hl-purple">DT_N_S_soc_S_..._S_leds</span></div>
+      <div class="step-note">一个独一无二的预处理 token · 不是字符串 · 是宏名的一部分</div>
+    </div>
+  </div>
+
+  <div class="arrow-down">&darr;</div>
+
+  <div class="step-row">
+    <div class="step-label">
+      <span class="num">STEP 3</span>
+      DT_PROP<br>按 token 拼接
+    </div>
+    <div class="step-card green">
+      <div class="code code-small"><span class="fn">DT_PROP</span>(<span class="hl-purple">DT_N_S_soc_S_..._S_leds</span>, label)</div>
+      <div class="code code-small" style="margin-top:8px"><span class="cm">// 编译期再展开 &rarr; "User LD3"</span></div>
+      <div class="step-note">## 拼接 · ## 拼接 · 一直拼到具体 C 表达式</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-quote">dts 是宏拼接 · 不是字符串解析</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -252,7 +252,7 @@ struct led_i2c {               /* I2C 子类·总线参数在这里 */
 <p><code>struct led_gpio</code> 的实例在内存里这样躺：先是 base 部分（<code>name</code> 一个指针、<code>is_on</code> 一字节），紧接着是 <code>pin</code>。<code>struct led_pwm</code> 同理：先 base，再 <code>channel + duty</code>。</p>
 <p><img src="../assets/ch06/slide2_提公因式.png" alt="提公因式"></p>
 <p>注意一件事：<strong>base 必须放在第一个位置</strong>。先别问为什么，记住这个约定。第 12 章会告诉你这一条让向上转型成为可能。</p>
-<p>工程上为什么这样分？因为 <code>name + is_on</code> 是<strong>所有 LED 都共有的“状态层“信息</strong>，<strong><code>pin</code> 是 GPIO 特有的“硬件参数“</strong>，分开管。基类承担“所有 LED 都需要的事“，子类承担“自己这种 LED 特有的事“。混在一起，每种子类都得继承一堆自己用不到的字段（GPIO 没有 channel、PWM 没有 pin），这就是放错地方的字段。</p>
+<p>工程上为什么这样分？因为 <code>name + is_on</code> 是<strong>所有 LED 都共有的“状态层“信息</strong>，<strong><code>pin</code> 是 GPIO 特有的“硬件参数“</strong>，分开管。父类承担“所有 LED 都需要的事“，子类承担“自己这种 LED 特有的事“。混在一起，每种子类都得继承一堆自己用不到的字段（GPIO 没有 channel、PWM 没有 pin），这就是放错地方的字段。</p>
 <h2 id="64-子类构造函数链"><a class="header" href="#64-子类构造函数链">6.4 子类构造函数链</a></h2>
 <p>字段提了出来，初始化也得提。</p>
 <p><code>led_base.c</code> 里写一个 <code>led_base_init</code>：</p>
@@ -291,12 +291,12 @@ int led_pwm_init(struct led_pwm *me, const char *name,
 	return 0;
 }
 </code></pre>
-<p>每个子类的 init 第一行都是 <code>led_base_init(&amp;me-&gt;base, name)</code>。先把基类部分搞定，再处理子类自己的硬件字段。这就是 C++ 里那条隐式的“调用基类构造函数“规则，C 里你手写。</p>
+<p>每个子类的 init 第一行都是 <code>led_base_init(&amp;me-&gt;base, name)</code>。先把父类部分搞定，再处理子类自己的硬件字段。这就是 C++ 里那条隐式的“调用父类构造函数“规则，C 里你手写。</p>
 <p><code>&amp;me-&gt;base</code> 在这里是个关键操作。<code>me</code> 是 <code>struct led_gpio *</code>，<code>me-&gt;base</code> 是结构体字段（类型 <code>struct led_base</code>），<code>&amp;me-&gt;base</code> 是这个字段的地址。把这个地址传给 <code>led_base_init</code>，它接到一个 <code>struct led_base *</code>，干自己的活（填 name、清 is_on），不知道也不需要知道外层是 <code>struct led_gpio</code> 还是 <code>struct led_pwm</code>。</p>
 <p>这种“我只看你给我的接口部分“的写法，是后面 4 章一切玩法的根。</p>
 <p><img src="../assets/ch06/slide3_struct嵌套.png" alt="struct 嵌套"></p>
 <h3 id="641-这一招不只是-c-的歪招"><a class="header" href="#641-这一招不只是-c-的歪招">6.4.1 这一招不只是 C 的歪招</a></h3>
-<p>把“基类对象嵌进派生类的第一个字段“这件事，三个全球最大的 OOP-in-C 项目都用：</p>
+<p>把“父类对象嵌进派生类的第一个字段“这件事，三个全球最大的 OOP-in-C 项目都用：</p>
 <ul>
 <li>Linux 内核：<code>struct gpio_chip</code> 嵌进 <code>struct platform_device</code> 嵌进 <code>struct device</code>，逐层下沉</li>
 <li>Zephyr RTOS：<code>struct k_thread</code> 嵌进 <code>struct _thread_base</code>，调度器只看 base</li>
@@ -320,7 +320,7 @@ bool led_base_is_on(const struct led_base *me)
 	return me-&gt;is_on;
 }
 </code></pre>
-<p>调用的时候，子类用 <code>&amp;me-&gt;base</code> 把基类部分递过去：</p>
+<p>调用的时候，子类用 <code>&amp;me-&gt;base</code> 把父类部分递过去：</p>
 <pre><code class="language-c">struct led_gpio red_led;
 struct led_pwm  blue_led;
 led_gpio_init(&amp;red_led, "red",  13);
@@ -334,7 +334,7 @@ printf("blue name = %s\n", led_base_get_name(&amp;blue_led.base));
 <p><img src="../assets/ch06/slide5_base_init.png" alt="base_init"></p>
 <p><img src="../assets/ch06/slide6_行为共享.png" alt="行为共享"></p>
 <h2 id="66-这个东西叫什么"><a class="header" href="#66-这个东西叫什么">6.6 这个东西叫什么</a></h2>
-<p>把多个 struct 的公共字段提到一个 base struct，让每个 struct 把它嵌套进来作为第一个字段，再让基类的函数通过 <code>&amp;me-&gt;base</code> 服务所有子类。</p>
+<p>把多个 struct 的公共字段提到一个 base struct，让每个 struct 把它嵌套进来作为第一个字段，再让父类的函数通过 <code>&amp;me-&gt;base</code> 服务所有子类。</p>
 <p>这件事软件工程里有个名字。</p>
 <p>它叫继承（Inheritance）。</p>
 <p>C++ 里这一套不是这么写的：</p>
@@ -359,18 +359,18 @@ public:
 <p><code>class led_gpio : public led_base</code> 这一行在底层做的事情，就是把 <code>led_base</code> 当作 <code>led_gpio</code> 实例的第一个布局成员。<code>led_gpio</code> 实例的内存图和你在 C 里手写的 <code>struct led_gpio { struct led_base base; uint8_t pin; }</code> 一字不差。</p>
 <p>C++ 还偷偷帮你做了第二件事：调用 <code>led_gpio g;</code> 自动调一遍 <code>led_base</code> 的构造函数，再调 <code>led_gpio</code> 的构造函数。这就是你在 <code>led_gpio_init</code> 里手动调 <code>led_base_init</code> 的事情。编译器帮你做了。</p>
 <p><img src="../assets/ch06/slide8_CvsCpp.png" alt="C 对比 C++"></p>
-<p>费曼讲过：被自己说服才叫理解。八种 LED 里 <code>name + is_on</code> 抄了八遍这个痛点你刚才认了。提公因式这个解法是你小学会的工具。把字段塞进一个 base struct + 子类嵌套 + 子类 init 第一行调基类 init，是你刚才一步一步推出来的。这就叫继承，不是从课本背的。</p>
+<p>费曼讲过：被自己说服才叫理解。八种 LED 里 <code>name + is_on</code> 抄了八遍这个痛点你刚才认了。提公因式这个解法是你小学会的工具。把字段塞进一个 base struct + 子类嵌套 + 子类 init 第一行调父类 init，是你刚才一步一步推出来的。这就叫继承，不是从课本背的。</p>
 <h2 id="67-视频里没讲透的几个细节"><a class="header" href="#67-视频里没讲透的几个细节">6.7 视频里没讲透的几个细节</a></h2>
 <h3 id="671-为什么-base-必须放第一个"><a class="header" href="#671-为什么-base-必须放第一个">6.7.1 为什么 base 必须放第一个</a></h3>
 <p>技术上你把 <code>struct led_base base</code> 放在 <code>struct led_gpio</code> 的第二个、第三个字段也能编译过。但有一个性质会被破坏：<strong>base 字段的地址 = 整个 struct 的地址</strong>。</p>
 <p>C11 标准 6.7.2.1 节第 15 段保证：结构体第一个成员的偏移量是 0。所以 <code>&amp;gpio-&gt;base == (struct led_base *)gpio</code>，没有任何额外加法。</p>
 <p>如果 base 不在第一个位置，<code>&amp;gpio-&gt;base</code> 等于 <code>(uint8_t *)gpio + offsetof(struct led_gpio, base)</code>，编译器要做一次地址加法。这件事的代价不在性能上（一次加法可以忽略），代价在向上转型上：</p>
-<p>第 12 章你会看到，把 <code>struct led_gpio *</code> 直接当作 <code>struct led_base *</code> 传给基类函数，前提就是两者地址相同。如果 base 不在第一个位置，<code>(struct led_base *)&amp;red_led</code> 这个强制类型转换就会读到错位的字段，整个驱动数据全乱。</p>
-<p>Linux 内核、Zephyr RTOS、GObject 这三个全球最大的 OOP-in-C 项目，都把“基类放第一个“列为硬规则。Linux 内核源码里几乎每一个嵌套结构体都遵守。</p>
+<p>第 12 章你会看到，把 <code>struct led_gpio *</code> 直接当作 <code>struct led_base *</code> 传给父类函数，前提就是两者地址相同。如果 base 不在第一个位置，<code>(struct led_base *)&amp;red_led</code> 这个强制类型转换就会读到错位的字段，整个驱动数据全乱。</p>
+<p>Linux 内核、Zephyr RTOS、GObject 这三个全球最大的 OOP-in-C 项目，都把“父类放第一个“列为硬规则。Linux 内核源码里几乎每一个嵌套结构体都遵守。</p>
 <h3 id="672-这一章-base-服务三种-led-子类"><a class="header" href="#672-这一章-base-服务三种-led-子类">6.7.2 这一章 base 服务三种 LED 子类</a></h3>
 <p>第 1 章到第 5 章里你的 <code>struct led</code> 单一类型，第 6 章这里抽出来的 <code>struct led_base</code> 服务三种 LED 子类（GPIO / PWM / I2C）。<strong>这个 base 是 LED 这一类设备的共用底座</strong>，不是给 Motor / EEPROM 用的。</p>
 <p>工业代码里每一类设备都有自己的 base：<code>led_base</code> 给 LED 子类共用，<code>motor_base</code> 给 Motor 子类共用，<code>eeprom_base</code> 给 EEPROM 子类共用。同一类设备的不同硬件实现共享一个 base，跨类不强行共享。这样每个 base 字段都是这一类设备真正共有的，不会有“Motor 没有 is_on“这种放错地方的字段。</p>
-<p>如果未来真的发现“所有外设设备都需要 name + last_op_time“，工程上的做法是再抽一层 <code>device_base</code>，让 <code>led_base / motor_base / eeprom_base</code> 都嵌它。Linux 内核 <code>struct device</code> 就是这一层。本书 ch06 到 ch11 只展开 LED 这一类，多类设备的“二级抽象“留给附录 A 三大开源项目对照里讲。</p>
+<p>如果未来真的发现“所有外设设备都需要 name + last_op_time“，工程上的做法是再抽一层 <code>device_base</code>，让 <code>led_base / motor_base / eeprom_base</code> 都嵌它。Linux 内核 <code>struct device</code> 就是这一层。本书 ch06 到 ch11 只展开 LED 这一类，多类设备的“二级抽象“在 ch19 Zephyr 实战和 ch20 Linux 实战里你会看到真实开源项目里的形态。</p>
 <h3 id="673-sub-class-init-调-base-init-失败要不要回滚"><a class="header" href="#673-sub-class-init-调-base-init-失败要不要回滚">6.7.3 sub-class init 调 base init 失败要不要回滚</a></h3>
 <p>你写了：</p>
 <pre><code class="language-c">int led_gpio_init(struct led_gpio *me, const char *name, uint8_t pin)
@@ -412,7 +412,7 @@ struct led_gpio {
 };                             /* sizeof = 24 */
 </code></pre>
 <p>外层 struct 也要按里层 struct 的对齐规则对齐。整个 <code>struct led_gpio</code> 的对齐变成 8 字节（取决于 base 里最大对齐的字段）。</p>
-<p>在 RAM 紧张的 MCU 上，给基类加一个 <code>uint64_t</code> 字段会让所有子类的 sizeof 跳一截。这是真实工程里争“该不该把这个字段下沉到 base“时的常见考量。</p>
+<p>在 RAM 紧张的 MCU 上，给父类加一个 <code>uint64_t</code> 字段会让所有子类的 sizeof 跳一截。这是真实工程里争“该不该把这个字段下沉到 base“时的常见考量。</p>
 <p><img src="../assets/ch06/slide4_内存布局.png" alt="内存布局"></p>
 <h3 id="675-为什么不直接-struct-led_base-red_led"><a class="header" href="#675-为什么不直接-struct-led_base-red_led">6.7.5 为什么不直接 (struct led_base *)&amp;red_led</a></h3>
 <p>C 里另一种写法是：</p>
@@ -474,7 +474,7 @@ struct pwm_channel *p = &amp;fan.pwm;      /* 只是访问内部的零件，风�
 <li>一个对象需要某个工具（风扇需要 PWM 来调速）→ <strong>组合</strong>。这种关系下“风扇是一种 PWM“讲不通，“风扇拥有一个 PWM“才对</li>
 </ul>
 <p><img src="../assets/ch06/slide9_继承vs组合.png" alt="继承 vs 组合"></p>
-<p>那本《设计模式》（GoF）有句被反复引用的话：“优先用组合而不是继承”。这句话是 90 年代为应用层 Java / C++ 业务系统说的：那种场景里多层继承容易让基类一改全崩。但内核驱动这种“统一接口 + 大量芯片实现“的场景，继承（把父类嵌进子类第一个字段）才是世界标准，解决的就是“N 家芯片 + 1 套接口“的问题，没有第二个答案。</p>
+<p>那本《设计模式》（GoF）有句被反复引用的话：“优先用组合而不是继承”。这句话是 90 年代为应用层 Java / C++ 业务系统说的：那种场景里多层继承容易让父类一改全崩。但内核驱动这种“统一接口 + 大量芯片实现“的场景，继承（把父类嵌进子类第一个字段）才是世界标准，解决的就是“N 家芯片 + 1 套接口“的问题，没有第二个答案。</p>
 <p>不要套教条。看场景。</p>
 <h3 id="677-应用层视角调用方知不知道继承"><a class="header" href="#677-应用层视角调用方知不知道继承">6.7.7 应用层视角：调用方知不知道继承</a></h3>
 <p>调用层写：</p>
@@ -482,7 +482,7 @@ struct pwm_channel *p = &amp;fan.pwm;      /* 只是访问内部的零件，风�
 led_gpio_init(&amp;red_led, "red", 13);
 led_on(&amp;red_led);
 </code></pre>
-<p>应用层根本不关心 <code>struct led_gpio</code> 内部还嵌了一个 <code>struct led_base</code>。它只调 <code>led_*</code> 这一组对外 API（这一章的 <code>led_on / led_off</code> 还接 <code>struct led_gpio *</code>，第 11 章演化为 <code>struct led_base *</code> 之后应用层就只看到基类指针了）。</p>
+<p>应用层根本不关心 <code>struct led_gpio</code> 内部还嵌了一个 <code>struct led_base</code>。它只调 <code>led_*</code> 这一组对外 API（这一章的 <code>led_on / led_off</code> 还接 <code>struct led_gpio *</code>，第 11 章演化为 <code>struct led_base *</code> 之后应用层就只看到父类指针了）。</p>
 <p>继承在这里不是“应用层多了一种东西要学“，是“驱动层内部少抄了一些代码“。应用层从 ch01 一字不改的核心模式（<code>xxx_init + xxx_on</code>）一直延续，变的只是 init 多了一个 <code>name</code> 参数。</p>
 <p>这件事是这本书的底色：每一章引入一个新机制，应用层永远稳定。变的是驱动层内部如何把“重复“和“扩展“分离。这是工业代码做大也做不烂的核心。</p>
 <h2 id="68-你现在的代码在-stm32-上长什么样"><a class="header" href="#68-你现在的代码在-stm32-上长什么样">6.8 你现在的代码在 STM32 上长什么样</a></h2>
@@ -511,11 +511,11 @@ void platform_gpio_write(uint8_t pin, bool value)
 }
 </code></pre>
 <p>注意：<code>led_base.h</code>、<code>led_base.c</code>、<code>led_gpio.h</code>、<code>led_gpio.c</code>、<code>led_pwm.h</code>、<code>led_pwm.c</code>、<code>main.c</code> 一字不改。</p>
-<p>继承的所有变化都在驱动层内部。平台胶水的写法不变，因为基类抽象的是“驱动数据怎么组织“，不是“硬件怎么访问“。</p>
+<p>继承的所有变化都在驱动层内部。平台胶水的写法不变，因为父类抽象的是“驱动数据怎么组织“，不是“硬件怎么访问“。</p>
 <p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。真正工业级用虚函数表（ops 表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="69-你现在的代码在-linux-用户态长什么样"><a class="header" href="#69-你现在的代码在-linux-用户态长什么样">6.9 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="610-工业代码里的基类长什么样"><a class="header" href="#610-工业代码里的基类长什么样">6.10 工业代码里的基类长什么样</a></h2>
+<h2 id="610-工业代码里的父类长什么样"><a class="header" href="#610-工业代码里的父类长什么样">6.10 工业代码里的父类长什么样</a></h2>
 <p>工业控制板项目里，base 抽象是这样的（不是完整代码，是片段）：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;        /* forward decl */
@@ -540,10 +540,10 @@ extern struct led_base *red_led;
 <ol>
 <li>base 里只放所有 LED 都共有的“状态层“信息（name / is_on / flags），不放 pin</li>
 <li>pin 在子类 <code>struct led_gpio</code> 里，PWM 子类有 <code>channel</code>，I2C 子类有 <code>bus + addr</code></li>
-<li>应用层拿到的句柄是 <code>struct led_base *</code>（基类指针），不是某个具体子类的指针</li>
+<li>应用层拿到的句柄是 <code>struct led_base *</code>（父类指针），不是某个具体子类的指针</li>
 </ol>
-<p>第 3 点是这本书后面要讲的“向上转型“（第 12 章）。基类指针把所有具体类型藏起来，应用层只看到一个统一的 <code>struct led_base *</code>。</p>
-<p>但骨架就是你这一章学的：<strong>子类把基类放在第一个字段，硬件特定字段下沉到子类</strong>。剩下的复杂度都是这条骨架上的演化。</p>
+<p>第 3 点是这本书后面要讲的“向上转型“（第 12 章）。父类指针把所有具体类型藏起来，应用层只看到一个统一的 <code>struct led_base *</code>。</p>
+<p>但骨架就是你这一章学的：<strong>子类把父类放在第一个字段，硬件特定字段下沉到子类</strong>。剩下的复杂度都是这条骨架上的演化。</p>
 <h2 id="611-跑一遍"><a class="header" href="#611-跑一遍">6.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/06-inherit-pain/pc
 make

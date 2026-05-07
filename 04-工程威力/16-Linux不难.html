@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -467,7 +467,7 @@ void led_gpio_brightness_set(struct gpio_desc *desc, int value)
 }
 </code></pre>
 <h3 id="文件-3gpio_chiph49-行"><a class="header" href="#文件-3gpio_chiph49-行">文件 3：<code>gpio_chip.h</code>（49 行）</a></h3>
-<p>基类接口。<code>struct gpio_chip</code> 是每家芯片要实现的“模板“，<code>struct gpio_desc</code> 是 consumer 拿到的句柄。</p>
+<p>父类接口。<code>struct gpio_chip</code> 是每家芯片要实现的“模板“，<code>struct gpio_desc</code> 是 consumer 拿到的句柄。</p>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
 /*
  * gpio_chip.h - "山寨" 一份 Linux 内核 gpio_chip
@@ -801,6 +801,7 @@ rt_pin_write(LED_PIN, PIN_HIGH);
 <blockquote>
 <p>这本书 ch15 教你怎么自抽 platform 层. 它的反面同样重要: 看到内核已经抽好的环境 (Linux / Zephyr / RT-Thread / NuttX), 别再抽. 自抽 platform 不是工业级的标志, <strong>会判断什么时候不抽才是</strong>. 这是 ch15 / ch16 / 附录 B / 附录 C 四个章节合起来想送给你的工程判断力.</p>
 </blockquote>
+<p>Zephyr driver framework 完整工程·照着 5 分钟跑通·见<strong>附录 B</strong>。</p>
 <h2 id="1614-应用层驱动-vs-内核层驱动怎么选"><a class="header" href="#1614-应用层驱动-vs-内核层驱动怎么选">16.14 应用层驱动 vs 内核层驱动：怎么选</a></h2>
 <p>上一节讲清楚了“内核已做完别再抽“. 但 Linux 这一档环境上还有第二个问题: 你要写一个新硬件的驱动, 写在哪一层. 应用层 (libgpiod / sysfs / iio / spidev / i2c-dev) 还是内核层 (driver model / kernel module). 工程师面试聊到这一关, 一半人答不清楚. 这一节给你一份判断表.</p>
 <p>先把两种位置的差别拉平来看:</p>
@@ -847,6 +848,7 @@ rt_pin_write(LED_PIN, PIN_HIGH);
 <blockquote>
 <p>写驱动的本事不在于会写, 在于会判断 “这一层该不该有”. 工业代码里最贵的不是开发时间, 是 5 年后还能不能维护得动. 走对位置, 维护成本砍 10 倍.</p>
 </blockquote>
+<p>Linux 用户态写应用 + 自己写一个 platform driver 模块的完整流程·见<strong>附录 C</strong>·你会亲手在 Raspberry Pi 4B 上跑一个 leds-status.ko。</p>
 <h2 id="1615-视频回放"><a class="header" href="#1615-视频回放">16.15 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV13WofBcEmv/">《C 语言·为什么 Linux 一点都不难·Platform 层·分层威力·AI 时代》</a></p>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -332,7 +332,7 @@ void led_on(LedBase *base)
 
 led_on(red);   /* 调用方写法 */
 </code></pre>
-<p><strong>右边是 C++</strong>。<code>class LedBase</code> 里两个 virtual 函数。一个基类引用 red 绑到 led_gpio，直接调 <code>red.on()</code>。编译器悄悄查 vptr、查 vtable、找到 on 函数。也是两次跳转：</p>
+<p><strong>右边是 C++</strong>。<code>class LedBase</code> 里两个 virtual 函数。一个父类引用 red 绑到 led_gpio，直接调 <code>red.on()</code>。编译器悄悄查 vptr、查 vtable、找到 on 函数。也是两次跳转：</p>
 <pre><code class="language-cpp">class LedBase {
 public:
     virtual void on()  = 0;
@@ -340,7 +340,7 @@ public:
 };
 /* 编译器自动加 vptr · 自动建 vtable */
 
-LedBase &amp;red = led_gpio;   /* 基类引用 → 子类对象 */
+LedBase &amp;red = led_gpio;   /* 父类引用 → 子类对象 */
 red.on();                  /* virtual 调用 */
 </code></pre>
 <p>底层完全一样：</p>
@@ -372,7 +372,7 @@ void led_handle(LedBase *base)
 }
 /* 运行时 · 查 type_info 表 · 有性能开销 */
 </code></pre>
-<p>同样是“基类指针反推子类“，C 在编译期就算完了。C++ 运行时算。</p>
+<p>同样是“父类指针反推子类“，C 在编译期就算完了。C++ 运行时算。</p>
 <p><code>container_of</code> 一旦编译完，就是一条减法指令。</p>
 <p>这是 C 在嵌入式不输 C++ 的关键：零运行时代价做完同样的事。</p>
 <p><img src="../assets/ch18/slide6b_向下转型代码对比.png" alt="向下转型代码对比"></p>
@@ -424,8 +424,8 @@ do_initcalls      =  crt0
 <tr><td>信息隐藏</td><td>static / .h 不暴露</td><td>private / protected</td></tr>
 <tr><td>构造 / 析构</td><td><code>xxx_init</code> / <code>xxx_deinit</code></td><td>构造函数 / 析构函数</td></tr>
 <tr><td>继承</td><td>struct 嵌套 LedBase</td><td><code>class : public LedBase</code></td></tr>
-<tr><td>基类初始化</td><td>调 <code>led_base_init()</code></td><td>初始化列表自动调基类构造</td></tr>
-<tr><td>行为继承</td><td><code>led_get_name(&amp;x.base)</code></td><td><code>x.getName()</code>（自动查基类）</td></tr>
+<tr><td>父类初始化</td><td>调 <code>led_base_init()</code></td><td>初始化列表自动调父类构造</td></tr>
+<tr><td>行为继承</td><td><code>led_get_name(&amp;x.base)</code></td><td><code>x.getName()</code>（自动查父类）</td></tr>
 <tr><td>虚函数表</td><td><code>LedOps</code> struct（手动）</td><td>vtable（编译器自动生成）</td></tr>
 <tr><td>ops 指针随身带</td><td><code>base.ops = &amp;gpio_ops</code>（手动）</td><td>含 virtual 的类 · 编译器自动加 vptr</td></tr>
 <tr><td>多态 dispatch</td><td><code>base-&gt;ops-&gt;on(base)</code></td><td><code>base-&gt;on()</code>（virtual）</td></tr>

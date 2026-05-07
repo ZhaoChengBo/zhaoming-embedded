@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:50px 80px;
+    position:relative;
+  }
+  .title{font-size:60px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:50px;text-align:center;letter-spacing:1px}
+
+  .main{display:flex;gap:48px;width:100%;max-width:1700px;justify-content:center;align-items:stretch}
+
+  .col{
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:16px;
+    padding:34px 40px;flex:1;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+    display:flex;flex-direction:column;
+  }
+  .badge{
+    display:inline-block;
+    padding:6px 18px;border-radius:50px;
+    font-size:18px;font-weight:700;letter-spacing:1px;
+    margin-bottom:18px;align-self:flex-start;
+  }
+  .badge-green{background:#E8F5E9;color:#2A8C4A}
+  .badge-orange{background:#FFE9D5;color:#C44511}
+
+  .col-title{font-size:30px;font-weight:800;color:#1A1A1A;margin-bottom:8px}
+  .col-sub{font-size:18px;color:#888;margin-bottom:22px}
+
+  .hardware-table{
+    font-size:20px;line-height:2.0;color:#333;
+  }
+  .hardware-table .row{
+    display:flex;justify-content:space-between;
+    padding:8px 0;border-bottom:1px dashed #E8E8E5;
+  }
+  .hardware-table .row:last-child{border-bottom:none}
+  .hardware-table .label{font-weight:600;color:#5F3DC4}
+  .hardware-table .val{font-family:"Cascadia Code","Consolas",monospace;color:#333}
+
+  pre{
+    font-family:"Cascadia Code","Consolas","Courier New",monospace;
+    font-size:20px;line-height:1.9;color:#333;white-space:pre;
+  }
+  .kw{color:#7B5EA7;font-weight:600}
+  .fn{color:#E8633A;font-weight:600}
+  .tp{color:#2A8C4A;font-weight:600}
+  .cm{color:#999;font-style:italic}
+  .num{color:#C44511}
+
+  .footer-quote{
+    margin-top:46px;
+    font-size:34px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">device tree <span class="accent">硬件清单的文字版</span></div>
+<div class="subtitle">不写在 C 代码里 · 不动 driver · 只写硬件参数</div>
+
+<div class="main">
+  <div class="col">
+    <span class="badge badge-green">硬件清单</span>
+    <div class="col-title">stm32f4_disco 板</div>
+    <div class="col-sub">板上 4 颗 LED · 接到 GPIOD</div>
+    <div class="hardware-table">
+      <div class="row"><span class="label">LD3 橙</span><span class="val">PD13 · active high</span></div>
+      <div class="row"><span class="label">LD4 绿</span><span class="val">PD12 · active high</span></div>
+      <div class="row"><span class="label">LD5 红</span><span class="val">PD14 · active high</span></div>
+      <div class="row"><span class="label">LD6 蓝</span><span class="val">PD15 · active high</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <span class="badge badge-orange">.dts 文件</span>
+    <div class="col-title">stm32f4_disco.dts</div>
+    <div class="col-sub">同样四颗 LED · 用文本描述出来</div>
+    <pre>
+<span class="kw">leds</span> {
+    compatible = <span class="tp">"gpio-leds"</span>;
+    orange_led_3: <span class="kw">led_3</span> {
+        gpios = &lt;&amp;gpiod <span class="num">13</span> GPIO_ACTIVE_HIGH&gt;;
+        label = <span class="tp">"User LD3"</span>;
+    };
+    <span class="cm">/* green / red / blue 同上 */</span>
+};
+<span class="kw">aliases</span> {
+    led0 = &amp;green_led;
+};
+    </pre>
+  </div>
+</div>
+
+<div class="footer-quote">硬件参数 · 全部从 driver 抽出来</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

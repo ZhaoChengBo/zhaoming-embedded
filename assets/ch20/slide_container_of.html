@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:50px 80px;
+    position:relative;
+  }
+  .title{font-size:58px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:46px;text-align:center;letter-spacing:1px}
+
+  .main{
+    display:flex;gap:50px;width:100%;max-width:1760px;
+    justify-content:center;align-items:stretch;
+  }
+
+  .left-card,.right-card{
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:16px;
+    padding:30px 34px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+    display:flex;flex-direction:column;
+  }
+  .left-card{flex:0 0 46%}
+  .right-card{flex:1}
+
+  .card-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .badge{font-size:16px;font-weight:700;padding:5px 16px;border-radius:50px;letter-spacing:1px}
+  .badge-green{background:#E8F5E9;color:#2A8C4A}
+  .badge-purple{background:#E5E0F5;color:#5F3DC4}
+  .badge-orange{background:#FFE9D5;color:#C44511}
+  .card-title{font-size:22px;font-weight:700;color:#1A1A1A}
+
+  /* 内存布局 · 真实 div 矩形 · 不是 ASCII art */
+  .struct-name{
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:20px;color:#5F3DC4;font-weight:600;
+    margin-bottom:14px;
+  }
+  .mem-blocks{
+    display:flex;flex-direction:column;gap:0;
+    border:2px solid #5F3DC4;border-radius:8px;
+    overflow:hidden;
+  }
+  .mem-row{
+    display:flex;align-items:center;
+    padding:18px 20px;
+    border-bottom:1.5px dashed #B8A6E8;
+    background:#FFF;
+    position:relative;
+  }
+  .mem-row:last-child{border-bottom:none}
+  .mem-row.highlight{background:#EDE9FE}
+  .mem-offset{
+    flex:0 0 100px;
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:16px;color:#999;font-weight:600;
+  }
+  .mem-field{
+    flex:1;
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:18px;color:#1A1A1A;font-weight:600;
+  }
+  .mem-field .tp{color:#2A8C4A}
+  .mem-size{
+    flex:0 0 90px;
+    text-align:right;
+    font-size:14px;color:#999;font-style:italic;
+  }
+  .mem-marker{
+    position:absolute;left:-90px;
+    font-size:14px;color:#E8633A;font-weight:700;letter-spacing:1px;
+  }
+
+  .mem-note{
+    margin-top:14px;font-size:16px;color:#666;line-height:1.6;
+  }
+  .mem-note strong{color:#E8633A}
+
+  /* 右侧公式 */
+  .formula-block{
+    margin-bottom:22px;
+  }
+  .formula-block:last-child{margin-bottom:0}
+  .formula-label{
+    font-size:16px;color:#999;font-weight:600;letter-spacing:1px;
+    margin-bottom:8px;
+  }
+  pre{
+    font-family:"Cascadia Code","Consolas","Courier New",monospace;
+    font-size:20px;line-height:1.7;color:#333;white-space:pre;
+    background:#FAFAF8;padding:14px 18px;border-radius:8px;
+    border:1px solid #E8E8E5;
+  }
+  .kw{color:#7B5EA7;font-weight:600}
+  .fn{color:#E8633A;font-weight:600}
+  .tp{color:#2A8C4A;font-weight:600}
+  .cm{color:#999;font-style:italic}
+  .num{color:#C44511}
+  .hl-green{background:#E8F5E9;padding:2px 6px;border-radius:4px}
+  .hl-purple{background:#EDE9FE;padding:2px 6px;border-radius:4px}
+  .hl-orange{background:#FFEDD5;padding:2px 6px;border-radius:4px}
+
+  .formula-explain{
+    font-size:17px;color:#555;line-height:1.6;
+    margin-top:8px;
+  }
+
+  .footer-quote{
+    margin-top:42px;
+    font-size:32px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">container_of <span class="accent">父类指针 &rarr; 子类指针</span></div>
+<div class="subtitle">offsetof + 强转 · ch13 字面公式</div>
+
+<div class="main">
+  <div class="left-card">
+    <div class="card-header">
+      <span class="badge badge-purple">内存布局</span>
+      <span class="card-title">struct gpio_led_data</span>
+    </div>
+    <div class="struct-name">从对象起始地址往后看</div>
+    <div class="mem-blocks">
+      <div class="mem-row highlight">
+        <span class="mem-marker">cdev &rarr;</span>
+        <div class="mem-offset">+0</div>
+        <div class="mem-field"><span class="kw">struct</span> <span class="tp">led_classdev</span> cdev;</div>
+        <div class="mem-size">~64 B</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-offset">+64</div>
+        <div class="mem-field"><span class="kw">struct</span> <span class="tp">gpio_desc</span> *gpiod;</div>
+        <div class="mem-size">8 B</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-offset">+72</div>
+        <div class="mem-field"><span class="kw">bool</span> can_sleep;</div>
+        <div class="mem-size">1 B</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-offset">+73</div>
+        <div class="mem-field"><span class="cm">// pad &amp; more...</span></div>
+        <div class="mem-size">&hellip;</div>
+      </div>
+    </div>
+    <div class="mem-note">
+      <strong>cdev 在第一个字段</strong> · 它的地址 = 整个对象的地址
+    </div>
+  </div>
+
+  <div class="right-card">
+    <div class="card-header">
+      <span class="badge badge-orange">公式展开</span>
+      <span class="card-title">从 cdev 反推回 gpio_led_data</span>
+    </div>
+
+    <div class="formula-block">
+      <div class="formula-label">读者写</div>
+      <pre><span class="hl-orange"><span class="fn">container_of</span>(led_cdev,
+             <span class="kw">struct</span> <span class="tp">gpio_led_data</span>,
+             cdev)</span></pre>
+    </div>
+
+    <div class="formula-block">
+      <div class="formula-label">宏展开 &rarr; offsetof + 强转</div>
+      <pre>(<span class="kw">struct</span> <span class="tp">gpio_led_data</span> *)(
+    (<span class="kw">char</span> *)led_cdev <span class="cm">/* 父类指针 */</span>
+    - <span class="hl-green"><span class="fn">offsetof</span>(<span class="kw">struct</span> <span class="tp">gpio_led_data</span>, cdev)</span>
+)
+<span class="cm">// offsetof(..., cdev) == 0</span>
+<span class="cm">// 直接强转就是它</span></pre>
+      <div class="formula-explain">
+        cdev 在第一字段 &rarr; offset 为 <span class="num">0</span> &rarr;
+        减 0 等于不动 &rarr; 强转完事
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-quote">字段在第一字段时 · offset = 0 · 强转就是它</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

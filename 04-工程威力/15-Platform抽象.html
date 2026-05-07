@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -769,7 +769,7 @@ int board_init(void)
 └── linux-driver/userspace/          Linux 用户态 (直接 libgpiod / sysfs / i2c-dev,
                                                   没有 platform 层)
 </code></pre>
-<p>每个子类一份独立的 <code>.h / .c</code>，跟 <code>industrial/stm32_full/app/drivers/led/</code> 工业代码一字不差。教学上的好处：加一种新硬件 (例如 SPI 移位寄存器 LED) 只新增 <code>led_spi.h / led_spi.c</code> 一对文件，原有三个子类一字不动；review 时也能 <code>git log led_pwm.c</code> 直接拿到 PWM 这一路独立的演化历史。<code>led.h / led.c</code> 单文件版本 ch15 第一稿用过, 拆开后子类边界更清晰, ch16 / 附录 B / 附录 C 也都按这个组织.</p>
+<p>每个子类一份独立的 <code>.h / .c</code>，和工业项目里 LED 驱动模块的组织一字不差。教学上的好处：加一种新硬件 (例如 SPI 移位寄存器 LED) 只新增 <code>led_spi.h / led_spi.c</code> 一对文件，原有三个子类一字不动；review 时也能 <code>git log led_pwm.c</code> 直接拿到 PWM 这一路独立的演化历史。<code>led.h / led.c</code> 单文件版本 ch15 第一稿用过, 拆开后子类边界更清晰, ch16 / 附录 B / 附录 C 也都按这个组织.</p>
 <p><code>drivers/</code> + <code>platform/</code> + <code>platform/arch/&lt;mcu&gt;/</code> 这一组工业级跨 MCU 分层在本章正文 § 15.10 / § 15.11.5 已经讲过, 是 STM32 vs NXP “换 MCU 改一份 pin_board.c” 的代码兑现层, 不在本节的“代码块抄一遍跑通“流程里。<code>linux-driver/userspace/</code> 是 Linux 用户态实战代码 (没有 platform 层), 见 § 15.11.</p>
 <h3 id="文件-1mainc"><a class="header" href="#文件-1mainc">文件 1：<code>main.c</code></a></h3>
 <pre><code class="language-c">/* SPDX-License-Identifier: MIT */
@@ -1163,9 +1163,9 @@ make
 <p>最后一节 § 15.17 把 ch15 主线之外的 platform 层全貌补齐: 工业项目 platform 层完整有几个外设、I2C 为什么比 GPIO 多一层 bus + client、这一套设计跟 Linux i2c 子系统骨架的逐字对应关系。看完 § 15.17, 你看到的就不是 ch15 教学版三个外设, 而是整个 platform 抽象的完整光谱。</p>
 <h2 id="1517-工业-platform-层完整清单--i2c-二层--linux-i2c-子系统对照"><a class="header" href="#1517-工业-platform-层完整清单--i2c-二层--linux-i2c-子系统对照">15.17 工业 platform 层完整清单 + I2C 二层 + Linux i2c 子系统对照</a></h2>
 <h3 id="15171-工业项目-platform-层有多大"><a class="header" href="#15171-工业项目-platform-层有多大">15.17.1 工业项目 platform 层有多大</a></h3>
-<p>ch15 主线只展示 <code>platform_pin</code> / <code>platform_pwm</code> / <code>platform_i2c</code> 三个外设。真实工业项目 (本书 <code>industrial/platform_layer/</code> 脱敏版, 脱胎自一台 STM32H7 控制板) 覆盖一组 12 个 platform 接口:</p>
+<p>ch15 主线只展示 <code>platform_pin</code> / <code>platform_pwm</code> / <code>platform_i2c</code> 三个外设。我做过的一台 STM32H7 控制板项目, 真实的 platform 层覆盖一组 12 个接口:</p>
 <blockquote>
-<p>注: 表格列的是工业完整版 (<code>industrial/platform_layer/</code>) 的 ops 数·教学版 § 15.17.3 简化为只 <code>master_xfer</code>·让读者第一眼跑通。<code>slave_xfer / control</code> 在 industrial/ 实际工程里齐全·读者真机做完整工程参考 industrial/。</p>
+<p>注: 表格列的是工业完整版的 ops 数·教学版 § 15.17.3 简化为只 <code>master_xfer</code>·让读者第一眼跑通。<code>slave_xfer / control</code> 在工业实际工程里齐全·读者真机做完整工程时按本节描述补齐即可。</p>
 </blockquote>
 <div class="table-wrapper">
 <table>
@@ -1173,7 +1173,7 @@ make
 <tr><th>外设</th><th>ops 函数指针数</th><th>bus / device 二层?</th><th>文件量级</th></tr>
 </thead>
 <tbody>
-<tr><td>device</td><td>6 (init / open / close / read / write / control)</td><td>基类</td><td>~400 行</td></tr>
+<tr><td>device</td><td>6 (init / open / close / read / write / control)</td><td>父类</td><td>~400 行</td></tr>
 <tr><td>pin</td><td>7</td><td>单层</td><td>~230 行</td></tr>
 <tr><td>pwm</td><td>1 (control 内 8 cmd)</td><td>单层</td><td>~280 行</td></tr>
 <tr><td><strong>i2c</strong></td><td><strong>3 (master_xfer / slave_xfer / control)</strong></td><td><strong>是, bus + client + msg</strong></td><td><strong>~370 行</strong></td></tr>
@@ -1183,7 +1183,7 @@ make
 </tbody>
 </table>
 </div>
-<p>ch15 教学版选 3 个讲透机制, 完整 12 个接口看 <code>industrial/platform_layer/</code> (1:1 工业版, 已脱敏)。机制都是同一个 – ops 表 + register 注册 – 学一个推所有, 多出来的那 9 个看清 ops 表上挂什么函数即可。</p>
+<p>ch15 教学版选 3 个讲透机制, 完整 12 个接口的形态在本节后面顺手点过。机制都是同一个 – ops 表 + register 注册 – 学一个推所有, 多出来的那 9 个看清 ops 表上挂什么函数即可。</p>
 <h3 id="15172-i2c-为什么比-gpio-多一层"><a class="header" href="#15172-i2c-为什么比-gpio-多一层">15.17.2 i2c 为什么比 GPIO 多一层</a></h3>
 <p>GPIO 是单点 IO, 一个 pin 一个值。i2c 是<strong>总线 + 多设备</strong>: 一条 i2c 总线上挂多颗芯片 (温度传感器 0x48 + EEPROM 0x50 + RTC 0x68 …), <strong>多颗芯片共享同一组 SDA / SCL 线</strong>。</p>
 <p>这一脚就要二层抽象:</p>
@@ -1193,12 +1193,12 @@ make
 </ul>
 <p>bus 由 board 启动期注册一次 (<code>platform_i2c_bus_register</code>), client 由具体外设驱动构造期填好 (启动期上层调一次拿到 bus 句柄, 挂进 client.bus 字段)。GPIO 没这个问题: 一个 pin 编号已经唯一定位一个引脚, 不存在“挂在哪个 GPIO 控制器上“的二层关系 (内核里其实有 <code>gpio_chip</code>, 但应用层基本不感知)。</p>
 <blockquote>
-<p><strong>二层抽象本身和 OS 无关</strong>: <code>industrial/platform_layer/</code> 的 <code>struct platform_i2c_bus_device</code> 里有 <code>osMutex</code> 字段, 解决“多线程多 client 抢同一 bus“的并发问题。教学版单线程跑, 去掉 mutex, <strong>保留 bus + client + msg 三个 struct 即可</strong> —— 二层是设计抽象, mutex 是 OS 落地, 两件事分开看。读者读教学版时把 mutex 想象不存在, 机制本身完全成立; 真上 RTOS / Linux 多线程时把 mutex 加回来, 调一行 osMutexAcquire / osMutexRelease 包住 master_xfer 即可, 三个 struct 字段不动。</p>
+<p><strong>二层抽象本身和 OS 无关</strong>: 工业项目里 <code>struct platform_i2c_bus_device</code> 通常带一个 <code>osMutex</code> 字段, 解决“多线程多 client 抢同一 bus“的并发问题。教学版单线程跑, 去掉 mutex, <strong>保留 bus + client + msg 三个 struct 即可</strong> —— 二层是设计抽象, mutex 是 OS 落地, 两件事分开看。读者读教学版时把 mutex 想象不存在, 机制本身完全成立; 真上 RTOS / Linux 多线程时把 mutex 加回来, 调一行 osMutexAcquire / osMutexRelease 包住 master_xfer 即可, 三个 struct 字段不动。</p>
 </blockquote>
 <h3 id="15173-三个核心-struct--ops"><a class="header" href="#15173-三个核心-struct--ops">15.17.3 三个核心 struct + ops</a></h3>
 <p>ch15 教学版 <code>platform_i2c.h</code> 升级到 bus + client 二层后的核心三件:</p>
 <pre><code class="language-c">/* oop-in-c/code/15-platform/platform/platform_i2c.h, 教学简化版,
-   签名和 industrial/platform_layer/platform_i2c.h 工业版对齐 */
+   签名和工业项目的 platform_i2c.h 对齐 */
 
 #define PLATFORM_I2C_WR          0x0000
 #define PLATFORM_I2C_RD          0x0001
@@ -1235,7 +1235,7 @@ struct platform_i2c_client {
 <p>第一行是子类层打出来的语义日志 (NET 灯亮, 走 0x3C 客户端 0x00 寄存器), 第二行是 bus 控制器层打出来的字节流 (寄存器地址 0x00 + 写入值 0x01 共 2 字节)。<strong>两行对应二层的两次 dispatch – 子类 -&gt; bus</strong>, 第一眼跑 demo 就看到二层兑现的可视化输出。换成 STM32 真机, 第二行 printf 换成 <code>HAL_I2C_Master_Transmit</code> 一行, 子类源码字节级不动, 这就是二层抽象在跨平台移植上的代价 = 0。</p>
 <h3 id="15174-应用层用例-温度传感器-max31827-脱敏后的工业代码"><a class="header" href="#15174-应用层用例-温度传感器-max31827-脱敏后的工业代码">15.17.4 应用层用例: 温度传感器 max31827 (脱敏后的工业代码)</a></h3>
 <p>工业项目里 max31827 这种温度传感器走 i2c 读 12-bit 温度。它持有 bus + 客户端地址, 一次 transfer 拼两段 msg:</p>
-<pre><code class="language-c">/* 简化自 industrial/, 真实工程的 max31827_temp_read */
+<pre><code class="language-c">/* 简化自工业项目里 max31827_temp_read 的真实实现 */
 struct platform_i2c_msg msg[2];
 uint8_t tx_buf[1] = { 0x00 };  /* 寄存器地址 = 0x00 */
 uint8_t rx_buf[2];
@@ -1265,9 +1265,24 @@ uint32_t done = platform_i2c_transfer(dev-&gt;client.bus, msg, 2);
 </blockquote>
 <p><code>master_xfer</code> 这个函数名也是 Linux 的: <code>struct i2c_algorithm</code> 里有一个 <code>int (*master_xfer)(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)</code>, 工业 platform 层和 ch15 教学版的签名一字不差, 就少了 <code>struct i2c_algorithm</code> 这一层封装 (Linux 把 ops 表抽到独立的 <code>i2c_algorithm</code> 结构体里, 一个 algorithm 可以被多个 adapter 复用; 工业版省了这一层, 直接把 ops 表挂到 bus 上)。</p>
 <p>ch11 已经看过这套对应 (RT-Thread <code>gpio_chip</code> vs Linux <code>gpio_chip</code>), ch18 / 附录 C 还会再次看到 (Linux i2c 子系统的内核驱动如何通过 <code>i2c_register_driver</code> 挂上 <code>i2c_adapter</code>)。本书的“工业代码 = Linux 内核子系统骨架“主线在 i2c 这一层兑现得最直白: 不需要任何类比, 字段一一对应。</p>
+<p>把镜头切到 Zephyr 也是同一回事。Zephyr 的 i2c 抽象在 <code>include/zephyr/drivers/i2c.h</code>, 核心 ops 表叫 <code>struct i2c_driver_api</code>, 6 个核心函数指针 + 2 个条件编译可选: <code>configure / get_config / transfer / target_register / target_unregister / recover_bus</code>。<code>transfer</code> 对应教学版的 <code>master_xfer</code>, 签名 <code>int (*transfer)(const struct device *dev, struct i2c_msg *msgs, uint8_t num_msgs, uint16_t addr)</code> 几乎一字不差; <code>target_register / target_unregister</code> 是 i2c 从机角色 (Linux 走 <code>i2c_register_driver</code> 走的也是这一套 client 注册路径); <code>recover_bus</code> 是 i2c 总线 hang 死之后的恢复入口, Linux 走 <code>i2c_recover_bus</code>。命名拉成对照表:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>教学版 (ch15)</th><th>Zephyr i2c device</th><th>Linux i2c subsystem</th></tr>
+</thead>
+<tbody>
+<tr><td><code>struct platform_i2c_bus_device</code></td><td><code>const struct device *</code> (i2c controller)</td><td><code>struct i2c_adapter</code></td></tr>
+<tr><td><code>struct platform_i2c_client</code></td><td>i2c target (从机角色经 <code>i2c_target_register</code>)</td><td><code>struct i2c_client</code></td></tr>
+<tr><td><code>struct platform_i2c_msg</code></td><td><code>struct i2c_msg</code></td><td><code>struct i2c_msg</code></td></tr>
+<tr><td><code>master_xfer</code></td><td><code>i2c_driver_api.transfer</code></td><td><code>i2c_algorithm.master_xfer</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Zephyr 把 i2c 抽成两层 (controller / target) 和 Linux i2c subsystem (adapter / client) 思路一致, 只是命名不同, 都是教学版 i2c 二层抽象的工业级版。Zephyr i2c device 的完整工程跑法见<strong>附录 B</strong>。</p>
 <h3 id="15176-spi-也是同款二层"><a class="header" href="#15176-spi-也是同款二层">15.17.6 spi 也是同款二层</a></h3>
 <p>最后顺手点一句, 不展开:</p>
-<p>spi 也是 bus + device 二层 (一颗 MCU 1-4 条 SPI bus, 每 bus 挂多个 cs 片选下的设备)。机制和 i2c 同源 – 共享 SCK / MOSI / MISO 线, 用片选区分挂在 bus 上的多颗芯片。完整接口看 <code>industrial/platform_layer/platform_spi.h</code>, 字段对照 Linux <code>struct spi_master / struct spi_device</code>。</p>
+<p>spi 也是 bus + device 二层 (一颗 MCU 1-4 条 SPI bus, 每 bus 挂多个 cs 片选下的设备)。机制和 i2c 同源 – 共享 SCK / MOSI / MISO 线, 用片选区分挂在 bus 上的多颗芯片。完整接口工业项目里有一份 <code>platform_spi.h</code>, 字段一一对照 Linux <code>struct spi_master / struct spi_device</code>。</p>
 <p>那 12 个外设里, <strong>只有 i2c 和 spi 是二层</strong>。其他全是单层 – pin / pwm / uart / adc / hwtimer 这些都不存在 “一条总线挂多颗芯片” 的物理结构。看清楚二层只在 bus 类外设上需要, 你就抓到了 platform 层抽象的完整光谱: 大部分外设单层就够, 只有总线类外设升二层。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>你的框架完整了。但它只隔离了主板的变化（同一份应用，三种 LED 硬件混搭）。</p>

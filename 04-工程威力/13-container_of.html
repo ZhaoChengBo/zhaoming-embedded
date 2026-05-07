@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -361,7 +361,7 @@ offsetof(struct led_i2c,  base) = 0
 <p>如果把 <code>container_of</code> 换回第 12 章的 <code>(struct led_gpio *)me</code>，self 指针位置算错 4 字节，<code>magic</code> 当场变成乱码。</p>
 <h3 id="1383-container_of-在内核里出现多少次"><a class="header" href="#1383-container_of-在内核里出现多少次">13.8.3 container_of 在内核里出现多少次</a></h3>
 <p>整个 Linux 内核源码 <code>git grep -c container_of</code> 大概 4-5 万处。从字符设备到网络栈到块层到内存管理子系统，到处都是这一行。</p>
-<p>它撑起了 Linux 整套“基类（subsystem 的 struct）+ 子类（驱动 driver 的 struct）“模式。读到内核任何一个驱动的回调函数，第一行十有八九就是 container_of。</p>
+<p>它撑起了 Linux 整套“父类（subsystem 的 struct）+ 子类（驱动 driver 的 struct）“模式。读到内核任何一个驱动的回调函数，第一行十有八九就是 container_of。</p>
 <h3 id="1384-linux-内核版宏剖析硬核可跳过"><a class="header" href="#1384-linux-内核版宏剖析硬核可跳过">13.8.4 Linux 内核版宏剖析（硬核·可跳过）</a></h3>
 <p>刚学完 § 13.5 那个三步宏不需要看这一节。这里只是给后面真正读 Linux 内核源码的人留个完整记录，知道内核里那个长得吓人的版本到底在干什么。</p>
 <p>完整版定义在 Linux 内核 v6.6 LTS <code>include/linux/container_of.h</code> 第 18-23 行（如何获取内核源码做参考阅读见附录 D）：</p>

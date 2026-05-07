@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -223,7 +223,7 @@ test_led(&amp;green_led.base, &amp;led_ops_i2c);
 	.toggle = gpio_toggle,
 };
 </code></pre>
-<p>然后子类的 init 把这张表的地址传给基类 init：</p>
+<p>然后子类的 init 把这张表的地址传给父类 init：</p>
 <pre><code class="language-c">int led_base_init(struct led_base *me, const char *name,
                   const struct led_ops *ops)
 {
@@ -258,7 +258,7 @@ int led_pwm_init(struct led_pwm *me, const char *name,
 	return 0;
 }
 </code></pre>
-<p>每种子类的 init 把“我用哪张 ops 表“作为常量传给基类 init。基类 init 把它存到 <code>me-&gt;ops</code> 字段。一次填好，对象一辈子不用再改 ops。</p>
+<p>每种子类的 init 把“我用哪张 ops 表“作为常量传给父类 init。父类 init 把它存到 <code>me-&gt;ops</code> 字段。一次填好，对象一辈子不用再改 ops。</p>
 <p>GPIO 灯的 init 填 GPIO 的 ops 表，PWM 灯的 init 填 PWM 的 ops 表。各填各的，互不干扰。</p>
 <p>init 就是开门营业。手艺一次交付，终身受用。</p>
 <p><img src="../assets/ch10/slide3_init填充ops.png" alt="init 填充 ops"></p>
@@ -442,7 +442,7 @@ int led_gpio_init(struct led_gpio *me, ...)
 </code></pre>
 <p>应用层调用还是走 <code>me-&gt;ops-&gt;on(me)</code> 这个调用链。注意几件事：</p>
 <ol>
-<li><strong>应用层拿到的是基类指针</strong> <code>struct led_base *</code>。子类的私有字段（<code>pin</code>、<code>channel</code>）藏在 <code>led_base</code> 后面，应用层看不见</li>
+<li><strong>应用层拿到的是父类指针</strong> <code>struct led_base *</code>。子类的私有字段（<code>pin</code>、<code>channel</code>）藏在 <code>led_base</code> 后面，应用层看不见</li>
 <li><strong>ops 是 const</strong>。运行时一般不会改实现，省一份指令缓存</li>
 <li><strong>ops 在 base 第一个字段</strong>。Linux 内核 <code>struct file</code> 把 <code>f_op</code> 也放在前面，<code>file_operations</code> 表也是 const 表</li>
 </ol>

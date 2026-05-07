@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:50px 80px;
+    position:relative;
+  }
+  .title{font-size:60px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:46px;text-align:center;letter-spacing:1px}
+
+  .main{display:flex;gap:40px;width:100%;max-width:1700px;justify-content:center;align-items:stretch}
+
+  .code-card{
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:16px;
+    padding:32px 36px;flex:0 0 60%;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+  }
+  .card-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .badge{font-size:16px;font-weight:700;padding:5px 16px;border-radius:50px;letter-spacing:1px}
+  .badge-green{background:#E8F5E9;color:#2A8C4A}
+  .badge-orange{background:#FFE9D5;color:#C44511}
+  .badge-purple{background:#E5E0F5;color:#5F3DC4}
+  .card-title{font-size:24px;font-weight:700;color:#1A1A1A}
+
+  pre{
+    font-family:"Cascadia Code","Consolas","Courier New",monospace;
+    font-size:24px;line-height:2.1;color:#333;white-space:pre;
+  }
+  .kw{color:#7B5EA7;font-weight:600}
+  .tp{color:#2A8C4A;font-weight:600}
+  .str{color:#C44511}
+  .cm{color:#999;font-style:italic}
+  .num{color:#C44511}
+  .hl-orange{background:#FFEDD5;padding:2px 6px;border-radius:4px}
+  .hl-green{background:#E8F5E9;padding:2px 6px;border-radius:4px}
+  .hl-purple{background:#EDE9FE;padding:2px 6px;border-radius:4px}
+
+  .insights{
+    flex:1;display:flex;flex-direction:column;gap:18px;justify-content:center;
+  }
+  .insight-card{
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:14px;
+    padding:22px 26px;
+  }
+  .insight-key{
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:20px;color:#5F3DC4;font-weight:600;margin-bottom:8px;
+  }
+  .insight-arrow{font-size:18px;color:#999;margin:6px 0}
+  .insight-text{font-size:22px;font-weight:700;color:#1A1A1A;line-height:1.5}
+
+  .footer-quote{
+    margin-top:42px;
+    font-size:34px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">dts 节点 <span class="accent">三件事</span></div>
+<div class="subtitle">compatible · gpios · label · 一节描述一物 · 简洁</div>
+
+<div class="main">
+  <div class="code-card">
+    <div class="card-header">
+      <span class="badge badge-orange">dts</span>
+      <span class="card-title">leds 节点 · 最简形态</span>
+    </div>
+    <pre>
+<span class="kw">leds</span> {
+    <span class="hl-orange">compatible = <span class="str">"gpio-leds"</span>;</span>
+    orange_led_3: led_3 {
+        <span class="hl-green">gpios = &lt;&amp;gpiod <span class="num">13</span> GPIO_ACTIVE_HIGH&gt;;</span>
+        <span class="hl-purple">label = <span class="str">"User LD3"</span>;</span>
+    };
+};
+    </pre>
+  </div>
+
+  <div class="insights">
+    <div class="insight-card">
+      <div class="insight-key">compatible = "gpio-leds"</div>
+      <div class="insight-arrow">&rarr;</div>
+      <div class="insight-text">告诉内核 · 谁来 probe 这个节点</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-key">gpios = &lt;&amp;gpiod 13 ...&gt;</div>
+      <div class="insight-arrow">&rarr;</div>
+      <div class="insight-text">引用 GPIO 控制器 · pin 号 · 极性</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-key">label = "User LD3"</div>
+      <div class="insight-arrow">&rarr;</div>
+      <div class="insight-text">人类可读的标签 · sysfs 显示用</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-quote">一节描述一件硬件 · 没有 C 代码</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

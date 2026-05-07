@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:50px 80px;
+    position:relative;
+  }
+  .title{font-size:60px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:46px;text-align:center;letter-spacing:1px}
+
+  .main{display:flex;gap:40px;width:100%;max-width:1760px;justify-content:center;align-items:stretch}
+
+  .code-card{
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:16px;
+    padding:30px 36px;flex:0 0 52%;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+    display:flex;flex-direction:column;
+  }
+  .card-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .badge{font-size:16px;font-weight:700;padding:5px 16px;border-radius:50px;letter-spacing:1px}
+  .badge-orange{background:#FFE9D5;color:#C44511}
+  .badge-green{background:#E8F5E9;color:#2A8C4A}
+  .badge-purple{background:#E5E0F5;color:#5F3DC4}
+  .card-title{font-size:24px;font-weight:700;color:#1A1A1A}
+
+  pre{
+    font-family:"Cascadia Code","Consolas","Courier New",monospace;
+    font-size:22px;line-height:2.0;color:#333;white-space:pre;
+  }
+  .kw{color:#7B5EA7;font-weight:600}
+  .fn{color:#E8633A;font-weight:600}
+  .tp{color:#2A8C4A;font-weight:600}
+  .cm{color:#999;font-style:italic}
+  .num{color:#C44511}
+  .hl-green{background:#E8F5E9;padding:2px 6px;border-radius:4px}
+  .hl-purple{background:#EDE9FE;padding:2px 6px;border-radius:4px}
+  .hl-orange{background:#FFEDD5;padding:2px 6px;border-radius:4px}
+
+  .three-cards{
+    flex:1;display:flex;flex-direction:column;gap:18px;justify-content:center;
+  }
+  .insight-card{
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:14px;
+    padding:22px 28px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+  }
+  .insight-card.green{border-left:6px solid #2A8C4A}
+  .insight-card.purple{border-left:6px solid #5F3DC4}
+  .insight-card.orange{border-left:6px solid #E8633A}
+  .insight-num{
+    display:inline-block;
+    font-size:28px;font-weight:900;
+    margin-right:10px;
+  }
+  .insight-num.green{color:#2A8C4A}
+  .insight-num.purple{color:#5F3DC4}
+  .insight-num.orange{color:#E8633A}
+  .insight-title{
+    font-size:22px;font-weight:800;color:#1A1A1A;display:inline;
+  }
+  .insight-body{
+    font-size:18px;color:#555;line-height:1.6;margin-top:8px;
+  }
+  .insight-body code{
+    font-family:"Cascadia Code","Consolas",monospace;
+    color:#5F3DC4;font-weight:600;font-size:17px;
+  }
+
+  .footer-quote{
+    margin-top:42px;
+    font-size:34px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">DEVICE_DT_DEFINE <span class="accent">一行宏 · 三件事</span></div>
+<div class="subtitle">dts 节点 + initcall + ops 表 · 缝合在一起</div>
+
+<div class="main">
+  <div class="code-card">
+    <div class="card-header">
+      <span class="badge badge-orange">一行宏</span>
+      <span class="card-title">驱动注册的入口</span>
+    </div>
+    <pre>
+<span class="fn">DEVICE_DT_DEFINE</span>(
+    <span class="hl-green"><span class="fn">DT_NODELABEL</span>(leds)</span>,                <span class="cm">// (1) dts</span>
+    <span class="hl-purple">led_gpio_init</span>,                       <span class="cm">// (2) initcall</span>
+    <span class="kw">NULL</span>,
+    &amp;led_gpio_data,
+    &amp;led_gpio_cfg,
+    POST_KERNEL,
+    CONFIG_LED_INIT_PRIORITY,
+    <span class="hl-orange">&amp;led_gpio_api</span>                          <span class="cm">// (3) ops</span>
+);
+    </pre>
+  </div>
+
+  <div class="three-cards">
+    <div class="insight-card green">
+      <span class="insight-num green">1</span>
+      <span class="insight-title">绑定 dts 节点</span>
+      <div class="insight-body">
+        生成 <code>static const struct device __device_dts_ord_&lt;N&gt;</code> 静态对象 ·
+        编译期就有 · 一个节点对应一个对象
+      </div>
+    </div>
+
+    <div class="insight-card purple">
+      <span class="insight-num purple">2</span>
+      <span class="insight-title">挂 initcall</span>
+      <div class="insight-body">
+        把 <code>led_gpio_init</code> 挂到 linker section <code>.z_init_&lt;level&gt;&lt;prio&gt;_*</code> ·
+        启动时按级别顺序自动跑
+      </div>
+    </div>
+
+    <div class="insight-card orange">
+      <span class="insight-num orange">3</span>
+      <span class="insight-title">绑 ops 表</span>
+      <div class="insight-body">
+        device 对象内部 <code>api</code> 字段指向 <code>&amp;led_gpio_api</code> ·
+        上层调虚函数自动派发到这里
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-quote">dts + initcall + ops · 三件套缝合 · 字面工程化</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -318,7 +318,7 @@ g_led_error = &amp;s_led_err.base;
 <p>改 1 行，换一整套硬件。这就是向上转型的工程化威力。应用层和硬件之间隔着一个 <code>struct led_base *</code> 句柄，硬件那头怎么换，句柄这头一律不知道。</p>
 <h2 id="127-这个东西叫什么"><a class="header" href="#127-这个东西叫什么">12.7 这个东西叫什么</a></h2>
 <p>你刚才做的事，软件工程里有个名字。</p>
-<p>把派生类（<code>struct led_gpio</code>）的对象，当作基类（<code>struct led_base</code>）来引用、调用、传递，这叫 <strong>向上转型</strong>（upcasting）。</p>
+<p>把派生类（<code>struct led_gpio</code>）的对象，当作父类（<code>struct led_base</code>）来引用、调用、传递，这叫 <strong>向上转型</strong>（upcasting）。</p>
 <p>在 C++ 里这一步是隐式的：</p>
 <pre><code class="language-cpp">class LedBase { /* ... */ };
 class LedGpio : public LedBase { /* ... */ };
@@ -327,7 +327,7 @@ LedGpio gpio_led;
 LedBase &amp;handle = gpio_led;       /* 编译器自动认 */
 LedBase *p      = &amp;gpio_led;      /* 编译器自动认 */
 </code></pre>
-<p>C++ 编译器看见 <code>LedGpio</code> 继承自 <code>LedBase</code>，不需要任何转换语法，就让基类引用 / 指针绑到派生对象上。</p>
+<p>C++ 编译器看见 <code>LedGpio</code> 继承自 <code>LedBase</code>，不需要任何转换语法，就让父类引用 / 指针绑到派生对象上。</p>
 <p>C 里你手动写 <code>&amp;gpio_led.base</code>，做的是同一件事：拿到子类内嵌的父类那一段的地址。底层机器码完全一致，都是“把 <code>gpio_led</code> 这个对象的起始地址，按 <code>LedBase *</code> 类型解读“。</p>
 <p><img src="../assets/ch12/slide6_CvsCpp.png" alt="C 对比 C++"></p>
 <h2 id="128-视频里没讲透的几个细节"><a class="header" href="#128-视频里没讲透的几个细节">12.8 视频里没讲透的几个细节</a></h2>
@@ -375,9 +375,9 @@ struct led_base * const g_led_error;   /* 不让别人重新指向 */
 	/* ... */
 };
 </code></pre>
-<p><code>led_classdev</code> 是 LED 子系统的基类。具体的 LED 驱动（比如 <code>leds-gpio.c</code> 里的 GPIO LED）会嵌入这个 <code>led_classdev</code>：</p>
+<p><code>led_classdev</code> 是 LED 子系统的父类。具体的 LED 驱动（比如 <code>leds-gpio.c</code> 里的 GPIO LED）会嵌入这个 <code>led_classdev</code>：</p>
 <pre><code class="language-c">struct gpio_led_data {
-	struct led_classdev cdev;          /* 基类 */
+	struct led_classdev cdev;          /* 父类 */
 	struct gpio_desc *gpiod;
 	/* ... */
 };
@@ -529,7 +529,7 @@ make
 <p>两个业务函数，两种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
 <h2 id="1213-视频回放"><a class="header" href="#1213-视频回放">12.13 视频回放</a></h2>
 <blockquote>
-<p><a href="https://www.bilibili.com/video/BV1N6o4BFEvG/">《C 语言·向上转型｜一个指针指所有 LED·基类指针·设备句柄》</a></p>
+<p><a href="https://www.bilibili.com/video/BV1N6o4BFEvG/">《C 语言·向上转型｜一个指针指所有 LED·父类指针·设备句柄》</a></p>
 </blockquote>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>应用层只见 <code>struct led_base *</code>，挺好。但 <code>gpio_on</code> 这个函数收到的也是 <code>struct led_base *</code>，它要操作 <code>pin</code>，pin 在子类 <code>struct led_gpio</code> 里，不在 base 里。怎么从 base 反推回 gpio？</p>

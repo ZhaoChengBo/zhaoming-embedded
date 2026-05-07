@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:60px 100px;
+    position:relative;
+  }
+  .title{font-size:58px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:50px;text-align:center;letter-spacing:1px}
+
+  .layers{
+    display:flex;flex-direction:column;align-items:center;
+    gap:8px;width:100%;max-width:1500px;
+  }
+
+  .layer-label{
+    font-size:18px;font-weight:700;color:#999;
+    letter-spacing:2px;align-self:flex-start;
+    margin-left:60px;margin-bottom:-2px;
+  }
+
+  .layer{
+    width:100%;
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:14px;
+    padding:26px 36px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+    display:flex;align-items:center;gap:20px;
+  }
+  .layer.l1{border-left:8px solid #E8633A;background:linear-gradient(to right,#FFF7F1 0%,#FFF 60%)}
+  .layer.l2{border-left:8px solid #5F3DC4;background:linear-gradient(to right,#F5F2FB 0%,#FFF 60%)}
+  .layer.l3{border-left:8px solid #2A8C4A;background:linear-gradient(to right,#F0F8F1 0%,#FFF 60%)}
+
+  .badge{
+    flex:0 0 auto;
+    padding:8px 18px;border-radius:50px;
+    font-size:16px;font-weight:700;letter-spacing:1px;
+  }
+  .badge-orange{background:#FFE9D5;color:#C44511}
+  .badge-purple{background:#E5E0F5;color:#5F3DC4}
+  .badge-green{background:#E8F5E9;color:#2A8C4A}
+
+  .layer-code{
+    flex:1;
+    font-family:"Cascadia Code","Consolas","Courier New",monospace;
+    font-size:26px;line-height:1.5;color:#333;
+  }
+  .kw{color:#7B5EA7;font-weight:600}
+  .fn{color:#E8633A;font-weight:600}
+  .tp{color:#2A8C4A;font-weight:600}
+  .cm{color:#999;font-style:italic;font-size:18px}
+  .arg{color:#C44511}
+
+  .layer-desc{
+    flex:0 0 360px;
+    font-size:18px;color:#555;line-height:1.5;
+    border-left:1px solid #E8E8E5;padding-left:20px;
+  }
+  .layer-desc strong{color:#1A1A1A;font-weight:700}
+
+  .expand-arrow{
+    font-size:30px;color:#E8633A;font-weight:300;
+    margin:0 0 0 80px;line-height:1;
+  }
+  .expand-label{
+    font-size:16px;color:#888;margin-left:120px;letter-spacing:1px;
+    font-style:italic;
+  }
+
+  .footer-quote{
+    margin-top:46px;
+    font-size:34px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">module_platform_driver <span class="accent">一行宏 · 三层展开</span></div>
+<div class="subtitle">内核帮你把 __initcall 自动注册了</div>
+
+<div class="layers">
+
+  <div class="layer-label">LAYER 1 · 读者写</div>
+  <div class="layer l1">
+    <span class="badge badge-orange">读者代码</span>
+    <div class="layer-code"><span class="fn">module_platform_driver</span>(<span class="arg">gpio_led_driver</span>);</div>
+    <div class="layer-desc">驱动文件最后<strong>一行</strong> · 看着像调函数 · 实则是宏</div>
+  </div>
+
+  <div class="expand-label">展开为</div>
+  <div class="expand-arrow">&darr;</div>
+
+  <div class="layer-label">LAYER 2 · 中间宏</div>
+  <div class="layer l2">
+    <span class="badge badge-purple">module_driver</span>
+    <div class="layer-code"><span class="fn">module_init</span>(<span class="arg">__driver</span>##<span class="arg">_init</span>);</div>
+    <div class="layer-desc"><strong>module_driver</strong> 拼出 init 函数名 · 把它喂给 module_init</div>
+  </div>
+
+  <div class="expand-label">展开为</div>
+  <div class="expand-arrow">&darr;</div>
+
+  <div class="layer-label">LAYER 3 · 内核底层</div>
+  <div class="layer l3">
+    <span class="badge badge-green">module_init</span>
+    <div class="layer-code"><span class="fn">__initcall</span>(x)  <span class="cm">// 即 ch17 教学版手写的那一段</span></div>
+    <div class="layer-desc">built-in 路径 &rarr; <strong>__initcall</strong> &rarr; 函数指针放进 linker section</div>
+  </div>
+
+</div>
+
+<div class="footer-quote">ch17 教学版你手写 · 内核给你藏在三层宏里</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

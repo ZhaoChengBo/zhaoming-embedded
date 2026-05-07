@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    width:1920px;height:1080px;
+    background:#FAFAF8;
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+    color:#1A1A1A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    overflow:hidden;
+    padding:60px 80px;
+    position:relative;
+  }
+  .title{font-size:60px;font-weight:800;margin-bottom:10px;text-align:center;letter-spacing:1px}
+  .title .accent{color:#E8633A}
+  .subtitle{font-size:26px;color:#888;margin-bottom:60px;text-align:center;letter-spacing:1px}
+
+  .pipeline{
+    display:flex;align-items:stretch;justify-content:center;
+    width:100%;max-width:1760px;gap:8px;
+  }
+
+  .step{
+    flex:1;
+    background:#FFF;border:1.5px solid #E8E8E5;border-radius:18px;
+    padding:30px 22px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.04);
+    display:flex;flex-direction:column;align-items:center;
+    text-align:center;
+    min-height:380px;
+  }
+  .step-num{
+    font-size:18px;font-weight:700;color:#999;letter-spacing:2px;
+    margin-bottom:10px;
+  }
+  .badge{
+    display:inline-block;
+    padding:6px 16px;border-radius:50px;
+    font-size:16px;font-weight:700;letter-spacing:1px;
+    margin-bottom:18px;
+  }
+  .badge-green{background:#E8F5E9;color:#2A8C4A}
+  .badge-orange{background:#FFE9D5;color:#C44511}
+  .badge-purple{background:#E5E0F5;color:#5F3DC4}
+
+  .step-title{
+    font-size:24px;font-weight:800;color:#1A1A1A;
+    margin-bottom:14px;line-height:1.4;
+  }
+  .step-body{
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:18px;color:#333;line-height:1.9;
+    margin-top:8px;
+  }
+  .step-body .file{color:#5F3DC4;font-weight:600}
+  .step-desc{
+    font-size:17px;color:#666;line-height:1.6;
+    margin-top:14px;
+  }
+
+  .arrow{
+    display:flex;align-items:center;justify-content:center;
+    width:54px;flex-shrink:0;
+    color:#E8633A;font-size:42px;font-weight:300;
+  }
+
+  .footer-quote{
+    margin-top:60px;
+    font-size:34px;font-weight:800;
+    color:#1A1A1A;
+    text-align:center;
+    border-bottom:3px solid #E8633A;
+    padding-bottom:10px;
+  }
+
+  .wm{position:absolute;bottom:24px;right:36px;font-size:22px;color:#d0d0d0;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="title">dts 编译期魔法 <span class="accent">4 步流水线</span></div>
+<div class="subtitle">不是运行时解析 · 是 west build 自动跑</div>
+
+<div class="pipeline">
+  <div class="step">
+    <div class="step-num">STEP 1</div>
+    <span class="badge badge-green">源</span>
+    <div class="step-title">硬件描述源文件</div>
+    <div class="step-body">
+      <span class="file">stm32f4_disco.dts</span><br>
+      +<br>
+      <span class="file">app.overlay</span>
+    </div>
+    <div class="step-desc">板厂 + 应用 · 各管一份</div>
+  </div>
+
+  <div class="arrow">&rarr;</div>
+
+  <div class="step">
+    <div class="step-num">STEP 2</div>
+    <span class="badge badge-purple">工具</span>
+    <div class="step-title">Zephyr 内置脚本</div>
+    <div class="step-body">
+      <span class="file">gen_defines.py</span>
+    </div>
+    <div class="step-desc">解析 dts · 生成宏定义</div>
+  </div>
+
+  <div class="arrow">&rarr;</div>
+
+  <div class="step">
+    <div class="step-num">STEP 3</div>
+    <span class="badge badge-orange">中间产物</span>
+    <div class="step-title">一堆 #define 宏</div>
+    <div class="step-body">
+      <span class="file">devicetree_<br>generated.h</span>
+    </div>
+    <div class="step-desc">编译期可见 · 全是 token</div>
+  </div>
+
+  <div class="arrow">&rarr;</div>
+
+  <div class="step">
+    <div class="step-num">STEP 4</div>
+    <span class="badge badge-green">C 代码用</span>
+    <div class="step-title">驱动里展开</div>
+    <div class="step-body">
+      <span class="file">DT_NODELABEL</span><br>
+      <span class="file">DT_PROP</span><br>
+      <span class="file">DEVICE_DT_DEFINE</span>
+    </div>
+    <div class="step-desc">读宏 · 拼出真正 C 表达式</div>
+  </div>
+</div>
+
+<div class="footer-quote">编译期就完事 · 零运行时开销</div>
+
+<div class="wm">兆鸣嵌入式</div>
+
+</body>
+</html>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>ch19 工业控制板主控案例 - C 语言面向对象编程·嵌入式实战</title>
+        <title>ch19 Zephyr 实战 · 用前 18 章的眼睛读 driver subsystem - C 语言面向对象编程·嵌入式实战</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,798 +180,536 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-19-章--工业控制板主控案例"><a class="header" href="#第-19-章--工业控制板主控案例">第 19 章 · 工业控制板主控案例</a></h1>
-<p>参考代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/led_basic/"><code>industrial/led_basic/</code></a> 是 LED 驱动的最小骨架，本章其它驱动（温度传感器、EEPROM、风扇）的关键代码段全部内联在正文里。</p>
-<p>前面 18 章一颗 LED 一步步演化出来的所有抽象，到这一章你会看到它们在真实工业项目里实际长什么样。</p>
-<p>代码来自我参与开发的工业控制板项目。两块板：主控板和子控板，合起来约 80K 行 C 代码。本章讲主控板，下一章讲子控板。</p>
-<p>主控板站在系统上层。它跟外面的 Host 主机通过 TCP/IP 通信，跟内部的子控板通过串口通信，自己直接管的外设包括 LED、EEPROM、风扇、激光、蜂鸣器、温度传感器、湿度传感器、屏蔽门检测、电压采样等十几路。本章挑四个最能说明问题的驱动来看：LED（最小继承范例）、EEPROM（多回调与 POSIX 风格返回值）、温度传感器（两层继承 + 多种芯片类型）、风扇（无 ops 表的 struct + me 形态）。</p>
-<p>为了让你从“驱动“看到“整块板的工程组织“，本章后半段还会展开三件工业级机制：设备如何被全局命名（设备句柄注册表）、驱动如何自动按依赖顺序启动（initcall 7 级）、主控板用了哪些中间件（环形缓冲、命令行 shell、日志系统）。这三件事是真实工业代码和教学版之间最具体的差距。</p>
-<h2 id="191-led-驱动最小继承范例"><a class="header" href="#191-led-驱动最小继承范例">19.1 LED 驱动：最小继承范例</a></h2>
-<p>挂号单一路推到工业代码会怎样？看这一段（节选自工业项目 <code>app/drivers/led/led_base.h</code>）：</p>
-<pre><code class="language-c">struct led_base;
-
-struct led_ops {
-	void (*led_on)(struct led_base *me);
-	void (*led_off)(struct led_base *me);
+                        <h1 id="第-19-章--zephyr-实战--用前-18-章的眼睛读-driver-subsystem"><a class="header" href="#第-19-章--zephyr-实战--用前-18-章的眼睛读-driver-subsystem">第 19 章 · Zephyr 实战 · 用前 18 章的眼睛读 driver subsystem</a></h1>
+<p>前 18 章一颗 LED 演化出所有 OOP 抽象。这一章去工业级开源 RTOS 的现场抓证据：把书前面推出来的每个概念，拿到 Zephyr v3.7.0 LTS 的源码里，字节级对得上。</p>
+<h2 id="190-章节首部"><a class="header" href="#190-章节首部">19.0 章节首部</a></h2>
+<p>第一次接触 Zephyr 的读者别急着翻代码段。先把“它是什么 / 这本书为什么选它 / 这一章会出现哪些术语“三件事过一遍，后面读源码会顺很多。</p>
+<h3 id="1901-zephyr-是什么"><a class="header" href="#1901-zephyr-是什么">19.0.1 Zephyr 是什么</a></h3>
+<p>Zephyr 是 Linux 基金会（Linux Foundation）旗下的开源实时操作系统项目，2016 年 2 月由 Linux 基金会官方宣布成立。初始贡献来自 Wind River、Intel、NXP、Synopsys 等公司，之后由社区接力发展。Zephyr 的定位非常清楚：面向资源受限设备、跨架构、社区驱动、商业友好的现代 RTOS。</p>
+<p>它不是某一家公司私有的 RTOS。治理结构跟 Linux 内核类似，有 Governing Board 和 Technical Steering Committee，商标和基础设施由 Linux 基金会托管。这一点对工程选型很重要：你不会因为某家公司战略调整、被收购或者倒闭而失去这个 RTOS。</p>
+<p>License 是 Apache License 2.0。商业产品里使用 Zephyr 不需要开源你的应用层代码，没有 GPL 那种“传染性“问题，还附带明确的专利授权条款，企业法务部门接受度高。</p>
+<p>到 2026 年，Zephyr 项目的 Platinum 级成员（最高一级）一共 13 家，包括 Intel、Nordic Semiconductor、NXP、Qualcomm、Renesas、Google、Meta、Wind River 等。Silver 级 28 家，涵盖 Arduino、Arm、Microchip、ST、TI 等。从硅厂、模组厂、汽车 OEM 到互联网巨头，主流玩家几乎都在桌上。</p>
+<p>技术上，Zephyr 把几个关键能力做齐了：</p>
+<ul>
+<li>跨架构原生支持。ARM Cortex-M / Cortex-R / Cortex-A、RISC-V、x86、Tensilica Xtensa（ESP32 用的就是这个）、ARC、SPARC、MIPS。一份应用代码可以跨架构编译。</li>
+<li>Device Tree + Driver Model + Kconfig。设备描述用 dts 文件，驱动用 <code>struct device</code> 加 ops 表加 <code>DEVICE_DT_DEFINE</code> 注册，初始化用 <code>SYS_INIT</code> 多优先级链。这套机制和 Linux 内核 driver model 几乎是同一个思路的简化版。</li>
+<li>抢占式内核 + SMP。原生支持对称多核 SoC。</li>
+<li>板级支持超过 1000 块官方 board（数据出处：zephyrproject.org 主页），<code>boards/</code> 目录里完整带 dts、defconfig、driver。</li>
+</ul>
+<p>生态方面，Nordic 的 nRF Connect SDK 直接构建在 Zephyr 之上，并且是项目最大贡献方之一。Espressif 从 2020 年起官方支持 ESP32 系列在 Zephyr 上跑。NXP 是 Platinum 成员，i.MX RT、LPC、Kinetis 系列在主线里都有 board 支持。</p>
+<p>对学完前 18 章的读者，Zephyr 的独特价值在于：它把 Linux 内核 driver model 的思路，简化、移植到了 MCU 这个量级的资源约束下，用同一套 OOP 抽象。前面学的每一个机制，<code>struct device</code> + ops 表、<code>container_of</code> 宏、初始化链、子系统接口，在 Zephyr 源码里都能找到一一对应、规模可读的实现。</p>
+<h3 id="1902-为什么这本书选-zephyr"><a class="header" href="#1902-为什么这本书选-zephyr">19.0.2 为什么这本书选 Zephyr</a></h3>
+<p>国内嵌入式工程师常用的 RTOS 大致有 FreeRTOS、RT-Thread、Zephyr 三条主线，每一个都有自己的位置。选 Zephyr 的理由集中在两条。</p>
+<p>第一，教学定位匹配。本书前 18 章一直在用纯 C 演示一种思路：<code>struct device</code> + ops 表 + <code>container_of</code> + 初始化链 + 子系统注册。这些不是教学场景的简化模型，而是 Linux 内核 driver model 的核心抽象。Zephyr 的 driver model 是这套抽象在 MCU 资源约束下的精简版，规模适合一个人通读。学完前 18 章，第 19 章直接打开 Zephyr 的 <code>drivers/led/</code>、<code>drivers/gpio/</code> 或 <code>drivers/i2c/</code>，每一行代码都对应得上。这是本书想要的“前 18 章学完直接读 upstream“的闭环，Zephyr 提供的对应关系最直接。</p>
+<p>第二，国际化生态。Nordic 的 nRF Connect SDK 直接构建在 Zephyr 之上；Espressif 的 ESP32 系列从 2020 年起官方支持 Zephyr；NXP、Renesas、ST、TI、Qualcomm 是 Zephyr 项目的 Platinum 或 Silver 成员。读者将来如果接触欧美客户的项目、或者面试国际嵌入式岗位，Zephyr 出现的频率比较高，前期投入可以覆盖更广的项目场景。</p>
+<p>关于 RT-Thread。选择 Zephyr 不代表 RT-Thread 不好。RT-Thread 在国产 MCU 适配、中文文档、本土生态运营这几件事上做得扎实，国内很多产线和教学场景里它是更顺手的选择。本书选 Zephyr，是因为“前 18 章学完直接读 upstream“这个教学目标下，Zephyr 的 driver model 跟 Linux 内核结构最接近、迁移成本最低。如果你已经在用 RT-Thread，本书前 18 章学到的 OOP 抽象同样适用，只是 ops 表的命名约定和注册宏不一样，不用从零再学一遍。</p>
+<h3 id="1903-术语小词典"><a class="header" href="#1903-术语小词典">19.0.3 术语小词典</a></h3>
+<p>后续小节里会反复出现下面这些词，先放一份最小定义，随用随翻。</p>
+<p><strong><code>struct device</code></strong>：Zephyr 里所有外设驱动的统一句柄类型，定义在 <code>include/zephyr/device.h</code>。每个 GPIO、I2C、UART 实例对应一个 <code>struct device</code> 对象，里面带 ops 函数表指针和私有数据指针。应用层一律拿 <code>const struct device *dev</code> 调用。</p>
+<p><strong>device tree</strong>：用 dts 文件描述硬件拓扑（哪个 SoC、哪些外设、哪个引脚连哪里），不写在 C 代码里。编译时翻译成 C 宏，驱动用 <code>DT_NODELABEL(...)</code>、<code>DT_INST(...)</code> 这类宏在编译期取出节点信息。源头来自 Linux 内核同名机制。</p>
+<p><strong>dts overlay</strong>：不直接修改 board 自带的 dts，而是写一个小补丁文件叠加在上面，专门给本应用改一两个引脚或加一个外设。文件名 <code>app.overlay</code> 或 <code>&lt;board&gt;.overlay</code>，<code>west build</code> 自动合并。</p>
+<p><strong>Kconfig + <code>prj.conf</code></strong>：和 Linux 内核同源的配置系统。<code>Kconfig</code> 文件定义所有可选配置项及其依赖，<code>prj.conf</code> 是本应用的最终选择列表（<code>CONFIG_LED=y</code> 这种）。<code>west build</code> 据此生成 <code>autoconf.h</code>，C 代码用 <code>#ifdef CONFIG_XXX</code> 来裁剪。</p>
+<p><strong><code>west</code></strong>：Zephyr 官方命令行工具，Python 写的，类似 git 的子命令风格。常用三条：<code>west init</code> 拉项目、<code>west build</code> 编译、<code>west flash</code> 烧录。</p>
+<p><strong><code>SYS_INIT</code></strong>：注册一个初始化函数，让它在系统启动时按指定优先级和阶段（<code>PRE_KERNEL_1</code>、<code>PRE_KERNEL_2</code>、<code>POST_KERNEL</code>、<code>APPLICATION</code>）自动被调用。本质和 Linux 内核的 <code>subsys_initcall</code> 是同一类机制：链接器收集，启动时遍历调用。</p>
+<p><strong><code>DEVICE_DT_DEFINE</code></strong>：在编译期为某个 dts 节点定义一个 <code>struct device</code> 对象的宏。展开后会生成静态对象、初始化函数、ops 表绑定，并把这个 device 实例放进特殊的链接段供运行时遍历。是“<code>struct device</code> + ops + initcall“三件套在 Zephyr 里的合成宏。</p>
+<p><strong><code>boards/</code></strong>：官方支持的板级目录，每块板子一个子目录，里面包含 dts、defconfig、Kconfig、board 启动代码。超过 1000 块板子。</p>
+<p><strong><code>samples/</code></strong>：官方仓库根目录下的示例代码集合，按子系统分类（<code>samples/basic/blinky</code>、<code>samples/drivers/i2c/</code> 等）。新手适合从这里入门，复制改动比从零写快得多。</p>
+<p>下面正式进入“前 18 章抽象 → Zephyr 源里在哪 → 字节级对应“四步走。本章只贴源码段做叙事，完整可跑工程在附录 B。</p>
+<hr>
+<h2 id="191-struct-device-是父类"><a class="header" href="#191-struct-device-是父类">19.1 struct device 是父类</a></h2>
+<p>ch11 推过“父类 + vptr 表“的结构：父类只装一个 ops 函数表指针，所有子类挂同一份函数指针表。Zephyr 这个抽象就在 <code>struct device</code> 里。</p>
+<p>源：<code>include/zephyr/device.h</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/device.h">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/device.h</a></p>
+<pre><code class="language-c">struct device {
+    const char *name;
+    const void *config;          /* ROM 不变配置 */
+    const void *api;             /* ops 表指针 = ch11 的 vptr */
+    struct device_state *state;  /* 公共运行态 */
+    void *data;                  /* RAM 子类私有数据 */
 };
-
-struct led_base {
-	const struct led_ops *ops;
-};
-
-void led_on(struct led_base *me);
-void led_off(struct led_base *me);
 </code></pre>
-<p>第 11 章你推出来的 <code>struct led_base + struct led_ops + ops 字段</code> 三件套，工业代码里一字不差。整个仓库统一用 Linux 内核风格 <code>struct led_base</code>，不上 typedef 别名。第 1 章 1.7.3 节解释过为什么。</p>
-<p><code>struct led_base</code> 是基类。它只放公共字段：一个指向 ops 表的指针。任何具体的 LED（GPIO 拉线的、PWM 调亮度的、I²C 寄存器写的）都可以子类化它。</p>
-<p><code>led_base.c</code> 实现就两行：</p>
-<pre><code class="language-c">void led_on(struct led_base *me)
-{
-	return me-&gt;ops-&gt;led_on(me);
-}
-
-void led_off(struct led_base *me)
-{
-	return me-&gt;ops-&gt;led_off(me);
-}
-</code></pre>
-<p>这是第 11 章的多态完整图景。<code>me-&gt;ops-&gt;led_on(me)</code> 一行，背后是 vtable 查表加间接跳转。</p>
-<p>GPIO 类型的子类（节选自工业项目 <code>app/drivers/led/led_gpio.h</code>）：</p>
-<pre><code class="language-c">struct led_gpio {
-	struct led_base base;        /* 基类放在第一个字段 */
-	int32_t         pin_num;
-	bool            light_level; /* 高电平点亮还是低电平点亮 */
-};
-
-platform_err_t led_gpio_init(struct led_gpio *me,
-                             const char *pin_name,
-                             bool light_level);
-</code></pre>
-<p>子类实现（节选自 <code>led_gpio.c</code>）：</p>
-<pre><code class="language-c">static void led_gpio_on(struct led_base *me)
-{
-	struct led_gpio *led_gpio = (struct led_gpio *)me;
-	platform_pin_write(led_gpio-&gt;pin_num, led_gpio-&gt;light_level);
-}
-
-static void led_gpio_off(struct led_base *me)
-{
-	struct led_gpio *led_gpio = (struct led_gpio *)me;
-	platform_pin_write(led_gpio-&gt;pin_num, !led_gpio-&gt;light_level);
-}
-
-static const struct led_ops ops = {
-	.led_on  = led_gpio_on,
-	.led_off = led_gpio_off,
-};
-
-platform_err_t led_gpio_init(struct led_gpio *me,
-                             const char *pin_name,
-                             bool light_level)
-{
-	if (!me || !pin_name)
-		return PLATFORM_EINVAL;
-
-	int32_t pin_num = platform_pin_get(pin_name);
-	if (pin_num &lt; 0)
-		return PLATFORM_EINVAL;
-
-	platform_pin_mode(pin_num, PIN_MODE_OUTPUT);
-	platform_pin_write(pin_num, !light_level);
-
-	me-&gt;pin_num     = pin_num;
-	me-&gt;light_level = light_level;
-	me-&gt;base.ops    = &amp;ops;
-	return PLATFORM_EOK;
-}
-</code></pre>
-<p>四个细节值得注意。</p>
-<p><strong>一，基类放在第一个字段。</strong> <code>struct led_gpio</code> 的第一个字段是 <code>struct led_base base</code>。这样 <code>(struct led_base *)led_gpio</code> 强转是合法的（地址相同），向上转型代价为零。这是第 12 章你已经推过的事。</p>
-<p><strong>二，子类向下转型用 <code>(struct led_gpio *)me</code>。</strong> 因为 <code>base</code> 在第一个字段，子类指针和基类指针的数值地址相同。如果 <code>base</code> 不在第一个字段，就必须用 <code>container_of</code>。第 13 章讲过。</p>
-<p><strong>三，ops 表是 <code>static const</code>。</strong> <code>static const struct led_ops ops = { ... }</code> 全局唯一一份，所有 <code>struct led_gpio</code> 实例共享。这就是 C++ 编译器为每个 class 偷偷生成的 vtable，工业代码里手动写出来。</p>
-<p><strong>四，<code>light_level</code> 这个字段是工程实践才会有的。</strong> 教学版只想“点亮 LED“，工业版要面对一个事实：硬件设计上，有的 LED 是高电平点亮（push-pull），有的是低电平点亮（共阳极接法）。<code>light_level = true</code> 表示高电平点亮。同一份 <code>led_gpio_on</code> 函数，靠这个字段服务两种硬件设计。</p>
-<p><strong>配置代码长什么样。</strong> <code>struct led_gpio</code> 实例不是在 <code>main</code> 里定义的，是在专门的配置文件里。节选自 <code>app/environment_cfg/led_cfg.c</code>：</p>
-<pre><code class="language-c">#include "platform/platform_module_export.h"
-#include "led/led_gpio.h"
-
-struct led_base *green_led = NULL;
-struct led_base *red_led   = NULL;
-
-static struct led_gpio green_led_instance;
-static struct led_gpio red_led_instance;
-
-static void led_cfg(void)
-{
-	platform_err_t ret;
-
-	ret = led_gpio_init(&amp;green_led_instance, "PI.12", 0);
-	if (ret != PLATFORM_EOK) {
-		log_e("green led init failed");
-		return;
-	}
-	green_led = (struct led_base *)&amp;green_led_instance;
-
-	ret = led_gpio_init(&amp;red_led_instance, "PI.14", 0);
-	if (ret != PLATFORM_EOK) {
-		log_e("red led init failed");
-		return;
-	}
-	red_led = (struct led_base *)&amp;red_led_instance;
-}
-
-INIT_ENV_EXPORT(led_cfg);
-</code></pre>
-<p>应用层调用（在 <code>environment_cfg/environment_export.h</code> 里 extern 句柄之后）：</p>
-<pre><code class="language-c">extern struct led_base *green_led;
-extern struct led_base *red_led;
-
-led_on(green_led);
-led_off(red_led);
-</code></pre>
-<p><code>green_led</code> 和 <code>red_led</code> 都是 <code>struct led_base *</code> 类型。应用层不需要知道它们是 GPIO 类型还是 PWM 类型还是 I²C 类型。这是第 12 章的向上转型威力：一个基类指针指所有 LED。</p>
-<p><code>INIT_ENV_EXPORT(led_cfg)</code> 是 19.6 节会展开的 initcall 注册宏，这里你先记一句话：链接器会把所有 <code>INIT_ENV_EXPORT</code> 的函数收集到一个段里，系统启动时自动调用。<code>main()</code> 不需要写一行 <code>led_gpio_init</code>。</p>
-<p>教学版（<code>oop-in-c/code/01-three-leds/</code>）和工业版的对比：</p>
+<p>把这五行和 ch11 教过的父类对照看，一一对得上：</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>维度</th><th>教学版 ch01</th><th>工业版</th></tr>
+<tr><th>教学版父类</th><th>Zephyr 字段</th><th>角色</th></tr>
 </thead>
 <tbody>
-<tr><td>基类</td><td><code>struct led { uint8_t pin; ... }</code></td><td><code>struct led_base { ops* }</code></td></tr>
-<tr><td>子类</td><td>没有</td><td><code>struct led_gpio { base, pin_num, light_level }</code></td></tr>
-<tr><td>接口</td><td>直接调用 <code>led_on(&amp;red_led)</code></td><td><code>led_on(red_led)</code> 内部 vtable 派发</td></tr>
-<tr><td>拉线方向</td><td>假设高电平点亮</td><td>字段 <code>light_level</code> 运行时区分</td></tr>
-<tr><td>引脚号类型</td><td><code>uint8_t</code></td><td>字符串 <code>"PI.15"</code> 经 <code>platform_pin_get</code> 查表</td></tr>
-<tr><td>实例定义</td><td><code>main()</code> 里手动 <code>struct led red;</code></td><td><code>*_cfg.c</code> 文件里 <code>static struct led_gpio red_instance;</code></td></tr>
-<tr><td>启动顺序</td><td><code>main()</code> 里手动调 init</td><td><code>INIT_ENV_EXPORT(led_cfg)</code> 自动收集</td></tr>
+<tr><td><code>me-&gt;ops</code></td><td><code>const void *api</code></td><td>ops 函数表指针·ch11 的 vptr</td></tr>
+<tr><td><code>const config</code></td><td><code>const void *config</code></td><td>子类出厂参数·ROM 不变·ch04 配置外置</td></tr>
+<tr><td>子类私有 data</td><td><code>void *data</code></td><td>子类运行态·RAM·LED 用不到时填 NULL</td></tr>
+<tr><td>无</td><td><code>struct device_state *state</code></td><td>Zephyr 公共运行态·记 init 是否成功</td></tr>
+<tr><td>无</td><td><code>const char *name</code></td><td>调试用·dts label 取来</td></tr>
 </tbody>
 </table>
 </div>
-<p>教学版到这里就停了。工业版还要继续走：通过 ops 表，可以把 PWM 调亮度的 LED 子类、I²C 寄存器写的 LED 子类挂到同一个基类下，应用层一行不改。</p>
-<h2 id="192-eepromposix-风格的随机访问接口"><a class="header" href="#192-eepromposix-风格的随机访问接口">19.2 EEPROM：POSIX 风格的随机访问接口</a></h2>
-<p>LED 简单。它没有“事件“，只有“操作“。但凡涉及外设有自主行为（写入完成、数据上来了、出错了），就需要回调。</p>
-<p>EEPROM 是介于两者之间的过渡例子（节选自 <code>app/drivers/eeprom/eeprom_base.h</code>）：</p>
-<pre><code class="language-c">struct eeprom_base;
-
-struct eeprom_ops {
-	int32_t (*eeprom_read)(struct eeprom_base *dev, uint32_t pos,
-	                       uint8_t *buffer, uint32_t size);
-	int32_t (*eeprom_write)(struct eeprom_base *dev, uint32_t pos,
-	                        const uint8_t *buffer, uint32_t size);
+<p><code>const void *api</code> 就是 ch11 推过的“父类 vptr“。类型为什么擦除成 <code>void *</code>，原因是各子系统的 ops 表 struct 不一样，<code>led_driver_api</code>、<code>gpio_driver_api</code>、<code>i2c_driver_api</code> 都不是同一个 struct。父类层不知道每个子系统具体的 ops 表长什么样，只能擦成 <code>void *</code>，调用前由子系统头文件做向下转型。</p>
+<p><code>const void *config</code> 是子类出厂参数。GPIO LED 驱动里它是“几颗 LED + 每颗的引脚号“，I2C 控制器里它是“基地址 + 时钟 + DMA 通道“。<code>const</code> 关键字告诉链接器放进 ROM，和 ch04 推过的 const config 完全一致。</p>
+<p><code>void *data</code> 是子类运行态。LED 不需要，后面看到的 <code>led_gpio_config_##i</code> 把 data 留成 NULL。I2C 控制器需要存“当前传输到第几个字节、信号量、DMA 状态“，这种就放在 <code>data</code> 里。</p>
+<p><code>state</code> 是 Zephyr 公共字段，记 init 是否成功。这个字段是 Zephyr 在教学版基础上多加的，和 OOP 抽象本身关系不大，先了解就够。</p>
+<p>一句话：ch11 一个人推出来的 <code>struct base { const ops_t *ops; }</code>，Zephyr 把它扩成 5 个字段的工业版本，核心还是那一个 ops 表指针。</p>
+<h2 id="192-driver_api-是-ops-表"><a class="header" href="#192-driver_api-是-ops-表">19.2 driver_api 是 ops 表</a></h2>
+<p>每个子系统都有自己的 driver_api，写法完全是 ch11 的 ops 表 struct。先看 LED 子系统。</p>
+<p>源：<code>include/zephyr/drivers/led.h</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/drivers/led.h">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/drivers/led.h</a></p>
+<pre><code class="language-c">__subsystem struct led_driver_api {
+    /* Mandatory callbacks. */
+    led_api_on  on;
+    led_api_off off;
+    /* Optional callbacks. */
+    led_api_blink           blink;
+    led_api_get_info        get_info;
+    led_api_set_brightness  set_brightness;
+    led_api_set_color       set_color;
+    led_api_write_channels  write_channels;
 };
-
-struct eeprom_base {
-	const struct eeprom_ops *ops;
-};
-
-int32_t eeprom_read(struct eeprom_base *dev, uint32_t pos,
-                    uint8_t *buffer, uint32_t size);
-int32_t eeprom_write(struct eeprom_base *dev, uint32_t pos,
-                     const uint8_t *buffer, uint32_t size);
 </code></pre>
-<p>骨架和 LED 一样：基类只放 ops，所有具体芯片（DS2433 1-Wire EEPROM、I²C EEPROM、SPI EEPROM）都子类化 <code>struct eeprom_base</code>。区别在 ops 表里多了 <code>pos</code> 和 <code>size</code> 参数：随机访问、可读可写。</p>
-<p>为什么 read/write 返回 <code>int32_t</code> 不是 <code>bool</code>？返回值约定如下：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>返回值</th><th>含义</th></tr>
-</thead>
-<tbody>
-<tr><td>&gt;= 0</td><td>实际读 / 写的字节数</td></tr>
-<tr><td>&lt; 0</td><td>错误码（<code>PLATFORM_EINVAL</code> 等）</td></tr>
-</tbody>
-</table>
-</div>
-<p>这个约定借鉴 POSIX <code>read(2)</code> / <code>write(2)</code> 系统调用。教学版会写 <code>bool ok = eeprom_write(...)</code>，工业版必须区分“写了多少“，原因有三个。</p>
-<p>第一，写跨页的情况。DS2433 这颗 EEPROM 一页 32 字节。应用层想从地址 30 写 50 字节，物理上跨两页，需要拆成两次硬件写。如果中间一次失败，已经写了多少必须告诉上层，让上层决定回滚还是重试。</p>
-<p>第二，写到容量边界。DS2433 总容量 4096 比特（512 字节）。从地址 500 写 50 字节，到 511 就到底了。底层只能写 12 字节，剩下 38 字节扔掉。返回 12 让上层知道实际成功的字节数。</p>
-<p>第三，写比读慢。EEPROM 写一次要几毫秒（比读慢 100 倍）。底层支持“超时返回“，写到一半超时就返回已写入的字节数。教学版的 bool 接口没法表达这种部分成功。</p>
-<p><code>int32_t</code> 的负数空间留给错误码。<code>PLATFORM_EINVAL = -1</code>、<code>PLATFORM_EIO = -2</code>、<code>PLATFORM_ETIMEOUT = -3</code> 等。应用层模式：</p>
-<pre><code class="language-c">int32_t n = eeprom_read(sn_eeprom, 0, buf, 32);
-if (n &lt; 0) {
-	log_e("eeprom read failed: %d", n);
-	return -1;
-}
-if ((uint32_t)n &lt; 32) {
-	log_w("eeprom read short: %d of 32", n);
-}
-/* 用前 n 字节 */
-</code></pre>
-<p>应用层句柄声明（<code>environment_cfg/environment_export.h</code>）：</p>
-<pre><code class="language-c">extern struct eeprom_base *sn_eeprom;
-</code></pre>
-<p><code>sn_eeprom</code> 用来存板级序列号。底层接的是 DS2433（1-Wire EEPROM 芯片），但应用层不知道也不需要知道。如果将来某一版硬件换成 I²C EEPROM，只要再写一个子类 <code>struct eeprom_i2c</code>，让 <code>sn_eeprom</code> 指过去，应用层一行不动。这是第 15 章“换硬件不改应用“在工业项目里的具体落地。</p>
-<h2 id="193-温度传感器两层继承--同基类下挂多种芯片"><a class="header" href="#193-温度传感器两层继承--同基类下挂多种芯片">19.3 温度传感器：两层继承 + 同基类下挂多种芯片</a></h2>
-<p>LED 的子类只有一种（<code>struct led_gpio</code>）。EEPROM 的子类有两种（DS2433、I²C），但项目里只用了一种实现，没真正体现“多个子类共用基类“的威力。温度传感器是主控板上第一个真正多子类的驱动。</p>
-<p><strong>第一层：基类</strong> 节选自 <code>app/drivers/temp_sensor/temp_sensor_base.h</code>：</p>
-<pre><code class="language-c">struct temp_sensor_base;
-
-struct temp_sensor_ops {
-	platform_err_t (*temp_read)(struct temp_sensor_base *dev,
-	                            float *temp_out);
-};
-
-struct temp_sensor_base {
-	const struct temp_sensor_ops *ops;
-};
-
-platform_err_t temp_sensor_read(struct temp_sensor_base *dev,
-                                float *temp_out);
-</code></pre>
-<p>基类极简：一个 <code>ops</code> 字段，一个 <code>temp_read</code> 虚方法。这反映温度传感器抽象层面的本质：<strong>给一个度数出来，单位摄氏度</strong>。所有温度传感器芯片，不管 I²C、SPI、单总线，本质都是这一件事。</p>
-<p>基类实现（节选自 <code>temp_sensor_base.c</code>）：</p>
-<pre><code class="language-c">platform_err_t temp_sensor_read(struct temp_sensor_base *dev, float *temp_out)
+<p>七个函数指针，分两组。Mandatory 必填，Optional 可空。这就是 ch16 对比“纯虚方法 vs 接口“时讲过的两层设计，Zephyr 在工业代码里给了一个真实样本。</p>
+<p>LED 子系统提供给应用层的 <code>led_on(dev, idx)</code> 是怎么 dispatch 的，看下面这段：</p>
+<pre><code class="language-c">static inline int z_impl_led_on(const struct device *dev, uint32_t led)
 {
-	platform_err_t ret = PLATFORM_EOK;
-
-	if ((NULL == dev) || (NULL == temp_out)) {
-		ret = PLATFORM_EINVAL;
-		goto exit;
-	}
-
-	if ((NULL == dev-&gt;ops) || (NULL == dev-&gt;ops-&gt;temp_read)) {
-		ret = PLATFORM_ENOSYS;
-		goto exit;
-	}
-
-	ret = dev-&gt;ops-&gt;temp_read(dev, temp_out);
-
-exit:
-	return ret;
+    const struct led_driver_api *api =
+        (const struct led_driver_api *)dev-&gt;api;
+    return api-&gt;on(dev, led);
 }
 </code></pre>
-<p>注意基类做了两层校验：先校验 <code>dev</code> / <code>temp_out</code> 是不是 <code>NULL</code>，再校验 <code>ops</code> 和 <code>ops-&gt;temp_read</code> 是不是 <code>NULL</code>。教学版只写第一层 <code>if (!me) return -1;</code>，工业版多写第二层是因为子类构造函数可能没赋 ops（编程错误），多走一层校验在出错时给出明确的 <code>PLATFORM_ENOSYS</code>（“没这个虚方法”），调试时一眼定位。</p>
-<p><strong>第二层：max31827 子类</strong> 节选自 <code>app/drivers/temp_sensor/max31827.h</code>：</p>
-<pre><code class="language-c">#include "temp_sensor_base.h"
-#include "platform/platform_i2c.h"
+<p><code>(const struct led_driver_api *)dev-&gt;api</code> 这一行，就是 ch11 推过的“父类 vptr 向下转型到子系统 ops 表“。父类层把 ops 表存成 <code>void *</code>，调用前每个子系统的公开头文件负责强转回自己的 ops 表 struct，然后通过 <code>api-&gt;on</code> 一次间接跳转，命中具体的子类实现。</p>
+<p>应用层调一次 <code>led_on(dev, 0)</code>，内核里走的路径用一行链路就能看完：</p>
+<p><code>led_on(dev,0)</code> → <code>z_impl_led_on</code> → <code>(led_driver_api *)dev-&gt;api</code> → <code>api-&gt;on(dev,0)</code> → <code>led_gpio_on</code> → <code>gpio_pin_set_dt</code> → 拨 PD12 寄存器位 → LED 亮</p>
+<p>链路里只有一次“父类 <code>void *api</code> 强转回 LED 子系统 ops 表“，只有一次“通过 <code>api-&gt;on</code> 间接跳转命中具体子类实现“。其余几步都是普通函数调用。这不是教学杜撰，就是 Zephyr v3.7.0 LED 子系统应用层每天调的那行代码。</p>
+<p>可空 ops 怎么处理，继续看 <code>led_blink</code>：</p>
+<pre><code class="language-c">static inline int z_impl_led_blink(const struct device *dev, uint32_t led,
+                                   uint32_t delay_on, uint32_t delay_off)
+{
+    const struct led_driver_api *api =
+        (const struct led_driver_api *)dev-&gt;api;
 
-struct max31827 {
-	struct temp_sensor_base base;
-	uint8_t dev_addr;
-	struct platform_i2c_bus_device *i2c_bus;
+    if (api-&gt;blink == NULL) {
+        return -ENOSYS;
+    }
+    return api-&gt;blink(dev, led, delay_on, delay_off);
+}
+</code></pre>
+<p>子系统先把 <code>dev-&gt;api</code> 强转回来，然后 if 一下函数指针是不是 NULL。是 NULL 就返回 <code>-ENOSYS</code>（Function not implemented）。这正是 ch16 讲的“接口最严格 = 必须全部实现 / 可空 ops 留给父类兜底“两极方案的工业样本：mandatory 的 <code>on/off</code> 等价于 C++ 纯虚，optional 的 <code>blink/set_brightness</code> 是父类提供 NULL 检查 + 错误码兜底。</p>
+<h2 id="193-led-gpio-子类完整链路"><a class="header" href="#193-led-gpio-子类完整链路">19.3 LED GPIO 子类完整链路</a></h2>
+<p>ch12 用 LED 推出“子类 = config struct + data struct + 实现函数 + ops 表实例化 + 注册到父类“。Zephyr 的 LED GPIO 驱动整文件 102 行，这五件事字节级齐全。</p>
+<p>源：<code>drivers/led/led_gpio.c</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/drivers/led/led_gpio.c">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/drivers/led/led_gpio.c</a></p>
+<p>第一段，子类 config struct：</p>
+<pre><code class="language-c">struct led_gpio_config {
+    size_t num_leds;
+    const struct gpio_dt_spec *led;
 };
-
-platform_err_t max31827_init(struct max31827 *dev,
-                             const char *i2c_bus_name,
-                             uint8_t dev_addr);
 </code></pre>
-<p>MAX31827 是 Analog Devices（原 Maxim）一颗 I²C 接口的数字温度传感器，12 位分辨率（LSB 0.0625 度），量程 -40 度到 +125 度。子类只多两个字段：I²C 总线句柄 + 设备地址。这就是“具体芯片要的额外信息“。</p>
-<p>子类实现（节选自 <code>max31827.c</code>）：</p>
-<pre><code class="language-c">#define TEMP_RESOLUTION_FOR_12_BIT  (0.0625f)
-#define TEMPERATURE_MASK            (0x0FFF)
+<p><code>num_leds</code> 是这个 device 实例下挂了几颗 LED，<code>led</code> 是一个 <code>gpio_dt_spec</code> 数组指针，每项装一颗 LED 的“GPIO 控制器 + 引脚号 + flag“。这一份 struct 就是 ch12 推过的子类出厂参数。</p>
+<p>第二段，子类实现：</p>
+<pre><code class="language-c">static int led_gpio_set_brightness(const struct device *dev, uint32_t led,
+                                   uint8_t value)
+{
+    const struct led_gpio_config *config = dev-&gt;config;
+    const struct gpio_dt_spec *led_gpio;
 
-static platform_err_t
-max31827_temp_read(struct temp_sensor_base *dev, float *temp_out);
+    if ((led &gt;= config-&gt;num_leds) || (value &gt; 100)) {
+        return -EINVAL;
+    }
+    led_gpio = &amp;config-&gt;led[led];
+    return gpio_pin_set_dt(led_gpio, value &gt; 0);
+}
 
-static const struct temp_sensor_ops max31827_ops = {
-	.temp_read = max31827_temp_read,
+static int led_gpio_on (const struct device *dev, uint32_t led)
+{ return led_gpio_set_brightness(dev, led, 100); }
+
+static int led_gpio_off(const struct device *dev, uint32_t led)
+{ return led_gpio_set_brightness(dev, led, 0); }
+</code></pre>
+<p>第一行 <code>const struct led_gpio_config *config = dev-&gt;config;</code> 是 ch13 讲过的“子类向下转型 dev_data“。父类把出厂参数存在 <code>dev-&gt;config</code> 这个 <code>const void *</code> 字段里，子类一进来就把它强转回自己的 <code>led_gpio_config *</code>，然后访问字段。这就是 ch13 推过的 container 反推逻辑的轻量版，因为这里 config 直接就是 void * 转回去，不用 offsetof 减偏移。</p>
+<p><code>led_gpio_on</code> 和 <code>led_gpio_off</code> 都是直接复用 <code>set_brightness</code>，这是子类内部的代码组织，跟父类无关。</p>
+<p>第三段，ops 表实例化：</p>
+<pre><code class="language-c">static const struct led_driver_api led_gpio_api = {
+    .on             = led_gpio_on,
+    .off            = led_gpio_off,
+    .set_brightness = led_gpio_set_brightness,
 };
-
-platform_err_t
-max31827_init(struct max31827 *dev, const char *i2c_bus_name,
-              uint8_t dev_addr)
-{
-	if ((NULL == dev) || (NULL == i2c_bus_name))
-		return PLATFORM_EINVAL;
-
-	dev-&gt;i2c_bus = platform_i2c_bus_device_find(i2c_bus_name);
-	if (NULL == dev-&gt;i2c_bus)
-		return PLATFORM_EIO;
-
-	dev-&gt;dev_addr = dev_addr;
-	dev-&gt;base.ops = &amp;max31827_ops;
-
-	return PLATFORM_EOK;
-}
-
-static platform_err_t
-max31827_temp_read(struct temp_sensor_base *dev, float *temp_out)
-{
-	uint8_t tx_buf[1] = {0x00};       /* 寄存器地址：温度寄存器 */
-	uint8_t rx_buf[2] = {0x00, 0x00};
-	struct platform_i2c_msg msg[2];
-	float temp;
-
-	struct max31827 *self = (struct max31827 *)dev;  /* 向下转型 */
-
-	msg[0].addr  = self-&gt;dev_addr;
-	msg[0].buf   = tx_buf;
-	msg[0].len   = 1;
-	msg[0].flags = PLATFORM_I2C_WR;
-
-	msg[1].addr  = self-&gt;dev_addr;
-	msg[1].buf   = rx_buf;
-	msg[1].len   = 2;
-	msg[1].flags = PLATFORM_I2C_RD;
-
-	if (platform_i2c_transfer(self-&gt;i2c_bus, msg, 2) != 2)
-		return PLATFORM_EIO;
-
-	uint16_t raw_data = (rx_buf[0] &lt;&lt; 8) | rx_buf[1];
-
-	/* 第 16 位是符号位，负温度走二的补码 */
-	if (raw_data &amp; (1 &lt;&lt; 15)) {
-		raw_data = (raw_data ^ 0xFFFF) + 1;
-		temp = -(float)raw_data * TEMP_RESOLUTION_FOR_12_BIT;
-	} else {
-		raw_data &amp;= TEMPERATURE_MASK;
-		temp = (float)raw_data * TEMP_RESOLUTION_FOR_12_BIT;
-	}
-
-	*temp_out = temp;
-	return PLATFORM_EOK;
-}
 </code></pre>
-<p>这一份子类完整体现了所有教学版没讲透的工程细节，逐个看。</p>
-<p><strong>一，向下转型在第一行就发生。</strong> <code>struct max31827 *self = (struct max31827 *)dev;</code> 是 ch12-ch13 讲过的“基类指针拿回子类指针“。因为 <code>struct temp_sensor_base base</code> 是 <code>struct max31827</code> 的第一个字段，地址相同，强转合法。如果不放第一个字段，就必须用 <code>container_of</code>。</p>
-<p><strong>二，I²C 协议被压成两条 message。</strong> I²C 读外设寄存器的标准流程是“先写寄存器地址、再读 N 字节“。把这两步打包成 <code>platform_i2c_msg_t</code> 数组传给 <code>platform_i2c_transfer</code>，底层一次性发出，省去用户层处理 START / STOP / RESTART 的细节。返回值是“成功传输的 message 数“，等于 2 就成功。</p>
-<p><strong>三，原始数据是 16 位定点数。</strong> MAX31827 的温度寄存器格式：高字节先来，低字节后来，最高位是符号位，剩下 15 位中只有低 12 位有效（分辨率 0.0625 = 1/16，意味着最低 4 位表示小数部分，但寄存器格式把它编码到高位，所以读出来直接乘 0.0625 就得到摄氏度）。负数走二的补码：取反加一，再加上负号。</p>
-<p><strong>四，子类的 ops 是 <code>static const</code>。</strong> <code>static const struct temp_sensor_ops max31827_ops = { .temp_read = max31827_temp_read };</code> 全局唯一一份。即便系统里挂了 8 颗 MAX31827，也共用这一份 ops 表。这是 vtable 在工业代码里的标准写法。</p>
-<p><strong>配置代码</strong> 节选自 <code>app/environment_cfg/temp_sensor_cfg.c</code>：</p>
-<pre><code class="language-c">#include "platform/platform_module_export.h"
-#include "temp_sensor/max31827.h"
+<p>只挂了三个函数，<code>blink / get_info / set_color / write_channels</code> 没挂。这就是上一节那张可空 ops 表的来由：应用层调 <code>led_blink(dev, 0, 500, 500)</code>，走到 <code>z_impl_led_blink</code>，查到 <code>api-&gt;blink == NULL</code>，返回 <code>-ENOSYS</code>。不是 bug，是这个子类明确声明“我不支持 blink“。</p>
+<p>第四段，子类挂载到父类：</p>
+<pre><code class="language-c">#define LED_GPIO_DEVICE(i)                                              \
+    static const struct gpio_dt_spec gpio_dt_spec_##i[] = {             \
+        DT_INST_FOREACH_CHILD_SEP_VARGS(i, GPIO_DT_SPEC_GET, (,), gpios)\
+    };                                                                  \
+    static const struct led_gpio_config led_gpio_config_##i = {         \
+        .num_leds = ARRAY_SIZE(gpio_dt_spec_##i),                       \
+        .led      = gpio_dt_spec_##i,                                   \
+    };                                                                  \
+    DEVICE_DT_INST_DEFINE(i, &amp;led_gpio_init, NULL,                      \
+                          NULL, &amp;led_gpio_config_##i,                   \
+                          POST_KERNEL, CONFIG_LED_INIT_PRIORITY,        \
+                          &amp;led_gpio_api);
 
-struct temp_sensor_base *temp_board = NULL;
-
-static void temperature_sensor_cfg(void)
-{
-	static struct max31827 max31827_dev;
-
-	platform_err_t ret = max31827_init(&amp;max31827_dev, "i2c4", 0x5A);
-	if (ret != PLATFORM_EOK) {
-		log_e("max31827 init failed");
-		return;
-	}
-
-	temp_board = (struct temp_sensor_base *)&amp;max31827_dev;
-}
-
-INIT_ENV_EXPORT(temperature_sensor_cfg);
+DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)
 </code></pre>
-<p><code>temp_board</code> 在 <code>environment_export.h</code> 里 extern 出来，应用层用：</p>
-<pre><code class="language-c">float t = 0.0f;
-if (temp_sensor_read(temp_board, &amp;t) == PLATFORM_EOK) {
-	if (t &gt; 70.0f)
-		log_w("board overheating: %.2f", t);
-}
+<p><code>DT_INST_FOREACH_STATUS_OKAY</code> 这一行很关键。dts 里写了 <code>compatible = "gpio-leds"</code> 的节点，这里就展开几次。stm32f4_disco 这块板子 dts 里只有一个 leds 节点，所以这里只展开一次，得到一份 <code>led_gpio_config_0</code>、一份 <code>gpio_dt_spec_0[]</code>，里面塞 4 颗 LED 的引脚信息。</p>
+<p>ch12 / ch13 推出来的所有抽象，led_gpio.c 整文件 102 行字节级齐全。五段拆解列出来：</p>
+<ul>
+<li>子类 config struct·5 行：对应 ch12 推过的“子类出厂参数“</li>
+<li><code>led_gpio_set_brightness</code> 等实现函数·24 行：对应 ch12 子类实现 + ch13 <code>dev-&gt;config</code> 反推</li>
+<li><code>led_driver_api</code> ops 表实例化·5 行：对应 ch11 ops 表</li>
+<li><code>LED_GPIO_DEVICE(i)</code> 宏 + <code>DT_INST_FOREACH_STATUS_OKAY</code>，一行完成 initcall 注册和父类挂载</li>
+<li>剩余 60 多行是头文件 include、<code>led_gpio_init</code> 入口函数、Kconfig 开关等基础设施</li>
+</ul>
+<p>这是工业级 OOP 在 C 里能做到的最简密度。</p>
+<h2 id="194-device_dt_define-是-ch17-initcall-升级版"><a class="header" href="#194-device_dt_define-是-ch17-initcall-升级版">19.4 DEVICE_DT_DEFINE 是 ch17 initcall 升级版</a></h2>
+<p>ch17 做的教学版 initcall：定义一组 section（<code>.init_pre</code>、<code>.init_drv</code>、<code>.init_app</code>），每个文件用 <code>INIT_xxx_EXPORT(fn)</code> 宏把函数指针放进对应 section，启动时 main 函数遍历这几个 section 依次调。</p>
+<p>Zephyr 把这个机制做得更工业。源：<code>include/zephyr/init.h</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/init.h">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/init.h</a></p>
+<p>第一，init level 不是 3 级，是 6 级：</p>
+<pre><code class="language-c">#define Z_INIT_ORD_EARLY        0
+#define Z_INIT_ORD_PRE_KERNEL_1 1
+#define Z_INIT_ORD_PRE_KERNEL_2 2
+#define Z_INIT_ORD_POST_KERNEL  3
+#define Z_INIT_ORD_APPLICATION  4
+#define Z_INIT_ORD_SMP          5
 </code></pre>
-<p>应用层只调基类接口 <code>temp_sensor_read</code>。它不知道底下接的是 MAX31827，也不知道走的是 I²C bus 4。</p>
-<p><strong>为什么不直接两层都合并到一层？</strong> 这个问题最容易问。“反正现在只有一颗 MAX31827，我直接写 <code>max31827_read(dev, &amp;t)</code> 不就好了，何必套个基类？”</p>
-<p>答案在硬件演化。同一块板第二版可能换 SHT31（带温湿度的 I²C 传感器），第三版可能换 NCT75（更便宜的 I²C 传感器），第四版可能为了高精度场合换 MAX31875（19 位精度）。每换一颗芯片，应用层（“过 70 度报警“那段逻辑）一行不动。新增子类挂上去，cfg 文件里 <code>temp_board</code> 指向新子类即可。</p>
-<p>教学版常见的错是看到只有一颗芯片就不抽基类，第二颗芯片来的时候发现应用层每个用到温度的地方都要改一遍，最后变成复制粘贴。基类抽象的成本是“多一层指针跳转“，收益是“任何时候硬件方案换芯片不改应用层“。工业项目里这笔账 99% 是值得做的。</p>
-<p><strong>和教学版 <code>struct led</code> 的差距详细对比。</strong> 把这一节的 <code>struct max31827</code> 和 ch01 的 <code>struct led</code> 摆一起，能数出教学版到工业版具体多了什么：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>#</th><th>维度</th><th>教学版 <code>struct led</code></th><th>工业版 <code>struct max31827</code></th></tr>
-</thead>
-<tbody>
-<tr><td>1</td><td>是否有继承层级</td><td>没有</td><td>两层（base + max31827）</td></tr>
-<tr><td>2</td><td>是否有虚函数表</td><td>没有</td><td>有 <code>struct temp_sensor_ops</code></td></tr>
-<tr><td>3</td><td>字段数</td><td>3（pin/brightness/is_on）</td><td>3（base/dev_addr/i2c_bus）但语义层级不同</td></tr>
-<tr><td>4</td><td>接口暴露范围</td><td>一颗具体 LED</td><td>整类温度传感器</td></tr>
-<tr><td>5</td><td>错误处理</td><td><code>return -1</code></td><td><code>platform_err_t</code> 共 10+ 种错误码</td></tr>
-<tr><td>6</td><td>总线抽象</td><td>直接 <code>platform_pin_write</code></td><td>经 <code>platform_i2c_bus_device_find</code> 查表后 <code>platform_i2c_transfer</code></td></tr>
-<tr><td>7</td><td>设备地址</td><td>引脚号 <code>uint8_t</code></td><td>I²C 地址 + bus 句柄</td></tr>
-<tr><td>8</td><td>数据解码</td><td>无（写 1 / 0）</td><td>16 位定点数解析 + 符号位 + 二的补码</td></tr>
-<tr><td>9</td><td>实例创建</td><td><code>struct led red;</code> 全局</td><td><code>static struct max31827 dev;</code> 在 cfg 文件里</td></tr>
-<tr><td>10</td><td>句柄暴露</td><td>直接 <code>extern struct led red;</code></td><td><code>extern struct temp_sensor_base *temp_board;</code></td></tr>
-<tr><td>11</td><td>启动注册</td><td><code>main()</code> 里调 init</td><td><code>INIT_ENV_EXPORT(cfg_func)</code> 自动</td></tr>
-</tbody>
-</table>
-</div>
-<p>这 11 件事单独看每一件都不复杂。挤在一起就是教学到工业的全部差距。</p>
-<h2 id="194-风扇驱动状态机与状态变化回调"><a class="header" href="#194-风扇驱动状态机与状态变化回调">19.4 风扇驱动：状态机与状态变化回调</a></h2>
-<p>风扇控制比 LED 复杂在它有状态机。三档转速（低、中、高）加上停转状态，加上风扇本身可能因为外部原因失速。风扇驱动需要把状态变化主动告诉上层。</p>
-<p>节选自 <code>app/drivers/fan/fan.h</code>：</p>
-<pre><code class="language-c">struct fan;
-
-typedef void (*fan_status_change_cb_t)(struct fan *me, uint32_t status);
-
-struct fan {
-	platform_device_t      uart_dev;
-	fan_status_change_cb_t status_change_cb;
-	uint32_t               status;
-};
-
-void fan_init(struct fan *me, const char *uart_name);
-platform_err_t fan_ctrl(struct fan *me, uint32_t level);
-uint32_t fan_status_get(struct fan *me);
-void fan_status_change_cb_register(struct fan *me,
-                                   fan_status_change_cb_t cb);
+<p><code>EARLY</code> 在进 C 域之后立刻跑，内核都还没起来。<code>PRE_KERNEL_1</code> / <code>PRE_KERNEL_2</code> 是内核初始化期间，还不能用 kernel 服务（信号量、互斥锁还不能调）。<code>POST_KERNEL</code> 是内核已经活着，可以用所有 kernel API。<code>APPLICATION</code> 在 main 之前。<code>SMP</code> 只在多核启用时出现。这种分级粒度对应了 driver 在不同硬件依赖深度下的初始化顺序需求。</p>
+<p>第二，section 名字编进 level + prio + sub_prio 三层排序键：</p>
+<pre><code class="language-c">#define Z_INIT_ENTRY_SECTION(level, prio, sub_prio)                    \
+    __attribute__((__section__(                                        \
+        ".z_init_" #level STRINGIFY(prio)"_" STRINGIFY(sub_prio)"_")))
 </code></pre>
-<p>注意三件事。</p>
-<p><strong>一，没有 ops 表。</strong> 这个项目里风扇只接一种型号（UART 串口控制的智能风扇），没有第二种实现，所以没必要套虚函数表。OOP 不是规则，是工具。能简单解决的问题就别上多态。教学版常见的错误是“把所有 driver 都套上 ops 表“，工业代码不会这么干。这条规则反过来说也成立：将来真的多了一种风扇（比如 PWM 直驱的简单风扇），再把这个 <code>struct fan</code> 升级成 <code>struct fan_base</code> + 子类，迁移成本可控。</p>
-<p><strong>二，仍然是 struct + me。</strong> <code>struct fan</code> 有自己的字段（uart 设备句柄、回调指针、当前状态），所有函数第一个参数都是 <code>struct fan *me</code>。这就是第 1 章的封装基本盘，没有 ops 表也是封装。</p>
-<p><strong>三，状态变化回调。</strong> <code>fan_status_change_cb_register</code> 让上层注册一个函数：风扇档位变化时被调用。教学版思路是 <code>if (last_status != cur_status) printf(...)</code> 写在风扇内部，工业版是“我变了我告诉你，怎么处理是你的事“。这是依赖反转的最朴素形态。风扇模块不依赖具体的上层（应用层、状态机、日志系统），它只负责把变化事件喷出来。</p>
-<p>应用层注册：</p>
-<pre><code class="language-c">static void on_fan_status_changed(struct fan *me, uint32_t status)
-{
-	(void)me;
-	switch (status) {
-	case FAN_STATUS_OFF:    log_i("fan stopped"); break;
-	case FAN_STATUS_LOW:    log_i("fan low");     break;
-	case FAN_STATUS_MID:    log_i("fan mid");     break;
-	case FAN_STATUS_HIGH:   log_i("fan high");    break;
-	case FAN_STATUS_FAULT:  log_e("fan fault!");  break;
-	default: break;
-	}
-}
-
-fan_status_change_cb_register(fan_dev, on_fan_status_changed);
-</code></pre>
-<p>风扇驱动内部的事件喷射逻辑（节选）：</p>
-<pre><code class="language-c">static void fan_status_update_internal(struct fan *me, uint32_t new_status)
-{
-	if (me-&gt;status == new_status)
-		return;     /* 没变化不喷 */
-
-	me-&gt;status = new_status;
-
-	if (me-&gt;status_change_cb)
-		me-&gt;status_change_cb(me, new_status);
-}
-</code></pre>
-<p><code>if (me-&gt;status_change_cb)</code> 这一行的工程意义比看起来重要：上层没注册回调就不调用，避免空指针解引用。教学版常忘这一行，是工业代码 NULL 检查里最容易漏的。</p>
-<h2 id="195-设备句柄注册environment_exporth-这一份全局名片夹"><a class="header" href="#195-设备句柄注册environment_exporth-这一份全局名片夹">19.5 设备句柄注册：environment_export.h 这一份“全局名片夹“</a></h2>
-<p>驱动有了，应用层怎么找到具体的实例？教学版通常在 <code>main.c</code> 里 <code>struct led red_led;</code> 直接定义全局变量。工业项目几十个驱动几百个实例，全堆在 <code>main.c</code> 行不通。</p>
-<p>主控板项目用的方法是：每个驱动实例在自己的 <code>*_cfg.c</code> 文件里定义、在 <code>environment_cfg/environment_export.h</code> 里 extern 出来。节选：</p>
-<pre><code class="language-c">/* environment_cfg/environment_export.h */
-extern struct led_base *green_led;
-extern struct led_base *red_led;
-
-extern struct eeprom_base    *sn_eeprom;
-extern struct fan            *fan_dev;
-extern struct laser_base     *laser;
-extern struct temp_sensor_base *temp_board;
-</code></pre>
-<p>应用层写：</p>
-<pre><code class="language-c">#include "environment_cfg/environment_export.h"
-
-led_on(green_led);
-fan_ctrl(fan_dev, 2);
-temp_sensor_read(temp_board, &amp;t);
-</code></pre>
-<p>不需要知道这些设备在哪里被构造、用什么参数构造。<code>environment_export.h</code> 是一份“全局名片夹“，所有跨模块共享的对象都在这里登记一次。</p>
-<p>注意类型：<code>struct led_base *</code>、<code>struct eeprom_base *</code>、<code>struct temp_sensor_base *</code>，全部是基类指针。应用层只能调基类接口（<code>led_on</code>、<code>eeprom_read</code>、<code>eeprom_write</code>、<code>temp_sensor_read</code>），不能调子类特有的方法。这是面向接口编程。</p>
-<h3 id="1951-这一套机制是-linux-设备树的精神同款"><a class="header" href="#1951-这一套机制是-linux-设备树的精神同款">19.5.1 这一套机制是 Linux 设备树的精神同款</a></h3>
-<p>读到这里你可能觉得这个 <code>*_cfg.c</code> 加 <code>extern struct *_base *handle;</code> 的写法很眼熟。它跟 Linux 设备树（Device Tree）和 Zephyr 的 <code>DEVICE_DT_INST_DEFINE</code> 是同一个解决思路的不同实现。</p>
-<p>Linux 设备树是一个 <code>.dts</code> 文本文件（编译成二进制 <code>.dtb</code>），描述系统里有哪些设备、各自挂哪条总线、什么参数。比如树莓派的某段 dts：</p>
-<pre><code>i2c1: i2c@7e804000 {
-    compatible = "brcm,bcm2835-i2c";
-    status     = "okay";
-    clock-frequency = &lt;100000&gt;;
-
-    temp@5a {
-        compatible = "maxim,max31827";
-        reg = &lt;0x5a&gt;;
+<p>教学版 section 名只有“<code>.init_drv</code>“这种粒度，Zephyr 这里直接编出”<code>.z_init_POST_KERNEL_50_0_</code>“这种字符串，链接器拿到一堆 section 名按字典序排，三层排序键就生效了。<code>prio</code> 取值 0 到 99，<code>sub_prio</code> 是同 prio 内的细分。</p>
+<p>字节级对应 ch17：教学版 <code>INIT_xxx_EXPORT(fn)</code> 把 fn 指针放进 <code>.init_xxx</code> section，Zephyr 把 fn 包在一个 <code>struct init_entry</code> 里（多带几个字段，比如关联的 <code>struct device *</code>），放进 <code>.z_init_&lt;level&gt;&lt;prio&gt;_&lt;subprio&gt;_</code> section。启动时遍历依次调，和教学版的核心机制完全一致，只是分级更细 + 排序键更精细。</p>
+<p><code>DEVICE_DT_INST_DEFINE</code> 这个宏的背后，一部分是上一节看到的“实例化 <code>struct device</code>“，另一部分就是这一节看到的“塞进 init section”。两件事用一个宏一次做完，是 Zephyr 在工业代码里把 ch17 那套机制工程化的产物。</p>
+<h2 id="195-device-tree--配置外置"><a class="header" href="#195-device-tree--配置外置">19.5 device tree · 配置外置</a></h2>
+<p>ch04 讲过 <code>const config</code> 配置外置，ch15 推出 platform 层“应用层不动驱动，只动 board.h“。这两层抽象在 Zephyr 里就是 device tree（dts）。</p>
+<p>第一次看到 dts 文件的读者，把它当成“硬件清单的文字版“。一份 dts 描述这块板子上有哪些 SoC、哪些外设、外设之间怎么连，和电路图一一对应，只是用文本写出来。</p>
+<p><img src="../assets/ch19/slide_dts_01_what.png" alt="dts 是硬件清单的文字版"></p>
+<p>dts 不写在 C 代码里，<code>west build</code> 时被翻译成 C 宏，驱动用 <code>DT_NODELABEL(...)</code> 一类宏在编译期取出节点信息。源头来自 Linux 内核同名机制，Zephyr 把它精简了一遍照搬过来。</p>
+<p>下面 6 个小节按顺序：dts 节点长什么样、dts 编译期 4 步流水线、<code>DT_NODELABEL</code> 不是字符串、<code>DEVICE_DT_DEFINE</code> 一行宏三件事、dts 节点和 driver 怎么 match 上的、dts overlay。</p>
+<h3 id="1951-dts-节点长什么样"><a class="header" href="#1951-dts-节点长什么样">19.5.1 dts 节点长什么样</a></h3>
+<p>直接看 stm32f4_disco 板子上 4 颗 LED 的 dts 节点。</p>
+<p>源：<code>boards/st/stm32f4_disco/stm32f4_disco.dts</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/boards/st/stm32f4_disco/stm32f4_disco.dts">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/boards/st/stm32f4_disco/stm32f4_disco.dts</a></p>
+<pre><code class="language-dts">leds {
+    compatible = "gpio-leds";
+    orange_led_3: led_3 {
+        gpios = &lt;&amp;gpiod 13 GPIO_ACTIVE_HIGH&gt;;
+        label = "User LD3";
+    };
+    green_led_4: led_4 {
+        gpios = &lt;&amp;gpiod 12 GPIO_ACTIVE_HIGH&gt;;
+        label = "User LD4";
+    };
+    red_led_5: led_5 {
+        gpios = &lt;&amp;gpiod 14 GPIO_ACTIVE_HIGH&gt;;
+        label = "User LD5";
+    };
+    blue_led_6: led_6 {
+        gpios = &lt;&amp;gpiod 15 GPIO_ACTIVE_HIGH&gt;;
+        label = "User LD6";
     };
 };
 </code></pre>
-<p>启动时内核解析 dtb，看到一颗“挂在 i2c1 上、地址 0x5a、型号 max31827 的温度传感器“，就调 max31827 驱动的 probe 函数把它实例化出来。</p>
-<p>Zephyr 类似，但是 dts 在编译期被预处理器宏展开（<code>DEVICE_DT_INST_DEFINE</code>），运行时不再有解析过程。</p>
-<p>主控板项目没用设备树（项目当年用的 RTOS 不支持），但用的是另一种方法表达同样的东西：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>维度</th><th>Linux 设备树</th><th>Zephyr DT 宏</th><th>主控板项目</th></tr>
-</thead>
-<tbody>
-<tr><td>描述形式</td><td><code>.dts</code> 文本文件</td><td><code>.dts</code> 编译期展开</td><td><code>*_cfg.c</code> C 文件</td></tr>
-<tr><td>解析时机</td><td>启动时运行时解析 dtb</td><td>编译期</td><td>启动时调 cfg 函数</td></tr>
-<tr><td>描述内容</td><td>compatible / reg / 总线</td><td>同左</td><td>bus name 字符串 + 设备地址</td></tr>
-<tr><td>句柄获取</td><td><code>device_get_binding(...)</code></td><td><code>DEVICE_DT_GET(...)</code></td><td><code>extern struct *_base *xxx;</code></td></tr>
-<tr><td>加新设备</td><td>改 dts 重新编译</td><td>改 dts 重新编译</td><td>加 <code>*_cfg.c</code> 文件</td></tr>
-</tbody>
-</table>
-</div>
-<p>三种方案的本质是同一件事：<strong>把“系统里有哪些设备 + 各自参数“从代码里抽出来，放到一份独立的描述文件里</strong>。这样换板子（甚至换芯片）只动这份描述文件，应用层和驱动层都不动。</p>
-<p>主控板项目的 <code>*_cfg.c</code> 比 Linux 设备树多了一点灵活性：它就是 C 代码，可以放任何初始化逻辑（比如根据 ADC 的某个引脚电平决定挂 EEPROM 子类 A 还是子类 B）。少了一点：纯文本 dts 可以不重新编译就改硬件配置（特别是 Linux 系统），<code>*_cfg.c</code> 改了就要重新编译固件。两边都对，是不同语境（Linux 桌面 / 服务器 vs 嵌入式 RTOS 单板）下的取舍。</p>
-<p>读完这一节，你拿起任何一份 Linux 内核驱动代码，看到 <code>of_match_table</code> 和 <code>compatible</code> 字符串，心里就清楚：这是工业项目 <code>*_cfg.c</code> 文件的内核版变体。骨架完全一样。</p>
-<h3 id="1952-platform_device_register--find底层注册表机制"><a class="header" href="#1952-platform_device_register--find底层注册表机制">19.5.2 platform_device_register / find：底层注册表机制</a></h3>
-<p><code>green_led</code> 这个变量是怎么“全局可见“的？答案是：定义在 <code>led_cfg.c</code> 里、extern 在 <code>environment_export.h</code> 里、应用层 include 后 link 时由链接器解析。这是普通的 C 全局变量。</p>
-<p>但有一类设备走更通用的注册表机制：UART、I²C、SPI、ADC 这些总线设备。它们不在 cfg 文件里直接 <code>extern</code>，而是用一份运行时注册表。</p>
-<p>节选自 <code>app/platform/platform_device.h</code>：</p>
-<pre><code class="language-c">struct platform_device {
-	const char* name;                            /* "uart3" / "i2c4" */
-	uint32_t dev_id;
-	uint8_t  ref_count;
-	uint16_t flag;
-	uint16_t open_flag;
-	platform_sys_mutex_t dev_mutex;
-
-	platform_err_t (*rx_indicate)(platform_device_t dev, uint32_t size);
-	platform_err_t (*tx_complete)(platform_device_t dev, void *buffer);
-
-	const struct platform_device_ops *ops;
-	void *user_data;
+<p>读这一段只看三件事就够。</p>
+<p><img src="../assets/ch19/slide_dts_02_anatomy.png" alt="dts 节点·三件事"></p>
+<p>第一，<code>compatible = "gpio-leds"</code>。这是节点的“型号字符串“，告诉编译期工具链：这个节点要用哪个 driver 处理。19.5.5 节会展开讲它怎么 match 上 <code>drivers/led/led_gpio.c</code>。</p>
+<p>第二，<code>gpios = &lt;&amp;gpiod 13 GPIO_ACTIVE_HIGH&gt;</code> 三元组。<code>&amp;gpiod</code> 是这块板子上 GPIOD 控制器节点的 phandle（指针引用），<code>13</code> 是引脚号，<code>GPIO_ACTIVE_HIGH</code> 是极性。这一行就把“这颗 LED 接在 PD13“写死了。</p>
+<p>第三，<code>label = "User LD3"</code>。一个人类可读的字符串，应用层调 <code>led_get_info(dev, idx, &amp;info)</code> 能拿到。<code>orange_led_3:</code> 这个冒号前的标识符叫 dts label，后面其他节点（比如 <code>aliases</code>）可以用 <code>&amp;orange_led_3</code> 引用它。</p>
+<p>四颗 LED 全在 PD12 / PD13 / PD14 / PD15。<code>leds</code> 父节点带 <code>compatible = "gpio-leds"</code>，四个子节点不需要再写 compatible，它们一起作为这个父节点的 4 颗 LED 出场。</p>
+<h3 id="1952-dts-编译期魔法4-步流水线"><a class="header" href="#1952-dts-编译期魔法4-步流水线">19.5.2 dts 编译期魔法·4 步流水线</a></h3>
+<p>dts 不是运行时数据，是编译期数据。这一点决定了 Zephyr 启动后没有“dts 解析“过程，零运行时开销。</p>
+<p>整条流水线 4 步：</p>
+<p><img src="../assets/ch19/slide_dts_03_pipeline.png" alt="dts 编译期 4 步流水线"></p>
+<p>第一步，读者写好 <code>stm32f4_disco.dts</code>（板级）+ <code>app.overlay</code>（应用补丁，可选）。</p>
+<p>第二步，<code>west build</code> 触发时，<code>gen_defines.py</code>（位于 <code>zephyr/scripts/dts/</code>）这个 Zephyr 内建 Python 脚本把这些 dts 文件读进来，按命名约定把每个节点、每个属性拆成 token，生成 <code>devicetree_generated.h</code>。这个头文件几千行 <code>#define</code>，读者从不直接看，人眼读不进去也不需要读。</p>
+<p>第三步，driver 和应用代码 <code>#include &lt;zephyr/devicetree.h&gt;</code>（间接 include 到上面那份生成头文件），写 <code>DT_NODELABEL(leds)</code>、<code>DT_PROP(node, gpios)</code>、<code>GPIO_DT_SPEC_GET(node, gpios)</code> 这些宏。预处理阶段（<code>cpp</code>）把这些宏全部展开成静态结构体字面量。</p>
+<p>第四步，编译器看到的已经是普通 C 代码，<code>led_gpio_config_0</code> 是静态 const 数组，烧进 ROM，跑起来和手写常量一模一样快。</p>
+<p>关键一句话：dts 是 build 时被处理，zephyr 启动后没有“dts 解析“运行时。</p>
+<h3 id="1953-dt_nodelabel-不是字符串是宏拼接"><a class="header" href="#1953-dt_nodelabel-不是字符串是宏拼接">19.5.3 DT_NODELABEL 不是字符串·是宏拼接</a></h3>
+<p>第一次看 Zephyr 代码，<code>DT_NODELABEL(leds)</code> 容易让人误以为它运行时去查一个名叫 “leds” 的字符串。其实不是。它的本质是 token 拼接。</p>
+<p><img src="../assets/ch19/slide_dts_04_macro.png" alt="DT_NODELABEL 宏拼接"></p>
+<p>dts 里 <code>leds {...}</code> 这个节点，<code>gen_defines.py</code> 给它生成一个独一无二的 token 名，形如 <code>DT_N_S_soc_S_..._S_leds</code>，路径反映节点在 dts 树里的位置。<code>DT_NODELABEL(leds)</code> 这个宏展开就是这串 token。这串 token 不是变量名，是后面其他宏拼接用的“命名约定“。</p>
+<p>举个例子。要拿 <code>leds</code> 节点的 <code>gpios</code> 属性，写 <code>DT_PROP(DT_NODELABEL(leds), gpios)</code>。这个宏第一步展开成 <code>DT_N_S_..._S_leds_P_gpios</code>（中间的 <code>_P_</code> 表示 property），然后这又是一个 <code>#define</code>，定义在 <code>devicetree_generated.h</code> 里，继续展开成 <code>{DEVICE_DT_GET(DT_NODELABEL(gpiod)), 13, GPIO_ACTIVE_HIGH}</code> 这种 C 表达式。</p>
+<p>整套机制不是字符串解析，是宏拼接 + 多层 <code>#define</code> 接力。每一层都在预处理阶段完成，走到代码生成时，已经是纯 C 常量。编译器看到的是 token，不是字符串。</p>
+<p>记住一句话就够：看到 <code>DT_xxx</code> 开头的宏，脑子里把它当编译期常量，不是运行时函数调用，后面读源码就顺了。</p>
+<h3 id="1954-device_dt_define-一行宏完成三件事"><a class="header" href="#1954-device_dt_define-一行宏完成三件事">19.5.4 DEVICE_DT_DEFINE 一行宏完成三件事</a></h3>
+<p><code>DEVICE_DT_DEFINE</code> 是 Zephyr 把 ch11 ops 表 + ch12 子类实例化 + ch17 initcall 三个机制合并到一个宏里的产物。</p>
+<p><img src="../assets/ch19/slide_dts_05_device_define.png" alt="DEVICE_DT_DEFINE 一行宏三件事"></p>
+<p>宏的形式：</p>
+<pre><code>DEVICE_DT_DEFINE(node_id,                 // dts 节点 token
+                 init_fn,                  // ch12 子类 init 函数
+                 NULL,                     // pm·先忽略
+                 NULL,                     // ch12 子类 data·LED 不需要
+                 &amp;led_gpio_config_##i,     // ch04 const config·dts 翻译来的
+                 POST_KERNEL,              // ch17 init level
+                 CONFIG_LED_INIT_PRIORITY, // ch17 init prio
+                 &amp;led_gpio_api);           // ch11 ops 表
+</code></pre>
+<p>展开后一次性做三件事：</p>
+<ol>
+<li>生成一个静态 <code>struct device __device_dts_ord_&lt;N&gt;</code> 实例，里面 <code>api</code> 指向 <code>led_gpio_api</code>、<code>config</code> 指向 <code>led_gpio_config_##i</code>、<code>name</code> 取自 dts 的 label，这是 ch11 推过的“父类对象 + 子类 ops 表绑定“。</li>
+<li>把 <code>init_fn</code> 包成 <code>struct init_entry</code>，放进特殊链接段 <code>.z_init_POST_KERNEL_50_0_</code>，19.4 节讲过的 init 表机制就吃这个段，这是 ch17 推过的“initcall 自动注册“。</li>
+<li>应用层后续 <code>DEVICE_DT_GET(DT_NODELABEL(leds))</code> 编译期就直接拿到这个静态 <code>__device_dts_ord_&lt;N&gt;</code> 的地址，这是 ch15 platform 层推过的“应用拿父类指针，不知道具体子类“。</li>
+</ol>
+<p>回到 ch04 推过的“配置外置，让 driver 不知道具体硬件参数“。当时的形态是 <code>const struct led_config { .pin = 13, ... }</code> 写在 board.c 里，driver.c 拿指针读。Zephyr 把这个抽象做到极限：硬件参数不写 C 文件，写 dts，<code>gen_defines.py</code> 在编译期把 dts 翻译成 C 宏，driver 用 <code>DT_PROP / GPIO_DT_SPEC_GET</code> 把宏展开成静态结构体。整条链零运行时开销，连“启动时跑一段函数读 config 表“都不需要。</p>
+<h3 id="1955-dts-节点--driver-是怎么-match-上的"><a class="header" href="#1955-dts-节点--driver-是怎么-match-上的">19.5.5 dts 节点 → driver 是怎么 match 上的</a></h3>
+<p>读到这里，读者应该已经知道 dts 是编译期数据、<code>DT_xxx</code> 宏是编译期 token 拼接、<code>DEVICE_DT_DEFINE</code> 一行完成三件事。最后剩一个关键问题：dts 里写 <code>compatible = "gpio-leds"</code> 的节点，和 <code>drivers/led/led_gpio.c</code> 这份 driver 文件，到底是怎么对上号的。这一节专门拆开讲，不留盲区。</p>
+<p>整套 match 机制完全发生在编译期，没有运行时遍历。核心两个工具是 <code>DT_DRV_COMPAT</code> 宏和 <code>DT_INST_FOREACH_STATUS_OKAY</code> 宏。</p>
+<p>第一，driver 端用 <code>DT_DRV_COMPAT</code> 声明它认领哪个 compatible 字符串。<code>drivers/led/led_gpio.c</code> 第一行就写：</p>
+<pre><code class="language-c">#define DT_DRV_COMPAT gpio_leds
+</code></pre>
+<p>意思是“这份 driver 文件认领所有 <code>compatible = "gpio-leds"</code> 的 dts 节点“。dts 里写的是 <code>"gpio-leds"</code>（带连字符），<code>DT_DRV_COMPAT</code> 这里写成 <code>gpio_leds</code>（连字符变下划线），这是 Zephyr 的命名转换约定，因为 C 标识符不允许连字符。</p>
+<p>第二，driver 端用 <code>DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)</code> 在编译期遍历所有 status=“okay” 的兼容节点。这一行展开后，<code>gen_defines.py</code> 给每个匹配 <code>DT_DRV_COMPAT</code> 的 dts 节点编一个 inst 序号（0、1、2…），然后对每个序号 i 调一次 <code>LED_GPIO_DEVICE(i)</code>。</p>
+<p>第三，<code>LED_GPIO_DEVICE(i)</code> 宏在 19.3 节看过，展开后给这个 dts 节点生成：一份 <code>static const struct gpio_dt_spec gpio_dt_spec_##i[]</code>、一份 <code>static const struct led_gpio_config led_gpio_config_##i</code>、一行 <code>DEVICE_DT_INST_DEFINE</code> 把 <code>struct device</code> 实例 + ops 表 + init 函数 + 链接段位置全绑定。</p>
+<p>把这三步串起来，match 的全过程：</p>
+<ul>
+<li><code>gen_defines.py</code> 编译期扫 dts，遇到 <code>compatible = "gpio-leds"</code> 的节点，给它编个序号</li>
+<li>编译器预处理 <code>led_gpio.c</code>，<code>DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)</code> 这一行被宏展开成 <code>LED_GPIO_DEVICE(0) LED_GPIO_DEVICE(1) ...</code>，序号取自上一步</li>
+<li>每个 <code>LED_GPIO_DEVICE(i)</code> 又被展开，生成一份 <code>struct device</code> + 一份 config + 一段 init 段挂载</li>
+<li>链接器把所有 init 段挂到一起，启动时遍历依次调</li>
+</ul>
+<p>stm32f4_disco 板子 dts 里只有一个 <code>leds</code> 节点带 <code>compatible = "gpio-leds"</code>，所以 <code>DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)</code> 只展开一次，得到 <code>led_gpio_config_0</code>、<code>gpio_dt_spec_0[]</code>、一个 <code>struct device</code> 实例。要是某块板子 dts 里挂了两组 LED，<code>leds0 { compatible = "gpio-leds"; ... }</code> 和 <code>leds1 { compatible = "gpio-leds"; ... }</code>，这一行就展开两次，生成两份独立的 config + 两个独立的 device 实例。</p>
+<p>关键一句话：match 不是运行时遍历，是 build 时静态展开，每个 dts 节点编译时已经定好它绑哪个 driver。</p>
+<p>这就是为什么 Zephyr 启动快，没有 device 树遍历，没有运行时 <code>of_match_compatible</code>。Linux 内核因为要支持热插拔和模块加载，match 是运行时做的，遍历 driver 注册表 + 节点 compatible 字符串比对（这点 ch20 会讲）。Zephyr 为 MCU 做了根本简化，把这件事完全压到编译期，内核里没有任何字符串比对代码。</p>
+<p>回头看 ch17 推过的教学版 initcall：定义 section、放函数指针、启动遍历调用。Zephyr 在这个机制上叠加了一层“dts 节点 → driver 静态展开“，把“硬件配置 → 实例化 → 注册到 init 段“全部一次做完。读者写 driver 时只关心 <code>DT_DRV_COMPAT</code> 一行 + <code>DT_INST_FOREACH_STATUS_OKAY</code> 一行，剩下的全是编译期魔法。</p>
+<h3 id="1956-dts-overlay--叠加修改不动-boarddts"><a class="header" href="#1956-dts-overlay--叠加修改不动-boarddts">19.5.6 dts overlay · 叠加修改不动 board.dts</a></h3>
+<p>最后一种 dts 用法，实战中天天用：写一份 <code>app.overlay</code> 或 <code>&lt;board&gt;.overlay</code>，叠加到 board 自带的 dts 上面，改一两个引脚或加一个外设。<code>west build</code> 自动合并。</p>
+<p>举个例子，改 stm32f4_disco 上 LD4 的 label：</p>
+<pre><code class="language-dts">&amp;green_led_4 {
+    label = "Demo Board LD4";
 };
-
-extern platform_err_t
-platform_device_register(platform_device_t dev, const char *name,
-                         uint16_t flags);
-
-extern platform_device_t
-platform_device_find(const char *name);
 </code></pre>
-<p>每个 UART 实例在 board 初始化时调一次：</p>
-<pre><code class="language-c">platform_device_register((platform_device_t)&amp;uart3_dev, "uart3", FLAG);
-</code></pre>
-<p>底下 <code>platform_device_register</code> 的实现是把这个设备挂到一份全局链表 / 数组里。应用层（或者驱动层）找设备：</p>
-<pre><code class="language-c">platform_device_t uart3 = platform_device_find("uart3");
-if (uart3) {
-	uart_open(uart3);
-	uart_write(uart3, 0, data, len);
-}
-</code></pre>
-<p><code>uart_open</code> / <code>uart_write</code> 是 <code>platform_uart.c</code> 里的封装函数（和 1.10 节的 <code>led_on</code> 一样），内部走 <code>uart-&gt;ops-&gt;open(uart)</code> / <code>uart-&gt;ops-&gt;write(uart, ...)</code> dispatch 到具体 UART 控制器实现。应用层看到的就是普通函数调用。</p>
-<p>这就是 Linux 内核 <code>bus_register</code> / <code>device_add</code> / <code>bus_find_device</code> 的精简版。设备名字（字符串）作为唯一 ID，运行时按名字查找。</p>
-<p>为什么 LED 不走这个机制，UART 要走？因为 LED 的句柄是“应用层早就知道哪几个 LED“（设计阶段定的），而 UART 的句柄是“驱动层要按名字找具体硬件资源“（运行期解耦）。前者用 extern 全局变量更直接，后者用注册表更灵活。两种机制并存于工业项目里，按场景选。</p>
-<p>这是教学版到工业版第 12 件具体差距。</p>
-<h2 id="196-initcall让所有驱动自动按顺序启动"><a class="header" href="#196-initcall让所有驱动自动按顺序启动">19.6 initcall：让所有驱动自动按顺序启动</a></h2>
-<p><code>green_led</code> 这个变量哪里被构造？什么时候被构造？这是工业项目特别讲究的事。</p>
-<p>教学版的做法是 <code>main()</code> 里手动调一长串 init：</p>
-<pre><code class="language-c">int main(void)
-{
-	platform_init();
-	led_gpio_init(&amp;green_led_obj, "PI.15", true);
-	led_gpio_init(&amp;red_led_obj, "PI.14", true);
-	eeprom_ds2433_init(&amp;sn_eeprom_obj, ...);
-	fan_init(&amp;fan_obj, "uart3");
-	max31827_init(&amp;temp_sensor_obj, "i2c4", 0x5A);
-	/* ... 几十行 ... */
-	app_main();
-}
-</code></pre>
-<p>随着驱动增多，这个 main 越来越长，每加一个驱动 main 改一次。更糟糕的是依赖关系会乱：A 依赖 B，调换顺序就崩。</p>
-<p>主控板项目用的是分级自动初始化机制（参考 RT-Thread 的 INIT_xxx_EXPORT 宏）。节选自 <code>app/platform/platform_module_export.h</code>：</p>
-<pre><code class="language-c">typedef struct {
-	void (*func)(void);
-} module_export_t;
+<p>三行。<code>&amp;green_led_4</code> 这个引用方式叫 phandle，指向板级 dts 里 <code>green_led_4: led_4 {...}</code> 那个节点。overlay 的语义是“叠加到原 dts 上面“，这里改了 <code>label</code> 字段，<code>gpios</code> 字段保持不变。</p>
+<p>19.8 节那个 demo 就用这一招演示 ch15 platform 抽象：板子不动、driver 不动、应用 main.c 不动，只新增一份 overlay，LD4 的 label 就改了。</p>
+<h2 id="196-不只是-led--i2c-温度传感器同款抽象"><a class="header" href="#196-不只是-led--i2c-温度传感器同款抽象">19.6 不只是 LED · I2C 温度传感器同款抽象</a></h2>
+<p>前 5 节我们用 LED 摸完一整条链路，从 dts 节点到 DT_DRV_COMPAT 到 ops 表到 DEVICE_DT_DEFINE。一个合理的怀疑是，这套抽象是不是只在 LED 这种简单外设上成立。下面换一颗 I2C 温度传感器走一遍同样的路，你会看到完全同款的 OOP 套路。</p>
+<p>读者可能心里嘀咕：是不是 LED 太特殊，正好能套这套 OOP，换个外设就不行了？换 I2C 设备来一遍，结论是同款。</p>
+<p>这一节切到 LM75，业界经典的 I2C 数字温度传感器，1990 年代 National Semiconductor 推出，之后 NXP / ON / TI 等多家延续生产，几十年来到处都在用，也是 Linux 内核 hwmon 子系统里教科书级别的样本之一。Zephyr v3.7.0 主线带 LM75 driver，路径 <code>drivers/sensor/lm75/lm75.c</code>。</p>
+<h3 id="1961-lm75-在-dts-里--i2c-bus-的-client"><a class="header" href="#1961-lm75-在-dts-里--i2c-bus-的-client">19.6.1 LM75 在 dts 里 · I2C bus 的 client</a></h3>
+<p>LM75 是 I2C 设备，在 dts 里写成 I2C 控制器节点的子节点。给 stm32f4_disco 加一份 overlay，把 LM75 挂到 I2C1 上：</p>
+<pre><code class="language-dts">&amp;i2c1 {
+    status = "okay";
+    clock-frequency = &lt;I2C_BITRATE_STANDARD&gt;;
 
-#define INIT_EXPORT(_func, level) \
-	__attribute__((used)) const module_export_t \
-	module_int##_func \
-	__attribute__((section("moduleExport" level))) = \
-	{ .func = _func, }
-
-#define INIT_BOARD_EXPORT(fn)         INIT_EXPORT(fn, "1")
-#define INIT_PREV_EXPORT(fn)          INIT_EXPORT(fn, "2")
-#define INIT_DEVICE_EXPORT(fn)        INIT_EXPORT(fn, "3")
-#define INIT_COMPONENT_EXPORT(fn)     INIT_EXPORT(fn, "4")
-#define INIT_ENV_EXPORT(fn)           INIT_EXPORT(fn, "5")
-#define INIT_APP_EXPORT(fn)           INIT_EXPORT(fn, "6")
-#define INIT_SYSTEM_READY_EXPORT(fn)  INIT_EXPORT(fn, "7")
+    lm75_0: lm75@48 {
+        compatible = "lm75";
+        reg = &lt;0x48&gt;;
+    };
+};
 </code></pre>
-<p>每个驱动在自己的 cfg 文件里写一个 init 函数，挂上对应级别的 EXPORT 宏：</p>
-<pre><code class="language-c">/* environment_cfg/led_cfg.c (示意，简化) */
-static struct led_gpio green_led_obj;
-struct led_base *green_led = (struct led_base *)&amp;green_led_obj;
-
-static void green_led_setup(void)
-{
-	led_gpio_init(&amp;green_led_obj, "PI.15", true);
-}
-INIT_DEVICE_EXPORT(green_led_setup);
+<p><code>&amp;i2c1</code> 是 phandle，指向 SoC dtsi 里 I2C1 控制器节点，overlay 把它的 <code>status</code> 改成 “okay”（默认是 “disabled”），然后挂一个名叫 <code>lm75@48</code> 的子节点。</p>
+<p><code>compatible = "lm75"</code> 是 driver match 的钥匙，见 19.6.2。<code>reg = &lt;0x48&gt;</code> 在 I2C 子节点上有特殊语义，它是 I2C 7-bit 从设备地址，LM75 的 A2/A1/A0 引脚全接地时地址就是 <code>0x48</code>，三根地址脚一共能产生 8 个不同地址，所以一条 I2C bus 上最多挂 8 颗 LM75。</p>
+<p>dts 里写一行，硬件就描述清楚了。和 LED 那边一模一样：硬件接线写在 dts，driver 代码不动，应用代码不动。</p>
+<h3 id="1962-lm75-driver-是怎么-match-上的"><a class="header" href="#1962-lm75-driver-是怎么-match-上的">19.6.2 LM75 driver 是怎么 match 上的</a></h3>
+<p>19.5.5 讲过的 match 机制照搬。<code>drivers/sensor/lm75/lm75.c</code> 文件第 8 行：</p>
+<p>源：<code>drivers/sensor/lm75/lm75.c</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/drivers/sensor/lm75/lm75.c">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/drivers/sensor/lm75/lm75.c</a></p>
+<pre><code class="language-c">#define DT_DRV_COMPAT lm75
 </code></pre>
-<p>这个 <code>INIT_DEVICE_EXPORT(green_led_setup)</code> 展开后会在 ELF 文件里产生一个特殊段 <code>moduleExport3</code>，里面只有一个元素：指向 <code>green_led_setup</code> 的函数指针。</p>
-<p>链接器（linker）把所有 <code>moduleExport3</code> 段合并成一段连续的内存区域，放在固件镜像里。系统启动时，遍历这个区域，依次调用每个函数指针：</p>
-<pre><code class="language-c">/* 节选自 app/platform/platform_module_export.c (GCC 工具链版本) */
-extern const unsigned int moduleExport3_start;
-extern const unsigned int moduleExport3_end;
-
-#define MODULE_EXPORT_EXEC(section)                                  \
-	do {                                                             \
-		module_export_t *base = (module_export_t *)                  \
-			(&amp;moduleExport##section##_start);                        \
-		uint32_t cnt = ((unsigned int)(&amp;moduleExport##section##_end) \
-		              - (unsigned int)(&amp;moduleExport##section##_start)) \
-		              / sizeof(module_export_t);                     \
-		for (uint32_t i = 0; i &lt; cnt; i++)                           \
-			base[i].func();                                          \
-	} while (0)
-
-void platform_module_export_exec(void)
-{
-	MODULE_EXPORT_EXEC(1);   /* INIT_BOARD_EXPORT */
-	MODULE_EXPORT_EXEC(2);   /* INIT_PREV_EXPORT */
-	MODULE_EXPORT_EXEC(3);   /* INIT_DEVICE_EXPORT */
-	MODULE_EXPORT_EXEC(4);   /* INIT_COMPONENT_EXPORT */
-	MODULE_EXPORT_EXEC(5);   /* INIT_ENV_EXPORT */
-	MODULE_EXPORT_EXEC(6);   /* INIT_APP_EXPORT */
-	MODULE_EXPORT_EXEC(7);   /* INIT_SYSTEM_READY_EXPORT */
-}
+<p>这一行声明 lm75.c 认领所有 <code>compatible = "lm75"</code> 的 dts 节点。文件最后一行：</p>
+<pre><code class="language-c">DT_INST_FOREACH_STATUS_OKAY(LM75_INST)
 </code></pre>
-<p>这就是 Linux 内核 4000 万行代码里所有驱动自动启动的同款机制（第 17 章详细讲过）。<code>__moduleExport3_start</code> / <code>_end</code> 这两个符号不是程序员写的，是链接脚本（<code>.ld</code> 文件或 <code>.sct</code>）告诉链接器“在 <code>moduleExport3</code> 段开头放一个 <code>start</code>、结尾放一个 <code>end</code>“，运行时就能把整段区域 walk 一遍。</p>
-<p>主控板的 7 级层次大致对应：</p>
+<p>编译期遍历所有 status=“okay” 的 lm75 节点，一个一个调 <code>LM75_INST(i)</code> 宏。<code>LM75_INST</code> 宏展开后给每个 LM75 节点生成：一份 <code>struct lm75_data lm75_data_##inst</code>（运行态，存温度采样和触发上下文），一份 <code>static const struct lm75_config lm75_config_##inst</code>（出厂参数，包含 <code>i2c_dt_spec</code> 和 <code>config_dt</code> 寄存器位），一行 <code>SENSOR_DEVICE_DT_INST_DEFINE</code> 把 <code>struct device</code> 实例 + ops 表 + init 函数 + 链接段位置全绑定。</p>
+<p><code>LM75_INST(0)</code> 展开后里头这一段是关键：</p>
+<pre><code class="language-c">.i2c = I2C_DT_SPEC_INST_GET(inst),
+</code></pre>
+<p><code>I2C_DT_SPEC_INST_GET</code> 这个宏在编译期把 dts 里 <code>reg = &lt;0x48&gt;</code> 那个地址 + 父节点 <code>i2c1</code> 的 <code>struct device *</code> 一起塞进 <code>struct i2c_dt_spec</code>。运行时，<code>lm75_reg_read</code> 拿到这个 spec，调 <code>i2c_burst_read_dt(&amp;cfg-&gt;i2c, reg, buf, size)</code> 就能把 LM75 的寄存器读出来。</p>
+<p>整套流程和 LED GPIO 一字不差：dts 写硬件，<code>DT_DRV_COMPAT</code> 认领 compatible，<code>DT_INST_FOREACH_STATUS_OKAY</code> 编译期展开，一个 dts 节点对应一个 <code>struct device</code> 实例。</p>
+<h3 id="1963-sensor_driver_api--5-个-ops"><a class="header" href="#1963-sensor_driver_api--5-个-ops">19.6.3 sensor_driver_api · 5 个 ops</a></h3>
+<p>LED 子系统的 ops 表叫 <code>led_driver_api</code>，sensor 子系统的 ops 表叫 <code>sensor_driver_api</code>。</p>
+<p>源：<code>include/zephyr/drivers/sensor.h</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/drivers/sensor.h">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/drivers/sensor.h</a></p>
+<pre><code class="language-c">__subsystem struct sensor_driver_api {
+    sensor_attr_set_t       attr_set;
+    sensor_attr_get_t       attr_get;
+    sensor_trigger_set_t    trigger_set;
+    sensor_sample_fetch_t   sample_fetch;
+    sensor_channel_get_t    channel_get;
+    sensor_get_decoder_t    get_decoder;
+    sensor_submit_t         submit;
+};
+</code></pre>
+<p>7 个函数指针，核心 5 个：<code>attr_set / attr_get</code> 设/读阈值，<code>trigger_set</code> 注册中断回调（温度越线触发），<code>sample_fetch</code> 触发一次采样，<code>channel_get</code> 把采样值取出来。<code>get_decoder / submit</code> 是 v3.7 引入的异步 API，一般不用。</p>
+<p>和 LED 子系统对比看：</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>级别</th><th>名字</th><th>干什么</th><th>主控板上的例子</th></tr>
+<tr><th>子系统</th><th>父类</th><th>ops 表</th><th>子类样本</th></tr>
 </thead>
 <tbody>
-<tr><td>1</td><td>INIT_BOARD_EXPORT</td><td>板级初始化（时钟、Flash、外设引脚复用）</td><td>STM32 时钟树配置、PINMUX 表</td></tr>
-<tr><td>2</td><td>INIT_PREV_EXPORT</td><td>纯软件预初始化（内存池、日志系统）</td><td>EasyLogger init、内存池 init</td></tr>
-<tr><td>3</td><td>INIT_DEVICE_EXPORT</td><td>设备驱动初始化（UART / I²C / SPI 总线）</td><td>platform_uart_register(“uart3”…)</td></tr>
-<tr><td>4</td><td>INIT_COMPONENT_EXPORT</td><td>组件初始化（状态机框架、Shell、协议栈）</td><td>Shell 初始化、协议栈初始化</td></tr>
-<tr><td>5</td><td>INIT_ENV_EXPORT</td><td>环境配置（具体外设实例：LED、EEPROM、温度传感器）</td><td>led_cfg、temp_sensor_cfg、fan_cfg</td></tr>
-<tr><td>6</td><td>INIT_APP_EXPORT</td><td>应用层模块（业务逻辑订阅事件、注册回调）</td><td>报警阈值订阅、Host 通信注册</td></tr>
-<tr><td>7</td><td>INIT_SYSTEM_READY_EXPORT</td><td>系统就绪检查</td><td>看门狗启动、上电完成提示</td></tr>
+<tr><td>LED</td><td><code>struct device</code></td><td><code>struct led_driver_api</code>（7 个 ops）</td><td><code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>ht16k33.c</code></td></tr>
+<tr><td>sensor</td><td><code>struct device</code></td><td><code>struct sensor_driver_api</code>（7 个 ops）</td><td><code>lm75.c</code> / <code>bme280.c</code> / <code>tmp116.c</code></td></tr>
 </tbody>
 </table>
 </div>
-<p>注意区分第 3 级和第 5 级。第 3 级注册的是“总线层级“的设备（UART、I²C、SPI），第 5 级注册的是“挂在总线上的具体外设“（LED、温度传感器）。具体外设依赖总线先 ready，所以必须排在后面。</p>
-<p>为什么必须分级？因为依赖。LED 驱动依赖 platform_pin（板级），所以 LED 必须在 BOARD 之后。温度传感器依赖 I²C 总线（设备级），所以 ENV 必须在 DEVICE 之后。状态机订阅传感器事件，所以 APP 必须在 ENV 之后。</p>
-<p>加新驱动只要写一行 <code>INIT_ENV_EXPORT(my_new_driver_setup)</code>。<strong>不动</strong> main，<strong>不动</strong>任何已有文件。这是开闭原则在 C 工程里最干净的落地。</p>
-<h3 id="1961-initcall-演进的三个阶段"><a class="header" href="#1961-initcall-演进的三个阶段">19.6.1 initcall 演进的三个阶段</a></h3>
-<p>主控板用到的这套 7 级分级注册机制，不是凭空出现的。它是 C 工程界几十年逐步演化出来的形态。教学版到工业版之间，工程师走过的路一般是这三步：</p>
-<p><strong>阶段一：main 里手动堆。</strong> 项目刚起步、只有几个驱动时，main 函数里依次调 init。代码长这样：</p>
-<pre><code class="language-c">int main(void)
+<p><code>struct device + api</code> 这套二人转，LED 用一遍，sensor 又用一遍，没换。换的只是 ops 表的字段名，因为 LED 关心的是“开/关/亮度/blink“，温度传感器关心的是“采一次/取一个通道值/设阈值/越线触发“。这个差异是子系统语义的差异，OOP 抽象的形状一字不差。</p>
+<h3 id="1964-lm75-实现哪几个-ops"><a class="header" href="#1964-lm75-实现哪几个-ops">19.6.4 LM75 实现哪几个 ops</a></h3>
+<p><code>drivers/sensor/lm75/lm75.c</code> 的 ops 表实例化，文件 309-317 行：</p>
+<pre><code class="language-c">static const struct sensor_driver_api lm75_driver_api = {
+    .attr_set     = lm75_attr_set,
+    .attr_get     = lm75_attr_get,
+#if LM75_TRIGGER_SUPPORT
+    .trigger_set  = lm75_trigger_set,
+#endif
+    .sample_fetch = lm75_sample_fetch,
+    .channel_get  = lm75_channel_get,
+};
+</code></pre>
+<p>挂了 4 个常用 ops：<code>attr_set / attr_get / sample_fetch / channel_get</code>，条件编译再挂一个 <code>trigger_set</code>（dts 里配了 <code>int-gpios</code> 时才打开 <code>LM75_TRIGGER_SUPPORT</code>）。<code>get_decoder / submit</code> 没挂，应用层调对应 API 时父类返回 <code>-ENOSYS</code>，和 LED 那边的 <code>blink</code> 留空一个套路。</p>
+<h3 id="1965-应用层拿温度"><a class="header" href="#1965-应用层拿温度">19.6.5 应用层拿温度</a></h3>
+<p>应用层一行 <code>sensor_sample_fetch</code> + 一行 <code>sensor_channel_get</code> 就把温度读出来。</p>
+<pre><code class="language-c">#include &lt;zephyr/drivers/sensor.h&gt;
+
+static const struct device *temp_dev =
+    DEVICE_DT_GET(DT_NODELABEL(lm75_0));
+
+void read_once(void)
 {
-	clock_init();
-	gpio_init();
-	led_init(&amp;red_led, 13);
-	led_init(&amp;green_led, 14);
-	app_main();
+    struct sensor_value val;
+
+    sensor_sample_fetch(temp_dev);
+    sensor_channel_get(temp_dev, SENSOR_CHAN_AMBIENT_TEMP, &amp;val);
+
+    printk("temp = %d.%06d C\n", val.val1, val.val2);
 }
 </code></pre>
-<p>3 个驱动以内这样写没问题。10 个以上 main 开始变得难读、容易漏改、依赖顺序靠注释维护。</p>
-<p><strong>阶段二：手动分级 + 函数指针数组。</strong> 工程师意识到分组的价值，开始这样写：</p>
-<pre><code class="language-c">typedef void (*init_fn_t)(void);
+<p>这段代码完全不知道下面是 LM75 还是 TMP102 还是 SHT3X。应用层只见 <code>const struct device *</code> 加 <code>sensor_*</code> 这套通用 API，换一颗温度传感器，dts 改一个 compatible，应用代码一字不动。Zephyr <code>samples/sensor/thermometer/src/main.c</code> 就是这种用法的标准样本。</p>
+<p><code>sensor_sample_fetch</code> 内部走的路径和 19.2 节看过的 <code>led_on</code> 一模一样：把 <code>dev-&gt;api</code> 强转回 <code>const struct sensor_driver_api *</code>，<code>api-&gt;sample_fetch(dev, SENSOR_CHAN_ALL)</code> 一次间接跳转，命中 <code>lm75_sample_fetch</code>，在 <code>lm75_sample_fetch</code> 里调 <code>lm75_reg_read</code> 经 I2C 把 <code>LM75_REG_TEMP</code> 寄存器读出来，存进 <code>data-&gt;temp</code>。</p>
+<h3 id="1966-同款抽象--不只是-led"><a class="header" href="#1966-同款抽象--不只是-led">19.6.6 同款抽象 · 不只是 LED</a></h3>
+<p>把 LM75 这一套和 LED GPIO 那一套并排看：</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>步骤</th><th>LED GPIO</th><th>LM75</th></tr>
+</thead>
+<tbody>
+<tr><td>dts 节点</td><td><code>leds { compatible = "gpio-leds"; ... }</code></td><td><code>lm75@48 { compatible = "lm75"; reg = &lt;0x48&gt;; }</code></td></tr>
+<tr><td>driver match</td><td><code>#define DT_DRV_COMPAT gpio_leds</code></td><td><code>#define DT_DRV_COMPAT lm75</code></td></tr>
+<tr><td>编译期展开</td><td><code>DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)</code></td><td><code>DT_INST_FOREACH_STATUS_OKAY(LM75_INST)</code></td></tr>
+<tr><td>ops 表</td><td><code>struct led_driver_api</code>·on/off/brightness/blink/…</td><td><code>struct sensor_driver_api</code>·sample_fetch/channel_get/…</td></tr>
+<tr><td>应用层 API</td><td><code>led_on(dev, idx)</code></td><td><code>sensor_sample_fetch(dev) + sensor_channel_get(...)</code></td></tr>
+<tr><td>应用层不知道的事</td><td>是 GPIO LED 还是 PWM LED 还是 ht16k33</td><td>是 LM75 还是 TMP102 还是 SHT3X</td></tr>
+</tbody>
+</table>
+</div>
+<p>读者前 18 章学的所有抽象，LED subsystem 是一种用法，sensor subsystem 是另一种用法，全部是同一种 OOP 写法。换 driver、换芯片，应用层不动，这就是 ch15 platform 抽象一字不差。</p>
+<h2 id="197-demo-1--4-颗-led-同-ops-表跑"><a class="header" href="#197-demo-1--4-颗-led-同-ops-表跑">19.7 Demo 1 · 4 颗 LED 同 ops 表跑</a></h2>
+<p>第一个 demo 验证 ch12 向上转型的工程价值：4 颗 LED 是同一份 ops 表的 4 个序号，应用层对它们一视同仁。</p>
+<p>应用 main.c 关键代码：</p>
+<pre><code class="language-c">#include &lt;zephyr/kernel.h&gt;
+#include &lt;zephyr/drivers/led.h&gt;
 
-static init_fn_t board_inits[] = { clock_init, gpio_init, NULL };
-static init_fn_t device_inits[] = { led_init_all, eeprom_init, NULL };
-static init_fn_t app_inits[] = { app_state_machine_init, NULL };
+#define LED_NODE DT_NODELABEL(leds)
 
 int main(void)
 {
-	for (int i = 0; board_inits[i]; i++) board_inits[i]();
-	for (int i = 0; device_inits[i]; i++) device_inits[i]();
-	for (int i = 0; app_inits[i]; i++) app_inits[i]();
+    const struct device *led_dev = DEVICE_DT_GET(LED_NODE);
+
+    if (!device_is_ready(led_dev)) {
+        return -1;
+    }
+    while (1) {
+        for (int i = 0; i &lt; 4; i++) {
+            led_on (led_dev, i);
+            k_msleep(200);
+            led_off(led_dev, i);
+        }
+    }
+    return 0;
 }
 </code></pre>
-<p>进步在于“分组 + 顺序“被显式表达。问题在于：每加一个驱动要改这份数组（违反开闭原则），且数组定义和驱动实现在不同文件，新人很难找。</p>
-<p><strong>阶段三：链接器收集 + 7 级分组。</strong> 借助 GCC <code>__attribute__((section(...)))</code> 和链接器的“段合并“能力，让每个驱动<strong>自己声明</strong>自己属于哪一级，main 一行不写：</p>
-<pre><code class="language-c">INIT_ENV_EXPORT(led_cfg);          /* led 驱动自带这一行 */
-INIT_ENV_EXPORT(temp_sensor_cfg);  /* 温度传感器自带这一行 */
+<p>应用层只见 <code>const struct device *</code>，完全不知道这是 GPIO LED 还是 PWM LED 还是 I2C LED 矩阵。<code>led_on(led_dev, i)</code> 一行进入 19.2 节那段 dispatch，<code>(const struct led_driver_api *)dev-&gt;api</code> 拿到子类 ops 表，<code>api-&gt;on(dev, i)</code> 命中 <code>led_gpio_on</code>，再走到 <code>gpio_pin_set_dt</code>，最终拨动 PD12 / PD13 / PD14 / PD15。</p>
+<p>期望运行结果：板子上 4 颗 LED 依次亮 200 ms 灭，循环跑马灯。</p>
+<p>build / flash 命令引到附录 B。这里只看叙事：ch12 向上转型推过的“应用层只持有父类指针，不关心具体子类“，在 Zephyr 这里就是 <code>const struct device *led_dev</code> 这一根指针。</p>
+<h2 id="198-demo-2--device-tree-overlay-改-label"><a class="header" href="#198-demo-2--device-tree-overlay-改-label">19.8 Demo 2 · device tree overlay 改 label</a></h2>
+<p>第二个 demo 验证 ch15 platform 层抽象：换板 / 改硬件只动 .overlay，应用 / 驱动一字不改。</p>
+<p>在工程里加一份 <code>boards/stm32f4_disco.overlay</code>：</p>
+<pre><code class="language-dts">&amp;green_led_4 {
+    label = "Demo Board LD4 (overlay)";
+};
 </code></pre>
-<p>链接器在编译期把所有 <code>INIT_ENV_EXPORT</code> 函数收集到 <code>moduleExport5</code> 段，运行时遍历这个段。这就是 Linux 内核、RT-Thread、各家工业项目 2010 年之后走的路。</p>
-<p>为什么要走完这三阶段才到工业版？因为前两个阶段的痛只有写过的人才理解。直接给新人讲 “用 <code>__attribute__((section))</code>” 他听不懂为什么要这样绕。第 17 章用了一整章铺垫，才把这条路走通。</p>
-<h3 id="1962-如果某一级有-10-个驱动调用顺序谁决定"><a class="header" href="#1962-如果某一级有-10-个驱动调用顺序谁决定">19.6.2 如果某一级有 10 个驱动，调用顺序谁决定？</a></h3>
-<p>这是 initcall 机制最容易问的问题。答案是：<strong>链接器决定</strong>。</p>
-<p><code>INIT_ENV_EXPORT(led_cfg)</code> 把一份函数指针放进 <code>moduleExport5</code> 段。同样 <code>INIT_ENV_EXPORT(temp_sensor_cfg)</code> 也放进同一段。两份函数指针在段里的相对顺序，取决于链接器处理 .o 文件的顺序，通常是 Makefile 里 <code>OBJS</code> 变量的列出顺序。</p>
-<p>也就是说，<strong>同一级内部的顺序你不能强保证</strong>。你只能保证 BOARD 在 PREV 之前、PREV 在 DEVICE 之前。</p>
-<p>实际工程里这不是大问题：同一级的驱动通常是平行的（不互相依赖）。如果同一级的两个驱动有先后依赖（比如 LED 必须在蜂鸣器之前），那就把它们拆到不同级，或者在 cfg 里手动调。</p>
-<p>Linux 内核里也有同款问题，处理方式：在级别名后面加 <code>_sync</code> 子级（<code>device_initcall_sync</code>），或者通过 <code>late_initcall</code> 把那种“必须最后跑“的事情挂到第 7 级。主控板项目目前没有这种细分，是因为依赖关系简单到 7 级就足够。</p>
-<h3 id="1963-第-8-级独立段单元测试"><a class="header" href="#1963-第-8-级独立段单元测试">19.6.3 第 8 级独立段：单元测试</a></h3>
-<p>工业代码里 <code>platform_module_export.h</code> 实际比正文讲的多挂一个级别：<code>UNIT_TEST_EXPORT(fn)</code> 编号 “8”，专门收单元测试函数。它<strong>不被</strong> <code>platform_module_export_exec()</code> 调起，所以系统启动期不会跑测试。生产固件里这一段就是不会触发的死代码。</p>
-<p>调用方要跑单元测试时（PC mock 回归 / 测试固件 / 工厂下线检测），手动调一次 <code>platform_unit_test_exec()</code>，它把第 8 级整段函数指针 walk 一遍。日常 1-7 级和测试段 8 严格隔离：前者每次上电都跑，后者只在测试场景跑。</p>
-<p>为什么不让 <code>platform_module_export_exec</code> 把第 8 级一起调起来？因为单元测试和“启动期跑驱动“语义完全不同。生产固件绝不该跑测试代码副作用。这一条本身没新概念，只是把同一套链接器收集 + 段遍历按使用场景分了第二组段。读 <code>industrial/platform_layer/platform_module_export.h</code> 看到 <code>UNIT_TEST_EXPORT</code> 不必奇怪即可。</p>
-<h2 id="197-中间件主控板用的几个开源库"><a class="header" href="#197-中间件主控板用的几个开源库">19.7 中间件：主控板用的几个开源库</a></h2>
-<p>主控板项目里的 driver 不是孤立的。每个 driver 底下都用到几个中间件库吸收掉重复劳动。这一节列出最重要的几个，让你知道工业项目的中间件栈大概长什么样。</p>
-<p><strong>lwrb（lightweight ring buffer）。</strong> 轻量级环形缓冲区。用在 ADC 长时间采样场景：定时器中断里把 ADC 读数推进环形缓冲，应用层定期取走分析。固定大小，写满覆盖最旧。比手写 <code>float buf[N]; int idx;</code> 多两个能力：原子操作（无锁单生产单消费）、写满策略可配。这一类库 GitHub 上几十个，核心代码 200 行左右，工业项目随便选一个稳定版本扔进 <code>third_party/</code> 就用。</p>
-<p><strong>Letter Shell（字母 shell）。</strong> 嵌入式命令行解释器。在 UART 上敲 <code>temp_get</code> 能立刻打印当前温度，敲 <code>led_on green</code> 能立刻点绿灯。开发期方便联调，量产期用 <code>#ifdef</code> 关掉。比自己写 UART 接收 + 命令解析省几百行代码。用法是把 shell 命令注册成宏：</p>
-<pre><code class="language-c">static void cmd_temp_get(int argc, char *argv[])
+<p>三行。<code>&amp;green_led_4</code> 这个引用方式叫 phandle，指向 dts 里 <code>green_led_4: led_4 {...}</code> 那个节点。overlay 的语义是“叠加到原 dts 上面“，这里把 LD4 的 label 字段改了一下，原节点的 <code>gpios</code> 字段保持不变。</p>
+<p><code>west build</code> 时加上 <code>-DEXTRA_DTC_OVERLAY_FILE=boards/stm32f4_disco.overlay</code>，overlay 自动并入，重 build 之后 LD4 的 label 已经被改成“Demo Board LD4 (overlay)“。应用代码 main.c 一字未动，驱动代码 led_gpio.c 一字未动。</p>
+<p>期望运行结果：4 颗 LED 跑马灯效果不变，只是如果用 <code>led_get_info(dev, 1, &amp;info)</code> 查 LD4 的 label，拿到的字符串变成了“Demo Board LD4 (overlay)“。</p>
+<p>回到 ch15 的命题“应用 #include board.h 不动驱动“。Zephyr 把 board.h 这层换成了 dts overlay，但是核心思路完全一样：硬件参数外置到独立文件，应用和驱动稳定在中间不动。.overlay 的意义就是“应用级的硬件补丁“。</p>
+<h2 id="199-demo-3--container_of-现场抓"><a class="header" href="#199-demo-3--container_of-现场抓">19.9 Demo 3 · CONTAINER_OF 现场抓</a></h2>
+<p>第三个 demo 验证 ch13 / ch18 推过的 <code>container_of</code> 反推逻辑，这一招在 Zephyr 内核态回调里有原汁原味的工业实现。</p>
+<p>源：<code>include/zephyr/sys/util.h</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/sys/util.h">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/include/zephyr/sys/util.h</a></p>
+<pre><code class="language-c">#define CONTAINER_OF(ptr, type, field)                               \
+    ({                                                               \
+        CONTAINER_OF_VALIDATE(ptr, type, field)                      \
+        ((type *)(((char *)(ptr)) - offsetof(type, field)));         \
+    })
+</code></pre>
+<p>四行宏，和 ch13 / ch18 手写的版本一模一样：<code>offsetof</code> 算成员相对结构体起始的偏移，把成员指针往回减偏移，得到包含它的结构体指针。多出来的 <code>CONTAINER_OF_VALIDATE</code> 是编译期类型检查，防止你传错 field，不影响生成的字节码。</p>
+<p>字段偏移示意：<code>struct ht16k33_data</code> 从低地址到高地址依次是 <code>const struct device *dev</code>（offset 0）、若干别的字段、<code>struct gpio_callback irq_cb</code>（offset = N 字节）、<code>struct k_sem irq_sem</code> 等。<code>CONTAINER_OF(cb, struct ht16k33_data, irq_cb)</code> 这一行把 <code>cb</code> 这个指针往回减 N 字节，得到的就是外层 <code>data</code> 指针。</p>
+<p><img src="../assets/ch20/slide_container_of.png" alt="CONTAINER_OF 反推内存布局"></p>
+<p>这张图原本为 ch20 准备，画的是子类 <code>data</code> 把父类成员放在 offset 0 的情况，看 offset 关系一目了然。LM75 的 <code>lm75_data</code> 和 LED 矩阵的 <code>ht16k33_data</code> 都是同款套路：把 <code>gpio_callback</code> 嵌进自己的 data，中断回调里 <code>CONTAINER_OF(cb, struct xxx_data, 字段名)</code> 反推外层 data 指针。LM75 那边对应代码是 <code>CONTAINER_OF(cb, struct lm75_data, int_gpio_cb)</code>，<code>lm75.c</code> 第 245 行能看到。</p>
+<p>实战在哪。<code>drivers/led/ht16k33.c</code> 这个 LED 矩阵驱动，它注册了一个 GPIO 中断回调，中断回调的标准签名是固定的（gpio 子系统定义），只能拿到 <code>struct gpio_callback *cb</code>，拿不到驱动自己的私有 data。怎么从 <code>cb</code> 反推到 <code>struct ht16k33_data</code>，答案就是 <code>CONTAINER_OF</code>。</p>
+<p>源：<code>drivers/led/ht16k33.c</code>·permalink：<a href="https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/drivers/led/ht16k33.c">https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/drivers/led/ht16k33.c</a></p>
+<pre><code class="language-c">static void ht16k33_irq_callback(const struct device *gpiob,
+                                 struct gpio_callback *cb, uint32_t pins)
 {
-	(void)argc; (void)argv;
-	float t = 0;
-	temp_sensor_read(temp_board, &amp;t);
-	printf("temp = %.2f C\n", t);
+    struct ht16k33_data *data;
+
+    ARG_UNUSED(gpiob);
+    ARG_UNUSED(pins);
+
+    data = CONTAINER_OF(cb, struct ht16k33_data, irq_cb);
+    k_sem_give(&amp;data-&gt;irq_sem);
 }
-SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0), temp_get,
-                 cmd_temp_get, "get board temperature");
 </code></pre>
-<p>注意这个 <code>SHELL_EXPORT_CMD</code> 宏：它和 <code>INIT_ENV_EXPORT</code> 是同一个机制（链接器收集段）。Letter Shell 把所有命令塞进 <code>shell_cmd</code> 段，shell 启动时 walk 一遍这个段就拿到所有命令的列表。<strong>OOP 见过的所有抽象，跑一辈子嵌入式都在反复见同样的几招</strong>。</p>
-<p><strong>EasyLogger（elog）。</strong> 嵌入式日志系统。<code>log_d / log_i / log_w / log_e</code> 四级日志，输出到 UART 或 RAM 或 Flash。比 <code>printf</code> 多三个能力：分级过滤（运行期改级别）、模块标签（每个文件 <code>#define LOG_TAG "led_cfg"</code>）、异步写出（写日志不阻塞业务线程）。前面 19.1 节 / 19.3 节配置代码里的 <code>log_d / log_e</code> 就是这个库。</p>
-<p><strong>MultiButton。</strong> 按键去抖与事件库。把硬件按键的电平变化抽成“按下 / 抬起 / 长按 / 双击“事件。第 20 章会看到子控板把电机故障检测引脚也当作 button 用，硬件电平变化就是一种按键事件。这是教学版从来想不到的复用。</p>
-<p>这些中间件加起来大概占主控板代码量的 15%~20%，覆盖“重复劳动 80%“。<strong>工业项目和教学项目的另一个差距，就是工业项目敢用第三方库</strong>。教学版总倾向“什么都自己写”，工业版的态度是“凡是有成熟开源库的事，自己写就是浪费时间和给项目埋 bug“。</p>
-<p>中间件不是这本书的主题，这一节只是让你看见它存在。每个具体库的细节，附录 D 会列入参考资料。</p>
-<h2 id="198-教学版到工业版的-12-个差距"><a class="header" href="#198-教学版到工业版的-12-个差距">19.8 教学版到工业版的 12 个差距</a></h2>
-<p>把整章看下来，从 ch01 教学版的 <code>struct led + led_on</code> 走到工业版主控板，加进来的工程纪律可以列成下面这张表：</p>
+<p><code>data = CONTAINER_OF(cb, struct ht16k33_data, irq_cb);</code> 这一行，就是 ch13 / ch18 推过的反推逻辑：传进来一根 <code>cb</code> 指针，想拿到包含它的 <code>ht16k33_data</code>，用 <code>CONTAINER_OF</code> 反向减偏移。</p>
+<p>ch13 / ch18 推过的这一招，Zephyr 全树用了几百次，Linux 内核全树到处都在用。这不是教学杜撰，是 C 代码里最优雅的反推工具，写内核 / 驱动的人天天在用。</p>
+<p>配套 demo 3 在 stm32f4_disco 上用 k_timer 周期回调演示同款机制，原因是这块板载没合适的用户按钮触发 GPIO 中断，k_timer 的回调签名 <code>void(*)(struct k_timer *t)</code> 同样只能拿到一根成员指针，靠 <code>CONTAINER_OF(t, struct app_timer_ctx, timer)</code> 反推外层上下文，机制和上面 ht16k33 那段一字不差。</p>
+<h2 id="1910-demo-4--可空-ops--enosys"><a class="header" href="#1910-demo-4--可空-ops--enosys">19.10 Demo 4 · 可空 ops + ENOSYS</a></h2>
+<p>第四个 demo 把 19.2 节的可空 ops 现象做成可观测：应用层故意调一个子类没挂的 ops，看运行时返回什么。</p>
+<p>回顾 19.3 节，<code>led_gpio.c</code> 的 ops 表只挂了三个：</p>
+<pre><code class="language-c">static const struct led_driver_api led_gpio_api = {
+    .on             = led_gpio_on,
+    .off            = led_gpio_off,
+    .set_brightness = led_gpio_set_brightness,
+};
+</code></pre>
+<p><code>blink / get_info / set_color / write_channels</code> 四个槽都是 NULL。</p>
+<p>应用层故意调 <code>led_blink</code>：</p>
+<pre><code class="language-c">int rc = led_blink(led_dev, 0, 500, 500);
+printk("led_blink returned %d\n", rc);
+</code></pre>
+<p>走的路径：</p>
+<ol>
+<li><code>led_blink(...)</code> 是 syscall 包装，内部跳到 <code>z_impl_led_blink</code>。</li>
+<li><code>z_impl_led_blink</code> 把 <code>dev-&gt;api</code> 强转回 <code>const struct led_driver_api *</code>，这是 19.2 节那段 dispatch。</li>
+<li>检查 <code>api-&gt;blink == NULL</code>，成立。</li>
+<li>返回 <code>-ENOSYS</code>（值是 -88）。</li>
+</ol>
+<p>期望运行结果：UART 打印 <code>led_blink returned -88</code>。</p>
+<p>回到 ch14 / ch16 对比过的两种策略：“接口最严格 = 必须全部实现“和“可空 ops 留给父类兜底”。C++ 的纯虚函数走的是第一种，子类不实现编译期就报错。Zephyr 这里展示了第二种的工业用法：mandatory 必填（如果你的 ops 表 <code>on</code>、<code>off</code> 没挂，<code>led_gpio_init</code> 跑起来会拒绝注册），optional 可空（运行时父类返回 -ENOSYS，应用层据此判断是不是要降级处理）。</p>
+<p>两层设计的好处：同一个子系统接口可以容纳能力不一样的硬件。GPIO LED 没有硬件 PWM，所以 <code>set_brightness</code> 用“开 / 关“近似实现，<code>blink</code> 干脆不挂；PWM LED 有硬件计时器，所以 <code>set_brightness</code> / <code>blink</code> 都能挂上。应用层用同一个 <code>led_blink(...)</code> 调用，硬件支持就跑硬件 PWM，硬件不支持就拿到 <code>-ENOSYS</code>，上层自己用 <code>k_msleep + led_on/off</code> 做软件模拟。</p>
+<p>这就是 ch16 那句“接口最严格 = 合同签了必须全部履行“的另一极：合同允许某几条留空，但留空时父类必须能给出确定的错误码。比 C++ 纯虚柔软，比“什么都不查直接调 NULL 函数指针“安全。</p>
+<h2 id="1911-收束--你前-18-章学的所有抽象zephyr-字节级有"><a class="header" href="#1911-收束--你前-18-章学的所有抽象zephyr-字节级有">19.11 收束 · 你前 18 章学的所有抽象·Zephyr 字节级有</a></h2>
+<p>把 19.1 到 19.10 这一路看到的对应关系汇总成一张表：</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>#</th><th>维度</th><th>教学版</th><th>工业版</th></tr>
+<tr><th>章节</th><th>抽象</th><th>Zephyr 对应物</th><th>源文件</th></tr>
 </thead>
 <tbody>
-<tr><td>1</td><td>错误处理</td><td><code>return -1</code></td><td><code>platform_err_t</code> 含 <code>EINVAL/EIO/ENOSYS/ETIMEOUT</code> 等 10+ 种</td></tr>
-<tr><td>2</td><td>NULL 校验</td><td><code>if (!me) return -1;</code></td><td>多层级深度校验（dev、ops、ops 表里的虚方法）</td></tr>
-<tr><td>3</td><td>总线访问</td><td>直接 <code>platform_pin_write</code></td><td>经 <code>platform_i2c_bus_device_find</code> 查表后 <code>platform_i2c_transfer</code></td></tr>
-<tr><td>4</td><td>引脚标识</td><td><code>uint8_t pin</code></td><td>字符串 <code>"PI.15"</code> 经 <code>platform_pin_get</code> 查表</td></tr>
-<tr><td>5</td><td>句柄类型</td><td><code>extern struct led red_led;</code></td><td><code>extern struct led_base *red_led;</code> 基类指针</td></tr>
-<tr><td>6</td><td>实例创建位置</td><td><code>main()</code> 里全局变量</td><td>独立 <code>*_cfg.c</code> 文件里 <code>static</code> 实例</td></tr>
-<tr><td>7</td><td>启动</td><td><code>main()</code> 手动调 init</td><td>INIT_xxx_EXPORT 宏，链接器自动收集</td></tr>
-<tr><td>8</td><td>启动顺序</td><td>靠程序员记忆</td><td>7 级分组（BOARD → PREV → DEVICE → COMPONENT → ENV → APP → READY）</td></tr>
-<tr><td>9</td><td>多 callback</td><td>单 cb 或没有</td><td>多事件独立 cb（风扇状态变化 / EEPROM 读写错）</td></tr>
-<tr><td>10</td><td>数据解码</td><td>简单 0/1</td><td>16 位定点数解析、二的补码、跨页拆分</td></tr>
-<tr><td>11</td><td>中间件</td><td>全部自己写</td><td>lwrb / Letter Shell / EasyLogger / MultiButton 等成熟库</td></tr>
-<tr><td>12</td><td>设备发现</td><td>hardcoded 全局</td><td><code>platform_device_register/find</code> 注册表（按字符串名查找）</td></tr>
+<tr><td>ch11</td><td>父类 + vptr</td><td><code>struct device</code> + <code>dev-&gt;api</code></td><td><code>include/zephyr/device.h</code></td></tr>
+<tr><td>ch11</td><td>ops 表 struct</td><td><code>struct led_driver_api</code> / <code>struct sensor_driver_api</code></td><td><code>include/zephyr/drivers/{led,sensor}.h</code></td></tr>
+<tr><td>ch11</td><td>公开 dispatch + 向下转型</td><td><code>z_impl_led_on</code> 强转 <code>dev-&gt;api</code></td><td><code>include/zephyr/drivers/led.h</code></td></tr>
+<tr><td>ch12</td><td>子类 = config + data + 实现 + ops</td><td><code>led_gpio_config</code> + <code>led_gpio_api</code> + <code>led_gpio_on/off</code></td><td><code>drivers/led/led_gpio.c</code></td></tr>
+<tr><td>ch12</td><td>I2C 子系统同款</td><td><code>lm75_config</code> + <code>lm75_driver_api</code> + <code>lm75_sample_fetch</code></td><td><code>drivers/sensor/lm75/lm75.c</code></td></tr>
+<tr><td>ch13</td><td>子类向下转型 dev_data</td><td><code>dev-&gt;config</code> 强转 <code>led_gpio_config *</code></td><td><code>drivers/led/led_gpio.c</code></td></tr>
+<tr><td>ch15</td><td>platform 层 + 配置外置</td><td>device tree（.dts + .overlay）</td><td><code>boards/st/stm32f4_disco/*.dts</code></td></tr>
+<tr><td>ch15</td><td>dts 节点 → driver 静态 match</td><td><code>DT_DRV_COMPAT</code> + <code>DT_INST_FOREACH_STATUS_OKAY</code></td><td><code>drivers/led/led_gpio.c</code> / <code>drivers/sensor/lm75/lm75.c</code></td></tr>
+<tr><td>ch16</td><td>可空 ops vs 纯虚</td><td>mandatory <code>on/off</code> + optional <code>blink</code> 等</td><td><code>include/zephyr/drivers/led.h</code></td></tr>
+<tr><td>ch17</td><td>initcall 自动注册</td><td><code>DEVICE_DT_DEFINE</code> + 6 级 init level</td><td><code>include/zephyr/{device,init}.h</code></td></tr>
+<tr><td>ch13 / ch18</td><td>container_of 反推</td><td><code>CONTAINER_OF(cb, struct ht16k33_data, irq_cb)</code></td><td><code>drivers/led/ht16k33.c</code> / <code>drivers/sensor/lm75/lm75.c</code></td></tr>
 </tbody>
 </table>
 </div>
-<p>这 12 件事单独看每件都不复杂，挤在一份代码里就是工业级和教学级的全部差距。看懂的关键：每一件都不是凭空多出来的复杂度，都对应一个具体的工程问题。</p>
-<p>读这一章读到这里，你应该有一种感觉：<strong>这些代码每一行你都能 follow</strong>。差距不在概念，差距只在“工业项目要面对的问题更多“。这就是这本书的目的。</p>
-<h2 id="199-驱动模块完整代码索引"><a class="header" href="#199-驱动模块完整代码索引">19.9 驱动模块完整代码索引</a></h2>
-<p>这一章不是“抄一份就能 <code>make &amp;&amp; ./demo</code>“的工程章。前 18 章每一章都有 <code>oop-in-c/code/&lt;chapter&gt;/pc/</code> 配套小工程，本章不一样：本章讲的是真实主控板（约 80K 行 C 代码 + RTOS + 厂家 HAL + 中间件栈）的样貌示意，没办法把整块板的一份子工程裁出来塞进 PC 模拟。</p>
-<p>但章节正文里散落的代码片段是不是“凭记忆写的“？不是。它们来自两份位置：</p>
-<p>第一，本仓库 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/"><code>industrial/</code></a> 目录下整理后的 OOP 骨架文件（MIT License、可阅读、可改写）。</p>
-<p>第二，章节正文里已经按段落贴出来的实现节选。</p>
-<p>这一节把本章每个驱动模块“完整代码“对应到具体来源，让你读完后知道每段代码可以在哪里看到原貌。</p>
-<h3 id="1991-led-驱动191-节"><a class="header" href="#1991-led-驱动191-节">19.9.1 LED 驱动（19.1 节）</a></h3>
-<p>完整文件位于 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/led_basic/"><code>industrial/led_basic/</code></a>：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>文件</th><th>角色</th><th>章节正文里贴过的对应节选</th></tr>
-</thead>
-<tbody>
-<tr><td><code>led_base.h</code></td><td>基类接口（ops 表 + 基类 struct + 三个公开 API）</td><td>19.1 节“挂号单一路推到工业代码会怎样“代码块</td></tr>
-<tr><td><code>led_base.c</code></td><td>基类派发实现（含三层 NULL 校验）</td><td>19.1 节“<code>led_base.c</code> 实现就两行“</td></tr>
-<tr><td><code>led_gpio.h</code></td><td>GPIO 拉线子类接口</td><td>19.1 节“GPIO 类型的子类“</td></tr>
-<tr><td><code>led_gpio.c</code></td><td>GPIO 拉线子类实现（含 <code>light_level</code> 字段 + <code>static const ops</code>）</td><td>19.1 节“子类实现“</td></tr>
-<tr><td><code>led_pwm.h</code> / <code>led_pwm.c</code></td><td>PWM 调亮度子类骨架（实现 <code>set_brightness</code>，演示“子类追加新能力“）</td><td>19.1 节正文末尾“PWM 子类、I²C 子类挂在同一基类下“延伸</td></tr>
-<tr><td><code>led_i2c.h</code> / <code>led_i2c.c</code></td><td>I²C 控制子类骨架（不实现 <code>set_brightness</code>，演示“换硬件不改应用“）</td><td>同上</td></tr>
-</tbody>
-</table>
-</div>
-<p><code>led_cfg.c</code> 不在 <code>industrial/led_basic/</code> 里。原因是它在工业项目里属于“环境配置“层，依赖 <code>INIT_ENV_EXPORT</code> 宏（位于 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/platform_layer/platform_module_export.h"><code>industrial/platform_layer/platform_module_export.h</code></a>）和工业项目的整套 board init 流程。19.1 节正文里贴的 <code>led_cfg.c</code> 节选已经包含全部关键行（实例定义、<code>led_gpio_init</code> 调用、句柄赋值、<code>INIT_ENV_EXPORT</code> 注册）。</p>
-<h3 id="1992-eeprom-驱动192-节"><a class="header" href="#1992-eeprom-驱动192-节">19.9.2 EEPROM 驱动（19.2 节）</a></h3>
-<p>19.2 节贴的是 <code>eeprom_base.h</code> 接口骨架 + 应用层使用模式。<strong>完整 <code>.c</code> 实现（<code>eeprom_ds2433.c</code> / <code>eeprom_i2c.c</code>）没有放进本仓库</strong>。原因是 DS2433 1-Wire 协议实现涉及大量时序细节，这些细节是芯片驱动级的工程问题，跟本书的 OOP 教学主线关系不大。</p>
-<p>19.2 节正文已经把 OOP 角度想讲的事讲完：</p>
-<ul>
-<li>基类只放 ops 字段</li>
-<li>ops 表的 <code>read / write</code> 接口为什么返回 <code>int32_t</code>（POSIX 风格）</li>
-<li>跨页 / 边界 / 超时三种“短读短写“场景为什么要返回实际字节数</li>
-<li>应用层判断 <code>n &lt; 0</code>（错误） / <code>n &lt; size</code>（部分成功） / <code>n == size</code>（完整成功）的标准模式</li>
-</ul>
-<p>这些信息足以让你拿任何一颗 EEPROM 芯片自己写一份子类实现。</p>
-<h3 id="1993-温度传感器驱动193-节"><a class="header" href="#1993-温度传感器驱动193-节">19.9.3 温度传感器驱动（19.3 节）</a></h3>
-<p>19.3 节正文里<strong>已经把温度传感器模块完整贴齐</strong>：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>文件</th><th>在章节里的位置</th></tr>
-</thead>
-<tbody>
-<tr><td><code>temp_sensor_base.h</code></td><td>19.3 节“第一层：基类“代码块</td></tr>
-<tr><td><code>temp_sensor_base.c</code></td><td>19.3 节“基类实现“代码块（含 NULL / ops 双层校验）</td></tr>
-<tr><td><code>max31827.h</code></td><td>19.3 节“第二层：max31827 子类“代码块</td></tr>
-<tr><td><code>max31827.c</code></td><td>19.3 节“子类实现“代码块（含 I²C transfer + 16 位定点数解码）</td></tr>
-<tr><td><code>temp_sensor_cfg.c</code></td><td>19.3 节“配置代码“代码块</td></tr>
-</tbody>
-</table>
-</div>
-<p>读完 19.3 节这五个代码块，等于读完温度传感器在工业项目里的完整样貌。</p>
-<h3 id="1994-风扇驱动194-节"><a class="header" href="#1994-风扇驱动194-节">19.9.4 风扇驱动（19.4 节）</a></h3>
-<p>19.4 节贴的是 <code>fan.h</code> 接口 + 应用层注册回调样例 + 内部 <code>fan_status_update_internal</code> 函数。<strong>完整 <code>fan.c</code> 实现没有放进本仓库</strong>。原因和 EEPROM 类似：UART 串口控制智能风扇的协议解析是芯片驱动级细节，对 OOP 教学价值有限。</p>
-<p>19.4 节正文已经把 OOP 角度的全部要点讲完：</p>
-<ul>
-<li>单实现的驱动可以不上 ops 表（<code>struct + me</code> 就够）</li>
-<li>状态变化用回调通知上层（依赖反转）</li>
-<li>注册前 NULL 校验回调指针（最容易漏的工业纪律）</li>
-</ul>
-<h3 id="1995-设备注册表--initcall195-节--196-节"><a class="header" href="#1995-设备注册表--initcall195-节--196-节">19.9.5 设备注册表 + initcall（19.5 节 / 19.6 节）</a></h3>
-<p>完整骨架位于 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/platform_layer/"><code>industrial/platform_layer/</code></a>：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>文件</th><th>章节正文对应节</th></tr>
-</thead>
-<tbody>
-<tr><td><code>platform_module_export.h</code></td><td>19.6 节 <code>INIT_xxx_EXPORT</code> 宏定义代码块</td></tr>
-<tr><td><code>platform_uart.h</code></td><td>第 20 章 20.6 节会展开（UART 抽象同总线设备注册表同构）</td></tr>
-</tbody>
-</table>
-</div>
-<p><code>platform_module_export.c</code>（initcall 调度的 7 级 <code>MODULE_EXPORT_EXEC</code> 循环）以及 <code>platform_device.c</code>（<code>platform_device_register / find</code> 链表实现）这两份文件没有单独放进 <code>industrial/</code> 子目录，但完整代码片段已经在 19.6 节正文（GCC 工具链版本宏展开 + 7 级遍历调用）和 19.5.2 节正文（<code>platform_device</code> struct + <code>_register / _find</code> 接口）里贴出来。把这些片段抄到自己的工程里再加一份连接脚本（<code>.ld</code> 或 <code>.sct</code>）声明 7 个 <code>moduleExport</code> 段的起止符号，就是一份能跑的最小 initcall 实现。</p>
-<p>附录 B（STM32 完整工程）和附录 C（Linux 完整工程）里有更可移植的精简版 initcall（基于 Linux 用户态 <code>__attribute__((constructor))</code> + ELF section），可以直接 <code>make &amp;&amp; ./demo</code> 跑通。读 19.6 节读到链接器收集机制不太顺时，可以跳过去先看附录 C 的实现。</p>
-<h3 id="1996-中间件197-节"><a class="header" href="#1996-中间件197-节">19.9.6 中间件（19.7 节）</a></h3>
-<p><code>lwrb</code> / <code>Letter Shell</code> / <code>EasyLogger</code> / <code>MultiButton</code> 都是公开的开源项目，本仓库不重复打包。每个库的 GitHub 仓库链接见附录 D 参考资料索引。</p>
-<h3 id="一段话回顾"><a class="header" href="#一段话回顾">一段话回顾</a></h3>
-<p>本章不是“抄完代码 <code>make &amp;&amp; ./demo</code>“的章节，是“看清楚工业代码长什么样“的章节。每个驱动模块对应到 <code>industrial/</code> 目录下的真实骨架文件 + 章节正文里的实现节选，两者合起来就是这块主控板上 LED / EEPROM / 温度传感器 / 风扇 / 注册表 / initcall 这六件事的完整 OOP 设计图。如果你想看一份完整可跑的小工程，从前 18 章任何一章的 <code>oop-in-c/code/&lt;chapter&gt;/pc/</code> 入手，那里每一章都有 <code>make &amp;&amp; ./demo</code>。</p>
-<h2 id="1910-下一章"><a class="header" href="#1910-下一章">19.10 下一章</a></h2>
-<p>主控板讲完，下一章是子控板。子控板控两路电机的运动，整个工程的核心是一个 24 个虚方法的电机驱动加一套完整的 Platform 抽象层加跨芯片移植清单。这一章你看到的 LED / 温度传感器 / 风扇是工业 OOP 的入门曲线，下一章的电机驱动是工业 OOP 的高潮。</p>
-<p>下一篇：<a href="20-子控案例.html">第 20 章 · 工业控制板子控案例</a></p>
+<p>11 行对照，覆盖前 18 章用纯 C 推过的全部 OOP 抽象，LED subsystem 一遍，sensor subsystem 又一遍。</p>
+<p>收束句，是这一章想留给读者带走的：</p>
+<blockquote>
+<p>你前 18 章是从一颗 LED 推出来的所有抽象。Zephyr v3.7.0 的 LED 子系统把这些抽象完整复用了一遍，sensor 子系统又复用了一遍，一字不差。</p>
+<p>这本书前 18 章不是教学杜撰，是工业代码的核心抽象。</p>
+</blockquote>
+<p>学完前 18 章再读 Zephyr，感觉是“原来内核驱动写法和我自己推出来的一样“，而不是“又要从头学一套陌生的 API“。这是本书选 Zephyr 的全部理由。</p>
+<h2 id="1912-跳到附录-b-跑通"><a class="header" href="#1912-跳到附录-b-跑通">19.12 跳到附录 B 跑通</a></h2>
+<p>ch19 给的是叙事，读到这里你已经知道每一段抽象在 Zephyr 哪个文件。想动手把 4 个 demo 跑通，跳到附录 B：5 分钟把 west 装好，<code>west build</code> + <code>west flash</code> 各一行，板子上看见 4 颗 LED 跑马灯，然后切到 demo 2 / 3 / 4，每个 demo 一份 <code>prj.conf</code> + 一份 <code>main_demoN.c</code>，验证你刚刚在 ch19 看到的字节级对应关系。</p>
 
                     </main>
 

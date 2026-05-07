@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>附录 C · Linux 用户态完整工程：内核已做完 platform·应用层直接用 - C 语言面向对象编程·嵌入式实战</title>
+        <title>附录 C · Linux 完整工程 · Raspberry Pi 4B - C 语言面向对象编程·嵌入式实战</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-67634d26.js";
+            window.path_to_searchindex_js = "../searchindex-da2caae1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-5415c1d2.js"></script>
+        <script src="../toc-9dbf4cc9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,407 +180,265 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="附录-c--linux-用户态完整工程内核已做完-platform应用层直接用"><a class="header" href="#附录-c--linux-用户态完整工程内核已做完-platform应用层直接用">附录 C · Linux 用户态完整工程：内核已做完 platform·应用层直接用</a></h1>
-<p>参考代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/industrial/linux_full/"><code>industrial/linux_full/</code></a>。</p>
-<p>附录 B 给的是 STM32 裸机的完整工程，里面有完整的 <code>app/platform/</code> 抽象层。这一份附录给的是 Linux 用户态的完整工程，<strong>没有 platform 抽象层</strong>。同一组 <code>struct led_base + 多子类 + struct led_base *</code> 的 OOP 抽象，下面换成在 Linux 上直接调 libgpiod / sysfs PWM / i2c-dev，应用层、<code>led_base.[hc]</code> 接口、4 颗 LED 的句柄声明，跟附录 B 字节级一致。</p>
-<p>读完这一附录，你能切身体会到这本书工程判断力教学的核心 takeaway：<strong>抽不抽 platform 层不是教条，要看你跑在哪个环境</strong>。STM32 裸机上必须自抽，Linux 用户态上禁自抽。判断依据是“内核有没有把 platform 抽象做完“。</p>
-<h3 id="附录-c-在全书的位置"><a class="header" href="#附录-c-在全书的位置">附录 C 在全书的位置</a></h3>
-<p>附录 C 跟附录 B 配对，是这本书“内核做完别再抽“的实战兑现：</p>
-<ul>
-<li><strong>ch15 § 15.17</strong>（i2c 二层 + Linux i2c 子系统对照）：把 Linux 内核 i2c subsystem 的 adapter / 设备两层 ops 跟自抽 platform 层并排放，看清“内核已经把 platform 层做完“长什么样</li>
-<li><strong>ch16 § 16.13</strong>（Zephyr / RT-Thread 也是同款）：带 device subsystem 的 RTOS 都禁自抽，不只是 Linux</li>
-<li><strong>ch16 § 16.14</strong>（应用层 vs 内核层判断三步）：在 Linux 这一档环境上，新硬件驱动该写在应用层还是内核层。99% 的 GPIO / I²C / SPI / 温度传感器走应用层就够，附录 C 的 4 颗 LED 是这条判断的具体兑现</li>
-<li><strong>附录 C 工程</strong>（<code>industrial/linux_full/</code>）：用户态调 libgpiod / sysfs / i2c-dev，零中间层。LED 这种通用外设连“自家内核驱动“都不写，要看真实工业级原型直接读内核源 <code>drivers/leds/leds-gpio.c</code>（上千种板子用过的标准版本）</li>
-</ul>
-<p>附录 B 是“裸机必须自抽 platform“的实战，附录 C 是“内核做完别再抽“的实战。两份工程合起来，是这本书工程判断力教学的最高制高点：看到一份 Linux 应用层代码自抽 platform_pin，第一反应是“这一层是不是多余“；看到一份裸机 STM32 代码不抽 platform 层、应用直接调 HAL_GPIO_WritePin，第一反应是“换芯片就崩“。这两种反应分得清，工程判断力就立住了。</p>
-<h2 id="c0-为什么这一份工程没有-platform-层"><a class="header" href="#c0-为什么这一份工程没有-platform-层">C.0 为什么这一份工程没有 platform 层</a></h2>
-<p>附录 B 的 stm32_full 工程有完整的 <code>app/platform/</code> 抽象层（platform_pin / platform_pwm / platform_i2c + 子类 ops 表 + register 机制 + 8 级 initcall）。这一份 Linux 用户态工程没有。原因不是工程偷懒，是 <strong>Linux 内核已经把 platform 抽象做完了</strong>，应用层再套一层就是过度封装。</p>
-<p>具体看：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>抽象层级</th><th>stm32_full（裸机）</th><th>linux_full（用户态）</th></tr>
-</thead>
-<tbody>
-<tr><td>应用层</td><td>调 <code>led_on(handle)</code></td><td>调 <code>led_on(handle)</code></td></tr>
-<tr><td>OOP base + 子类</td><td><code>struct led_base</code> + <code>led_gpio</code> / <code>led_pwm</code> / <code>led_i2c</code></td><td>同款</td></tr>
-<tr><td>platform 层 ops 表</td><td><strong>必须自抽</strong>（HAL 不是设备模型）</td><td><strong>禁自抽</strong>（内核已做完）</td></tr>
-<tr><td>板级实现</td><td><code>pin_board.c</code>（调 HAL）/ <code>pwm_board.c</code> / <code>i2c_board.c</code></td><td><strong>不存在</strong>（libgpiod 就是内核暴露给用户的 platform 接口）</td></tr>
-<tr><td>initcall 机制</td><td>linker section + 启动期 <code>module_export_exec()</code></td><td><code>main</code> 里手动调 <code>environment_init()</code></td></tr>
-<tr><td>硬件层</td><td>STM32 寄存器</td><td>Linux 内核 driver model</td></tr>
-</tbody>
-</table>
-</div>
-<p>linux_full 的 <code>led_gpio.c</code> 直接 <code>#include &lt;gpiod.h&gt;</code> 调 libgpiod，<code>led_pwm.c</code> 直接写 <code>/sys/class/pwm/</code>，<code>led_i2c.c</code> 直接 <code>open("/dev/i2c-N") + ioctl(I2C_SLAVE)</code>。这些 Linux 用户态接口本身就是内核完整 driver model 暴露给用户态的 OOP 接口：内核里 <code>struct gpio_chip</code>、<code>struct pwm_chip</code>、<code>struct i2c_adapter</code> 的 ops 表已经把所有平台差异收拾干净了。</p>
-<p>读者要带走的工程判断力：</p>
-<ul>
-<li><strong>裸机 / 简单 RTOS（FreeRTOS 单纯 kernel）</strong>：必须自抽 platform 层。HAL 只是寄存器封装，不是设备模型，应用层不抽就硬编死在某颗 MCU 上</li>
-<li><strong>带 device subsystem 的 RTOS（Zephyr / RT-Thread / NuttX）</strong>：内核已经抽好了 device tree + driver model，应用层别再抽，直接用 <code>device_get_binding</code> / <code>rt_device_find</code> 就行</li>
-<li><strong>Linux 用户态</strong>：内核做完了，直接 libgpiod / i2c-dev / sysfs PWM</li>
-<li><strong>Linux 内核态驱动</strong>：用内核 driver model（<code>platform_driver</code> / <code>i2c_driver</code> / <code>spi_driver</code>），不要在内核驱动里再造 platform 层</li>
-</ul>
-<p>OOP 抽象（<code>struct led_base + 多子类多态 + 设备句柄统一导出</code>）在 Linux 用户态仍然有用，它解决的是“应用层不知道下层硬件细节“，让 main.c 看到的还是 4 个 <code>struct led_base *</code>，而不是 1 个 libgpiod handle + 1 组 sysfs fd + 1 个 i2c-dev fd 的混合堆。但 platform 抽象层只在没有现成设备模型的环境才有价值，<strong>在 Linux 上是反工程</strong>。</p>
-<p>附录 B 给“必须自抽 platform“的实战，附录 C 给“内核做完别再抽“的实战，两者合起来是这本书工程判断力的最高制高点。</p>
-<p>这一份 linux_full 是“内核做完别再抽“的实战, 和附录 B stm32_full “裸机必须自抽“形成完整对照. 两个工程合起来, 读者掌握的是工程判断力, 不是无脑套抽象. 同一份 <code>app/drivers/led/led_base.[hc]</code> + 同一组 4 颗 LED 句柄声明, 在 STM32 那一边走自抽 platform 层下沉到寄存器, 在 Linux 这一边直接走 libgpiod / sysfs PWM / i2c-dev 调内核. 应用层一字不动, 子类层差别就锁在子类 .c 一个文件里.</p>
-<p>最后再呼应 ch15 § 15.16 + ch16 § 16.14 给真实工程的建议: MCU 项目优先 Zephyr / RT-Thread, 内核已经做完 device + driver 框架, 你 ch15 / ch16 学的所有 ops 表 + 多子类多态它们都内置了. 别走 “FreeRTOS + HAL + 自抽 platform 层” 这种重复造轮子的路径 – 维护成本你扛不住, 也比不过 Linux Foundation / RT-Thread 社区上千人维护的版本. MPU / SoC 直接用 Linux. 全平台都不要自己抽 platform 层, 这才是工业级.</p>
-<h2 id="c1-工程概览"><a class="header" href="#c1-工程概览">C.1 工程概览</a></h2>
-<p>工程目标：<strong>在 Linux 上演示 OOP 抽象（多子类多态 + 设备句柄统一导出），不带 platform 抽象层</strong>。</p>
-<p>目标硬件：树莓派 4B / 5、香橙派、飞腾派、瑞芯微 RK3588 任何一颗能跑 Linux 的 SBC。淘宝几百块。</p>
-<p>工程功能：板上 4 颗 LED 演示 GPIO + PWM + I2C 三种子类混搭。</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>句柄</th><th>子类</th><th>资源</th></tr>
-</thead>
-<tbody>
-<tr><td><code>led_status</code></td><td><code>struct led_gpio</code></td><td>gpiochip0 line 17（BCM 17），高电平点亮</td></tr>
-<tr><td><code>led_dimmer</code></td><td><code>struct led_pwm</code></td><td>pwmchip0/pwm0，1 kHz</td></tr>
-<tr><td><code>led_panel</code></td><td><code>struct led_i2c</code></td><td>/dev/i2c-1，addr 0x3C，reg 0x00</td></tr>
-<tr><td><code>led_alarm</code></td><td><code>struct led_gpio</code></td><td>gpiochip0 line 22（BCM 22），高电平点亮</td></tr>
-</tbody>
-</table>
-</div>
-<p>应用层 <code>#include "environment_cfg/environment_export.h"</code> 一次拿到 4 个 <code>struct led_base *</code> 句柄，看不到底下是 GPIO / PWM / I2C 哪种子类，更看不到 libgpiod / sysfs / i2c-dev 这些 Linux 接口细节。</p>
-<p>跟 stm32_full 字节级一致的部分：</p>
-<ul>
-<li><code>app/drivers/led/led_base.h</code>（公开接口 + ops 表 + struct 定义）</li>
-<li><code>app/drivers/led/led_base.c</code>（dispatch 三层校验）</li>
-<li><code>app/environment_cfg/environment_export.h</code>（4 个句柄声明）</li>
-</ul>
-<p>跟 stm32_full 不同的部分（<strong>这才是这本书的对比点</strong>）：</p>
-<ul>
-<li><code>app/drivers/led/led_gpio.[hc]</code>：底下从 platform_pin 换成 libgpiod</li>
-<li><code>app/drivers/led/led_pwm.[hc]</code>：从 platform_pwm 换成 sysfs PWM</li>
-<li><code>app/drivers/led/led_i2c.[hc]</code>：从 platform_i2c 换成 i2c-dev</li>
-<li><code>app/environment_cfg/led_cfg.c</code>：从 <code>INIT_ENV_EXPORT</code> 换成 <code>environment_init()</code> 显式调用</li>
-<li>整个 <code>app/platform/</code> 目录消失</li>
-<li>整个 <code>mock/</code> 目录消失（Linux 工程在 Linux 上跑就是真机，不需要跨 OS mock）</li>
-</ul>
-<h2 id="c2-工程结构"><a class="header" href="#c2-工程结构">C.2 工程结构</a></h2>
-<pre><code>industrial/linux_full/
-├── README.md
-├── Makefile                                # 单一 build 模式 (依赖 libgpiod-dev)
-├── src/
-│   └── main.c                              # 显式 environment_init() / exit()
-├── app/
-│   ├── project_config.h                    # LED_ASSERT_HALT 等小开关
-│   ├── include/
-│   │   ├── led_errors.h                    # platform_err_t enum (跟 stm32_full 接口对齐)
-│   │   └── led_assert.h                    # led_assert 宏
-│   ├── drivers/
-│   │   └── led/
-│   │       ├── led_base.h / .c             # 父类 dispatch + assert handler
-│   │       ├── led_gpio.h / .c             # 直接调 libgpiod
-│   │       ├── led_pwm.h  / .c             # 直接写 /sys/class/pwm/
-│   │       └── led_i2c.h  / .c             # 直接走 /dev/i2c-N + ioctl(I2C_SLAVE)
-│   └── environment_cfg/
-│       ├── environment_export.h            # 4 个句柄 + environment_init/exit
-│       └── led_cfg.c                       # gpiod_chip_open + 3 子类装配
-└── syntax_stubs/                           # 不在 Linux / 没装 libgpiod 时的 syntax check 占位
-    ├── README.md
-    ├── gpiod.h
-    ├── linux/i2c-dev.h
-    └── sys/ioctl.h
-</code></pre>
-<p>跟 stm32_full 做一次目录 diff：</p>
-<ul>
-<li><code>app/platform/</code> 整个目录砍掉了</li>
-<li><code>mock/</code> 整个目录砍掉了</li>
-<li>多了一个 <code>app/include/</code>（错误码 + assert 宏，原来归 <code>app/platform/</code>，现在归一个独立的小头文件）</li>
-<li>多了一个 <code>syntax_stubs/</code>（Windows / 没装 libgpiod-dev 时跑 <code>make check-syntax</code> 用）</li>
-</ul>
-<h2 id="c3-关键文件"><a class="header" href="#c3-关键文件">C.3 关键文件</a></h2>
-<h3 id="appdriversledled_baseh父类公开接口跟-stm32_full-字节级一致"><a class="header" href="#appdriversledled_baseh父类公开接口跟-stm32_full-字节级一致">app/drivers/led/led_base.h（父类公开接口·跟 stm32_full 字节级一致）</a></h3>
-<pre><code class="language-c">struct led_ops {
-    platform_err_t (*on)(struct led_base *me);
-    platform_err_t (*off)(struct led_base *me);
-    platform_err_t (*set_brightness)(struct led_base *me, uint8_t level);
-};
+                        <h1 id="附录-c--linux-完整工程--raspberry-pi-4b"><a class="header" href="#附录-c--linux-完整工程--raspberry-pi-4b">附录 C · Linux 完整工程 · Raspberry Pi 4B</a></h1>
+<h2 id="c0-关于这一份附录"><a class="header" href="#c0-关于这一份附录">C.0 关于这一份附录</a></h2>
+<p>附录 C 给读者一份在 Linux 6.6 主线上跑的完整工程。参考板是 Raspberry Pi 4B（这一块板子在主线 6.6 是 first-class，GPIO / I2C / SPI / PWM / LED 全走主线驱动，不需要 vendor fork）。配套代码在 <code>industrial-linux/</code> 下，包含一个自己写的内核 platform driver 模块 <code>leds-status.c</code>，加四个递进的 demo。本附录的目标不是从零讲 Linux 内核开发，而是给读者一份能直接跑、能按章对照的参考工程：读到 ch12 想验证父类首字段的读者，可以从 <code>leds-status.c</code> 的 <code>struct status_led_data</code> 起步；读到 ch17 想看 <code>module_init</code> 真实展开的读者，可以从 <code>module_platform_driver</code> 一行宏起步。</p>
+<p>诚实边界声明：配套代码对照 Linux 6.6 上游写，参照主线已支持的 Raspberry Pi 4B，读者按附录步骤应当原样跑通，有出入欢迎到 GitHub 提 issue。</p>
+<p>跟附录 B（裸机 Zephyr 必须自抽 platform）正好相反：<strong>Linux 内核已经把 platform 抽象做完了</strong>。应用层和驱动层都不需要再抽一层 <code>platform_pin_xxx()</code>，直接用内核现成的 <code>led_classdev</code> / <code>platform_driver</code> / sysfs / libgpiod。这一份附录就是把“内核做完别再抽“在真实主线代码上落实。读者把附录 B 的 STM32 工程跟附录 C 的 RPi 工程对照看一遍，能立刻看清楚同一组 OOP 抽象在两种环境下的归属差别：裸机环境每一层都得自己写一次，Linux 环境每一层都已经有内核的成品，自己写反而是重复劳动。</p>
+<h2 id="c1-5-分钟跑通"><a class="header" href="#c1-5-分钟跑通">C.1 5 分钟跑通</a></h2>
+<pre><code class="language-bash"># 1. 烧 Raspberry Pi OS 64-bit (基于 6.6 内核)
+#    用 RPi Imager 即可
 
-struct led_base {
-    const struct led_ops *ops;
-    const char           *name;
-    bool                  is_on;
-};
+# 2. 装 kernel headers + 编译工具 + libgpiod
+sudo apt install raspberrypi-kernel-headers build-essential libgpiod-dev
 
-platform_err_t led_base_init(struct led_base *me, const char *name,
-                             const struct led_ops *ops);
-platform_err_t led_on(struct led_base *me);
-platform_err_t led_off(struct led_base *me);
-platform_err_t led_set_brightness(struct led_base *me, uint8_t level);
-</code></pre>
-<p>跟附录 B 完全一致。<code>on</code> / <code>off</code> 纯虚（子类必填，父类 dispatch 时 <code>led_assert</code>），<code>set_brightness</code> 选填（子类不填走父类默认 no-op）。<code>led_errors.h</code> 里定义 <code>platform_err_t</code> enum（4 个值：<code>EOK / EINVAL / EIO / ENOMEM</code>），这个名字保留是为了让两个工程的 led_base 头文件接口一致；底下错误码语义对齐 POSIX errno，因为子类直接调 libgpiod / sysfs / i2c-dev，错误来源就是这一组。</p>
-<h3 id="appdriversledled_gpioc直接调-libgpiod这一份是关键对比"><a class="header" href="#appdriversledled_gpioc直接调-libgpiod这一份是关键对比">app/drivers/led/led_gpio.c（直接调 libgpiod·<strong>这一份是关键对比</strong>）</a></h3>
-<pre><code class="language-c">#include &lt;gpiod.h&gt;
+# 3. clone 本书配套代码
+git clone https://github.com/ZhaoChengBo/zhaoming-embedded.git ~/zhaoming-embedded
 
-struct led_gpio {
-    struct led_base    base;
-    struct gpiod_line *line;
-    bool               active_high;
-};
-
-platform_err_t led_gpio_init(struct led_gpio *me, const char *name,
-                             struct gpiod_chip *chip,
-                             unsigned int line_offset, bool active_high)
-{
-    int initial_value = active_high ? 0 : 1;
-
-    me-&gt;line = gpiod_chip_get_line(chip, line_offset);
-    if (NULL == me-&gt;line)                              { return PLATFORM_EIO; }
-    if (gpiod_line_request_output(me-&gt;line,
-                                  "led", initial_value) &lt; 0) {
-        return PLATFORM_EIO;
-    }
-    me-&gt;active_high = active_high;
-    return led_base_init(&amp;me-&gt;base, name, &amp;led_gpio_ops);
-}
-
-static platform_err_t _led_gpio_on(struct led_base *me)
-{
-    struct led_gpio *gpio = (struct led_gpio *)me;
-    if (gpiod_line_set_value(gpio-&gt;line,
-                             gpio-&gt;active_high ? 1 : 0) &lt; 0) {
-        return PLATFORM_EIO;
-    }
-    return PLATFORM_EOK;
-}
-</code></pre>
-<p>跟 stm32_full 的 <code>led_gpio.c</code> 比一下：</p>
-<ul>
-<li>stm32_full：<code>led_gpio.c</code> 调 <code>platform_pin_write(gpio-&gt;pin, ...)</code>，<code>platform_pin.c</code> 再调 <code>_g_ops-&gt;write</code>，<code>pin_board.c</code> 在板级 ops 里调 <code>HAL_GPIO_WritePin</code>，3 层</li>
-<li>linux_full：<code>led_gpio.c</code> 直接调 <code>gpiod_line_set_value(gpio-&gt;line, ...)</code>，0 层</li>
-</ul>
-<p>中间层一个不留。理由就是 C.0 节那张表：libgpiod 已经是内核 platform 抽象暴露给用户的 OOP 接口，再套一层 <code>platform_pin_xxx</code> 是反工程。</p>
-<h3 id="appdriversledled_pwmc直接写-sysfs-pwm"><a class="header" href="#appdriversledled_pwmc直接写-sysfs-pwm">app/drivers/led/led_pwm.c（直接写 sysfs PWM）</a></h3>
-<pre><code class="language-c">struct led_pwm {
-    struct led_base base;
-    int             chip_num, pwm_num;
-    int             duty_fd, enable_fd;
-    uint32_t        period_ns;
-    uint8_t         brightness;
-};
-
-static platform_err_t _led_pwm_set_brightness(struct led_base *me,
-                                              uint8_t level)
-{
-    struct led_pwm *pwm = (struct led_pwm *)me;
-    pwm-&gt;brightness = level;
-
-    if (me-&gt;is_on) {
-        char buf[32];
-        uint32_t duty_ns =
-            (uint32_t)(((uint64_t)level * pwm-&gt;period_ns) / 255U);
-        int n = snprintf(buf, sizeof(buf), "%u", duty_ns);
-        if (lseek(pwm-&gt;duty_fd, 0, SEEK_SET) &lt; 0)      { return PLATFORM_EIO; }
-        if (write(pwm-&gt;duty_fd, buf, (size_t)n) &lt; 0)   { return PLATFORM_EIO; }
-    }
-    return PLATFORM_EOK;
-}
-</code></pre>
-<p><code>led_pwm_init</code> 里走完 sysfs PWM 的标准开机流程：写 <code>/sys/class/pwm/pwmchipN/export</code>、写 period、<code>open</code> 出 duty_cycle / enable 两个 fd，后续 on/off/set_brightness 直接走 fd 写，一次性把 path 解析成 fd 比每次都 open 更省。</p>
-<h3 id="appdriversledled_i2cc直接走-i2c-dev"><a class="header" href="#appdriversledled_i2cc直接走-i2c-dev">app/drivers/led/led_i2c.c（直接走 i2c-dev）</a></h3>
-<pre><code class="language-c">#include &lt;linux/i2c-dev.h&gt;
-#include &lt;sys/ioctl.h&gt;
-
-platform_err_t led_i2c_init(struct led_i2c *me, const char *name,
-                            int bus_num, uint8_t dev_addr, uint8_t reg)
-{
-    char dev_path[32];
-    snprintf(dev_path, sizeof(dev_path), "/dev/i2c-%d", bus_num);
-
-    int fd = open(dev_path, O_RDWR);
-    if (fd &lt; 0)                                  { return PLATFORM_EIO; }
-    if (ioctl(fd, I2C_SLAVE, dev_addr) &lt; 0)      {
-        close(fd); return PLATFORM_EIO;
-    }
-    me-&gt;fd = fd; me-&gt;dev_addr = dev_addr; me-&gt;reg = reg;
-    me-&gt;val_on = 0x01; me-&gt;val_off = 0x00;
-    return led_base_init(&amp;me-&gt;base, name, &amp;led_i2c_ops);
-}
-
-static platform_err_t _led_i2c_on(struct led_base *me)
-{
-    struct led_i2c *i2c = (struct led_i2c *)me;
-    uint8_t buf[2] = { i2c-&gt;reg, i2c-&gt;val_on };
-    if (write(i2c-&gt;fd, buf, 2) != 2) { return PLATFORM_EIO; }
-    return PLATFORM_EOK;
-}
-</code></pre>
-<p><code>ioctl(fd, I2C_SLAVE, addr)</code> 把后续 read/write 转给这个从机，然后 <code>write</code> 两字节（寄存器地址 + 值）就完成了 SMBus byte write 等价操作。i2c-dev 文档里就是这个写法。</p>
-<h3 id="appenvironment_cfgled_cfgc实例装配去掉-init_env_export"><a class="header" href="#appenvironment_cfgled_cfgc实例装配去掉-init_env_export">app/environment_cfg/led_cfg.c（实例装配·去掉 INIT_ENV_EXPORT）</a></h3>
-<pre><code class="language-c">int environment_init(void)
-{
-    _g_chip = gpiod_chip_open_by_name("gpiochip0");
-    if (NULL == _g_chip)                                       { goto fail; }
-
-    if (PLATFORM_EOK != led_gpio_init(&amp;_led_status_inst, "status",
-                                      _g_chip, 17, true))      { goto fail; }
-    led_status = &amp;_led_status_inst.base;
-
-    if (PLATFORM_EOK != led_pwm_init(&amp;_led_dimmer_inst, "dimmer",
-                                     0, 0, 1000000U))           { goto fail; }
-    led_dimmer = &amp;_led_dimmer_inst.base;
-
-    if (PLATFORM_EOK != led_i2c_init(&amp;_led_panel_inst, "panel",
-                                     1, 0x3C, 0x00))            { goto fail; }
-    led_panel = &amp;_led_panel_inst.base;
-
-    if (PLATFORM_EOK != led_gpio_init(&amp;_led_alarm_inst, "alarm",
-                                      _g_chip, 22, true))       { goto fail; }
-    led_alarm = &amp;_led_alarm_inst.base;
-
-    return 0;
-fail:
-    environment_exit();
-    return -1;
-}
-</code></pre>
-<p>跟 stm32_full 的 <code>led_cfg.c</code> 比：</p>
-<ul>
-<li>stm32_full：<code>INIT_ENV_EXPORT(_led_cfg)</code> 让链接器把这个函数登在 <code>__moduleExport5_start/_end</code> 段里，启动期 <code>platform_module_export_exec()</code> 自动跑</li>
-<li>linux_full：<code>environment_init()</code> 公开接口，main 显式调</li>
-</ul>
-<p>为什么不沿用 GCC <code>__attribute__((constructor))</code>？因为这个工程的目标就是“应用层不需要任何隐式机制“。Linux 用户态的好处之一是控制流可见，所有装配什么时候发生写在 main 里，崩了一眼能看出哪一步错。<code>INIT_xxx_EXPORT</code> 是裸机时代的妥协（main 之前的链接器段），用户态没必要把它带过来。</p>
-<h3 id="srcmainc"><a class="header" href="#srcmainc">src/main.c</a></h3>
-<pre><code class="language-c">int main(void)
-{
-    int ret = environment_init();
-    if (ret != 0) {
-        fprintf(stderr, "[main] environment_init failed, exit.\n");
-        return 1;
-    }
-
-    struct led_base *all[4] =
-        { led_status, led_dimmer, led_panel, led_alarm };
-
-    for (int round = 0; round &lt; 3 &amp;&amp; _g_running; round++) {
-        for (int i = 0; i &lt; 4 &amp;&amp; _g_running; i++) {
-            led_on(all[i]);
-            led_set_brightness(all[i], 128);
-            sleep(1);
-            led_off(all[i]);
-        }
-    }
-
-    environment_exit();
-    return 0;
-}
-</code></pre>
-<p>应用层调用一字不知底下走的是 libgpiod / sysfs / i2c-dev 哪一个。<code>led_set_brightness</code> dispatch 到 PWM 子类时真生效，到 GPIO / I2C 子类时走父类默认 no-op。这是 OOP 多态在 Linux 用户态的完整演示。</p>
-<h2 id="c4-编译运行步骤"><a class="header" href="#c4-编译运行步骤">C.4 编译运行步骤</a></h2>
-<h3 id="真机-linux"><a class="header" href="#真机-linux">真机 Linux</a></h3>
-<pre><code class="language-bash">sudo apt install libgpiod-dev          # Debian / Ubuntu / 树莓派 OS
-# 或 sudo dnf install libgpiod-devel   # Fedora / RHEL
-
-cd industrial/linux_full
+# 4. build leds-status.ko
+cd ~/zhaoming-embedded/industrial-linux/ch20-leds-status
 make
-sudo ./build/firmware
+
+# 5. 编译 dts overlay·告诉内核 GPIO17 上有一个 status-led 兼容设备
+sudo dtc -@ -O dtb -o leds-status.dtbo leds-status-overlay.dts
+sudo dtoverlay leds-status.dtbo
+
+# 6. insmod 模块
+sudo insmod leds-status.ko
+
+# 7. 验证
+ls /sys/class/leds/                                          # 看见 status-led
+echo 1 | sudo tee /sys/class/leds/status-led/brightness    # LED 亮
+echo 0 | sudo tee /sys/class/leds/status-led/brightness    # LED 灭
 </code></pre>
-<p>需要 sudo（或者把当前用户加到 <code>gpio</code> / <code>i2c</code> group + 相应 udev 规则）。3 圈演示后退出，0 警告 0 错误。</p>
-<h3 id="不在-linux-上--没装-libgpiod-dev"><a class="header" href="#不在-linux-上--没装-libgpiod-dev">不在 Linux 上 / 没装 libgpiod-dev</a></h3>
-<p>只能跑 syntax check，验证 .c 文件语法和头文件依赖合法：</p>
-<pre><code class="language-bash">make check-syntax
+<p>期望硬件：GPIO17 引脚串 220Ω 限流电阻，再串一颗 LED 到 GND。<code>echo 1</code> 时 LED 亮，<code>echo 0</code> 时熄灭。</p>
+<p>GPIO17 是教学 demo 用的引脚，不是 RPi 板载 ACT 灯（板载 ACT 在 GPIO42，跑 heartbeat trigger，别动）。</p>
+<h2 id="c2-工程目录结构"><a class="header" href="#c2-工程目录结构">C.2 工程目录结构</a></h2>
+<pre><code>industrial-linux/
+├── README.md
+├── ch20-leds-status/                # Demo 1·写自己的内核驱动
+│   ├── Makefile
+│   ├── leds-status.c
+│   ├── leds-status-overlay.dts
+│   └── README.md
+├── ch20-demo2-libgpiod/               # Demo 2·sysfs vs libgpiod 同硬件两接口
+│   ├── Makefile
+│   └── blink_libgpiod.c
+├── ch20-demo3-gdb/                    # Demo 3·container_of 现场抓
+│   ├── README.md
+│   └── debug.gdb
+└── ch20-demo4-initcall/               # Demo 4·module_init 链路追踪
+    └── trace_initcall.sh
 </code></pre>
-<p>这个 target 用 <code>syntax_stubs/</code> 下的占位 <code>&lt;gpiod.h&gt;</code> / <code>&lt;linux/i2c-dev.h&gt;</code> / <code>&lt;sys/ioctl.h&gt;</code> 让 <code>gcc -fsyntax-only</code> 跑过。<strong>只是开发期校对工具</strong>，不能链接成可执行文件。要跑必须在装好 libgpiod-dev 的 Linux SBC 上 <code>make</code>。</p>
-<h3 id="接线"><a class="header" href="#接线">接线</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>句柄</th><th>BCM 编号</th><th>树莓派 4B 物理引脚</th><th>接法</th></tr>
-</thead>
-<tbody>
-<tr><td><code>led_status</code></td><td>GPIO17</td><td>11</td><td>LED 长脚串 220Ω 接 GPIO17，短脚接 GND</td></tr>
-<tr><td><code>led_alarm</code></td><td>GPIO22</td><td>15</td><td>同上</td></tr>
-<tr><td><code>led_dimmer</code></td><td>pwmchip0/pwm0</td><td>12</td><td>树莓派需要在 <code>/boot/config.txt</code> 加 <code>dtoverlay=pwm</code> 启用硬件 PWM</td></tr>
-<tr><td><code>led_panel</code></td><td>i2c-1 (SDA=2, SCL=3)</td><td>3 / 5</td><td>接一颗 PCA9554 / TCA6408 这类 I/O expander</td></tr>
-</tbody>
-</table>
-</div>
-<p>GPIO17 / GPIO22 这两颗 LED 不需要任何外设配置，硬件接好就能跑。PWM / I2C 那两颗需要先在 device tree / config.txt 里启用，否则 <code>/sys/class/pwm/pwmchip0</code> 或 <code>/dev/i2c-1</code> 不存在，对应子类的 init 会返回 <code>PLATFORM_EIO</code>。</p>
-<p>板子换了改 <code>app/environment_cfg/led_cfg.c</code> 顶部的常量：</p>
-<pre><code class="language-c">#define LED_GPIO_CHIP_NAME    "gpiochip0"
-#define LED_STATUS_LINE       17
-#define LED_ALARM_LINE        22
-#define LED_PWM_CHIP          0
-#define LED_PWM_NUM           0
-#define LED_I2C_BUS           1
-#define LED_I2C_ADDR          0x3C
-</code></pre>
-<p>香橙派 5 上 <code>gpiochip</code> 编号、PWM chip 编号都不一样，<code>gpiodetect</code> 命令列出板上所有 GPIO 控制器，挑写在板子上 LED 实际接的那一个。</p>
-<h2 id="c5-这个工程跑通了什么"><a class="header" href="#c5-这个工程跑通了什么">C.5 这个工程跑通了什么</a></h2>
-<p>跑 <code>sudo ./build/firmware</code>，3 圈演示，每一圈：</p>
-<ol>
-<li><code>led_on(led_status)</code> → <code>_led_gpio_on</code> 调 <code>gpiod_line_set_value(line, 1)</code></li>
-<li><code>led_on(led_dimmer)</code> → <code>_led_pwm_on</code> 写 duty_fd（占空时间） + 写 enable_fd（“1”）</li>
-<li><code>led_set_brightness(led_dimmer, 128)</code> → 父类 dispatch 到 <code>_led_pwm_set_brightness</code>，PWM 子类 duty 改成 128/255 比例</li>
-<li><code>led_set_brightness(led_status, 128)</code> → 父类 dispatch 看到 GPIO 子类没填 <code>set_brightness</code>，走父类默认 no-op</li>
-<li><code>led_on(led_panel)</code> → <code>_led_i2c_on</code> 调 <code>write(fd, [reg, 0x01], 2)</code></li>
-<li><code>led_on(led_alarm)</code> → 同 led_status，line 22</li>
-</ol>
-<p>三种子类 dispatch 路径全部跑完，应用层调用一字不知底下走哪一条。<strong>OOP 抽象保留，platform 抽象层去掉</strong>。</p>
-<p>按全书 18 章过一遍：</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>章节</th><th>抽象</th><th>在这个工程里的位置</th></tr>
-</thead>
-<tbody>
-<tr><td>ch01</td><td>struct + me</td><td>所有 <code>led_xxx</code> 函数第一参数 <code>struct led_base *me</code></td></tr>
-<tr><td>ch02</td><td>信息隐藏</td><td><code>struct led_gpio</code> / <code>led_pwm</code> / <code>led_i2c</code> 字段定义在子类头文件，应用层只看到 <code>struct led_base *</code></td></tr>
-<tr><td>ch03</td><td>class 化</td><td><code>led_gpio_init / led_on / led_off / led_set_brightness</code> 命名前缀统一</td></tr>
-<tr><td>ch04</td><td>数据归位</td><td>静态实例 <code>_led_status_inst</code>（数量固定的全局对象选静态实例）</td></tr>
-<tr><td>ch05</td><td>HAL 漫游</td><td>libgpiod 这一片就是漫游目标，它的内部就是 ioctl 到内核 gpio chardev</td></tr>
-<tr><td>ch06</td><td>继承痛点</td><td><code>struct led_gpio</code> 把 <code>struct led_base</code> 嵌在第一字段</td></tr>
-<tr><td>ch07</td><td>函数指针</td><td><code>struct led_ops</code> 里的函数指针</td></tr>
-<tr><td>ch08</td><td>函数指针传参</td><td>同 ch07</td></tr>
-<tr><td>ch09</td><td>ops 表雏形</td><td><code>struct led_ops</code> 三个字段</td></tr>
-<tr><td>ch10</td><td>ops 放进对象</td><td><code>struct led_base.ops</code> 字段</td></tr>
-<tr><td>ch11</td><td>多态完整</td><td><code>led_on(led_status)</code> / <code>led_on(led_dimmer)</code> / <code>led_on(led_panel)</code> 调用一字不差，底下走 GPIO / PWM / I2C 三种实现</td></tr>
-<tr><td>ch12</td><td>向上转型</td><td><code>led_status = &amp;_led_status_inst.base;</code></td></tr>
-<tr><td>ch13</td><td>container_of</td><td>base 在第一字段时简化为 <code>(struct led_gpio *)me</code></td></tr>
-<tr><td>ch14</td><td>纯虚</td><td><code>struct led_ops</code> 里 <code>on / off</code> pure virtual；<code>set_brightness</code> 选填</td></tr>
-<tr><td>ch15</td><td>换硬件不改应用</td><td>跟 stm32_full 的 led_base.[hc] / environment_export.h 字节级一致：同一组 OOP 抽象，下面 STM32 自抽 platform，Linux 直接用 libgpiod / sysfs / i2c-dev</td></tr>
-<tr><td>ch16</td><td>Linux 风格</td><td>这一份就是 Linux 用户态原生写法</td></tr>
-<tr><td>ch17</td><td>链接初始化</td><td><strong>这个工程没有</strong>：Linux 用户态用 <code>main</code> 里显式 <code>environment_init()</code> 比 GCC ctor 更直接，控制流可见</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="c6-跟-stm32_full-的对比关键表"><a class="header" href="#c6-跟-stm32_full-的对比关键表">C.6 跟 stm32_full 的对比（关键表）</a></h2>
-<p>linux_full 没有 platform 抽象层，按 §C.0 决策，led 子类直接调内核暴露的 sysfs / i2c-dev / libgpiod 接口；stm32_full 因为 HAL 不是设备模型，必须在中间补一层 <code>platform_xxx</code> 才走得到 HAL。这张表把两边的 GPIO / PWM / I2C 三条接口逐行对照，能直观看出 platform 层的边界在哪。</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>维度</th><th>stm32_full（裸机）</th><th>linux_full（用户态）</th></tr>
-</thead>
-<tbody>
-<tr><td>platform 抽象层</td><td><strong>必须自抽</strong>（HAL 不是设备模型）</td><td><strong>禁自抽</strong>（内核已做完）</td></tr>
-<tr><td>GPIO 接口</td><td><code>platform_pin_write</code> → <code>pin_board.c</code> → <code>HAL_GPIO_WritePin</code></td><td><code>led_gpio.c</code> 直接 <code>gpiod_line_set_value</code>（无 platform 层）</td></tr>
-<tr><td>PWM 接口</td><td><code>platform_pwm_set_duty</code> → <code>pwm_board.c</code> → <code>HAL_TIM_PWM_xxx</code></td><td><code>led_pwm.c</code> 直接 write <code>/sys/class/pwm/pwmchipN/pwmM/duty_cycle</code>（无 platform 层，内核做完了）</td></tr>
-<tr><td>I2C 接口</td><td><code>platform_i2c_transfer</code> → <code>i2c_board.c</code> → <code>HAL_I2C_Master_Transmit</code>（bus + client 二层）</td><td><code>led_i2c.c</code> 直接 <code>open(/dev/i2c-N)</code> + <code>ioctl(I2C_SLAVE)</code> + <code>write</code>（无 platform 层）</td></tr>
-<tr><td>启动期初始化</td><td>linker section + <code>module_export_exec()</code> 7 级</td><td><code>main</code> 里显式 <code>environment_init()</code></td></tr>
-<tr><td>错误码</td><td><code>platform_err_t</code> 11 个 enum</td><td><code>platform_err_t</code> 4 个 enum（对齐 POSIX errno）</td></tr>
-<tr><td>主循环延时</td><td>busy-wait <code>for (volatile i ...)</code></td><td><code>sleep(1)</code></td></tr>
-<tr><td>信号处理</td><td>NVIC 中断</td><td><code>signal(SIGINT, ...)</code></td></tr>
-<tr><td>Make 目标</td><td><code>make</code> + <code>make flash</code></td><td><code>make</code> + <code>sudo ./build/firmware</code></td></tr>
-</tbody>
-</table>
-</div>
-<p>OOP 抽象（<code>struct led_base + 多子类 + 设备句柄统一导出</code>）两边字节级一致：<code>led_base.h</code> 接口、<code>environment_export.h</code> 句柄声明、main 里的调用形态。<strong>变化只在 platform 抽象层和板级实现</strong>。这一对比就是这本书工程判断力教学的核心。</p>
-<h2 id="c7-进阶练习"><a class="header" href="#c7-进阶练习">C.7 进阶练习</a></h2>
-<p><strong>练习 1</strong>：加一个 SPI LED 子类，直接走 spidev（<code>/dev/spidevN.M</code> + <code>ioctl(SPI_IOC_MESSAGE)</code>）。建文件 <code>app/drivers/led/led_spi.h / .c</code>，参照 <code>led_i2c.c</code> 的写法。底下不要套任何 platform 抽象层，spidev 已经是内核 spi subsystem 暴露给用户态的 OOP 接口。</p>
-<p><strong>练习 2</strong>：加一个温度 sensor 子类，直接走 iio 子系统（<code>/sys/bus/iio/devices/iio:deviceN/in_temp_raw</code>）。新建 <code>app/drivers/sensor/</code>，先抽 <code>struct sensor_base + struct sensor_ops</code> 父类，再写 <code>struct sensor_iio</code> 子类直接读 sysfs。这一组练习帮你把“OOP 抽象保留 / platform 抽象去掉“的判断力推广到温度、压力、湿度、加速度计这一大类设备。</p>
-<p><strong>练习 3</strong>：把 4 颗 LED 装配从 <code>led_cfg.c</code> 的硬编码常量改成读 <code>/etc/zhaoming-leds.conf</code> 配置文件。<code>environment_init()</code> 启动期 <code>fopen</code> + 解析。这一组练习把 stm32_full 的 device tree 装配等价物搬到 Linux 用户态。</p>
-<p><strong>练习 4</strong>：加按钮（GPIO 输入）。新增 <code>app/drivers/button/</code>，子类直接调 <code>gpiod_line_request_input</code> + <code>gpiod_line_event_wait</code> + <code>gpiod_line_event_read</code>。在 main 里把按钮绑定到“按下切换 LED 模式“。这是 libgpiod 1.x 的 event API，2.x 改成 line_request 配 edge_event_buffer，移植路径直白。</p>
-<h2 id="c8-已知工程性细节"><a class="header" href="#c8-已知工程性细节">C.8 已知工程性细节</a></h2>
+<p>每个子目录的功能：</p>
 <ul>
-<li><strong>真机要 sudo</strong>（或者用户加 <code>gpio</code> / <code>i2c</code> group + 配 udev 规则）。<code>/dev/gpiochip0</code> / <code>/dev/i2c-1</code> 默认只 root 能开。</li>
-<li><strong>gpiochip 编号在不同 SBC 不一样</strong>：树莓派 4B 是 <code>gpiochip0</code>，香橙派 5 是 <code>gpiochip1</code>（sunxi-gpio），飞腾派 D2000 是 <code>gpiochip0</code>。<code>gpiodetect</code> 命令列出板上所有 GPIO 控制器。</li>
-<li><strong>sysfs PWM 不是所有 SBC 都开</strong>：树莓派 4B 默认 device tree 不启用硬件 PWM，要在 <code>/boot/config.txt</code> 加 <code>dtoverlay=pwm</code> 或 <code>dtoverlay=pwm-2chan</code>。<code>/sys/class/pwm/</code> 不存在就是这个原因。</li>
-<li><strong>libgpiod 1.x vs 2.x API 差异</strong>：本工程用 1.x（Debian 12 / Ubuntu 22.04 / 树莓派 OS Bookworm 之前默认）。Bookworm 之后默认装 2.x，API 改成 request builder 风格，移植到 2.x 需要改 <code>led_gpio_init</code> 里两行调用。</li>
-<li><strong>i2c-dev 模块</strong>：树莓派要在 <code>/boot/config.txt</code> 加 <code>dtparam=i2c_arm=on</code> 启用 I2C bus 1。香橙派 5 默认开 i2c-1 / i2c-3 / i2c-5 几条，看接的哪条。</li>
+<li><strong>ch20-leds-status</strong>：自己写一个 platform driver，注册一个新的 <code>/sys/class/leds/status-led/</code>，让 ch12 / ch13 / ch15 / ch17 全套 OOP 抽象在内核里跑通</li>
+<li><strong>ch20-demo2-libgpiod</strong>：同一颗 LED，先用内核驱动 + sysfs 控制，再 rmmod 后用用户态 libgpiod 直接拍 GPIO17。两种接口完全互斥，看清楚“内核占了 GPIO 用户态就拿不到“</li>
+<li><strong>ch20-demo3-gdb</strong>：QEMU virt + gdb-multiarch 现场断点，打印 <code>&amp;led-&gt;cdev == led_cdev</code> 验证 ch13 container_of 字节级一致</li>
+<li><strong>ch20-demo4-initcall</strong>：用 dmesg / kallsyms / ftrace 三件套追 <code>module_platform_driver</code> 宏展开后的 initcall 链路，对应 ch17 教学版 initcall 表的内核成品</li>
 </ul>
-<h2 id="下一篇"><a class="header" href="#下一篇">下一篇</a></h2>
-<p><a href="D-配套代码索引.html">附录 D · 配套代码索引 + 视频清单 + 编译运行指南</a></p>
+<h2 id="c3-关键文件解读"><a class="header" href="#c3-关键文件解读">C.3 关键文件解读</a></h2>
+<h3 id="c31-ch20-leds-statusmakefile"><a class="header" href="#c31-ch20-leds-statusmakefile">C.3.1 ch20-leds-status/Makefile</a></h3>
+<p>外部模块标准 8 行：</p>
+<pre><code class="language-makefile">obj-m += leds-status.o
+KDIR := /lib/modules/$(shell uname -r)/build
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
+</code></pre>
+<p>逐行解释：</p>
+<ul>
+<li><code>obj-m += leds-status.o</code> 是 Linux kbuild 风格，告诉 kbuild 把 <code>leds-status.c</code> 编成 <code>leds-status.ko</code></li>
+<li><code>KDIR := /lib/modules/$(shell uname -r)/build</code> 定位当前内核的 headers + 构建脚本</li>
+<li><code>$(MAKE) -C $(KDIR) M=$(PWD) modules</code> 是外部模块的标准模式：去 KDIR 跑 modules target，但模块源码在当前目录（M=$(PWD)）</li>
+</ul>
+<h3 id="c32-ch20-leds-statusleds-statusc"><a class="header" href="#c32-ch20-leds-statusleds-statusc">C.3.2 ch20-leds-status/leds-status.c</a></h3>
+<p>整个文件大约 50 行，全文如下：</p>
+<pre><code class="language-c">// SPDX-License-Identifier: GPL-2.0
+#include &lt;linux/module.h&gt;
+#include &lt;linux/platform_device.h&gt;
+#include &lt;linux/leds.h&gt;
+#include &lt;linux/gpio/consumer.h&gt;
+#include &lt;linux/of.h&gt;
+
+struct status_led_data {
+    struct led_classdev cdev;       /* 父类首字段·向上转型零代价 */
+    struct gpio_desc   *gpiod;
+};
+
+static void status_led_brightness_set(struct led_classdev *led_cdev,
+                                    enum led_brightness value)
+{
+    struct status_led_data *led =
+        container_of(led_cdev, struct status_led_data, cdev);
+    gpiod_set_value(led-&gt;gpiod, value ? 1 : 0);
+}
+
+static int status_led_probe(struct platform_device *pdev)
+{
+    struct status_led_data *led;
+
+    led = devm_kzalloc(&amp;pdev-&gt;dev, sizeof(*led), GFP_KERNEL);
+    if (!led)
+        return -ENOMEM;
+
+    led-&gt;gpiod = devm_gpiod_get(&amp;pdev-&gt;dev, NULL, GPIOD_OUT_LOW);
+    if (IS_ERR(led-&gt;gpiod))
+        return PTR_ERR(led-&gt;gpiod);
+
+    led-&gt;cdev.name           = "status-led";
+    led-&gt;cdev.max_brightness = 1;
+    led-&gt;cdev.brightness_set = status_led_brightness_set;
+
+    return devm_led_classdev_register(&amp;pdev-&gt;dev, &amp;led-&gt;cdev);
+}
+
+static const struct of_device_id status_led_of_match[] = {
+    { .compatible = "status-led", },
+    { },
+};
+MODULE_DEVICE_TABLE(of, status_led_of_match);
+
+static struct platform_driver status_led_driver = {
+    .probe  = status_led_probe,
+    .driver = {
+        .name           = "leds-status",
+        .of_match_table = status_led_of_match,
+    },
+};
+module_platform_driver(status_led_driver);
+MODULE_LICENSE("GPL");
+</code></pre>
+<p>四段对照本书前 18 章的 OOP 抽象：</p>
+<p><strong>1. 父类作首字段</strong></p>
+<pre><code class="language-c">struct status_led_data {
+    struct led_classdev cdev;       /* 父类作为第一字段 */
+    struct gpio_desc   *gpiod;
+};
+</code></pre>
+<p><code>struct led_classdev</code> 在第一字段，<code>offsetof(struct status_led_data, cdev) == 0</code>。任何 <code>struct status_led_data *</code> 直接转 <code>struct led_classdev *</code> 拿到的地址相等，向上转型零代价。这是 Linux 6.6 <code>drivers/leds/leds-gpio.c</code> 里 <code>struct gpio_led_data</code> 的同款布局，全树几十种 LED 子类（leds-gpio / leds-pwm / leds-bcm6328 / leds-mt6323 等）都是这个写法。</p>
+<p><strong>2. container_of 反推</strong></p>
+<pre><code class="language-c">static void status_led_brightness_set(struct led_classdev *led_cdev,
+                                    enum led_brightness value)
+{
+    struct status_led_data *led =
+        container_of(led_cdev, struct status_led_data, cdev);
+    gpiod_set_value(led-&gt;gpiod, value ? 1 : 0);
+}
+</code></pre>
+<p>内核回调拿到的是父类指针 <code>struct led_classdev *led_cdev</code>，<code>container_of</code> 把它反推成子类指针 <code>struct status_led_data *led</code>，然后操作子类私有的 <code>gpiod</code>。<code>container_of</code> 的内核定义在 <code>include/linux/container_of.h</code>：底层就是 <code>((type *)(__mptr - offsetof(type, member)))</code>，跟本书 ch13 字节级一致。父类在第一字段时 <code>offsetof</code> 为 0，<code>container_of</code> 数学上等于强转，但写 <code>container_of</code> 是为了将来父类位置变了不用改回调。</p>
+<p><strong>3. probe 注册子类到父类</strong></p>
+<pre><code class="language-c">led-&gt;cdev.brightness_set = status_led_brightness_set;
+return devm_led_classdev_register(&amp;pdev-&gt;dev, &amp;led-&gt;cdev);
+</code></pre>
+<p>把子类自己的 <code>status_led_brightness_set</code> 函数指针挂到父类的 <code>brightness_set</code> 字段上，再把 <code>&amp;led-&gt;cdev</code>（父类视图）注册进 <code>led_classdev</code> 子系统。从此 <code>/sys/class/leds/status-led/brightness</code> 任何一次写入都会通过父类 dispatch 回到子类的实现。这就是 ch15 接口契约的内核成品。</p>
+<p><strong>4. module_platform_driver 一行宏</strong></p>
+<pre><code class="language-c">module_platform_driver(status_led_driver);
+</code></pre>
+<p>这一行展开三层（<code>include/linux/platform_device.h</code> → <code>include/linux/device/driver.h</code> → <code>include/linux/module.h</code>），最终等价于：</p>
+<pre><code class="language-c">static int __init status_led_driver_init(void) {
+    return platform_driver_register(&amp;status_led_driver);
+}
+module_init(status_led_driver_init);
+/* module_init 进一步展开为 __initcall */
+</code></pre>
+<p>也就是：<code>module_platform_driver(status_led_driver)</code> ≡ <code>__initcall(status_led_driver_init)</code>。这正是本书 ch17 教学版 initcall 表的内核成品，<code>module_init</code> 本身就是 <code>__initcall</code> 的别名。</p>
+<h3 id="c33-leds-status-overlaydts"><a class="header" href="#c33-leds-status-overlaydts">C.3.3 leds-status-overlay.dts</a></h3>
+<pre><code class="language-dts">/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2711";
+
+    fragment@0 {
+        target-path = "/";
+
+        __overlay__ {
+            status_led: status-led {
+                compatible = "status-led";
+                gpios = &lt;&amp;gpio 17 0&gt;;       /* GPIO17·active high */
+                status = "okay";
+            };
+        };
+    };
+};
+</code></pre>
+<p>要点：</p>
+<ul>
+<li><code>compatible = "status-led"</code> 是 of_match 的关键字，跟驱动里 <code>status_led_of_match[]</code> 那一行字面对齐，匹配上 probe 才会被调用</li>
+<li><code>gpios = &lt;&amp;gpio 17 0&gt;</code> 指定 GPIO17，flags 0 是 active high</li>
+<li>编译命令 <code>dtc -@ -O dtb -o leds-status.dtbo leds-status-overlay.dts</code>，<code>-@</code> 让符号引用（<code>&amp;gpio</code>）保留在产物里，<code>dtoverlay</code> 才能后期解析</li>
+<li>加载用 <code>sudo dtoverlay leds-status.dtbo</code>（运行时挂载）；要开机自动挂载，把 dtbo 拷到 <code>/boot/overlays/</code>，再在 <code>/boot/config.txt</code> 里加一行 <code>dtoverlay=leds-status</code></li>
+</ul>
+<h2 id="c4-4-个-demo-的-build--跑命令--期望输出"><a class="header" href="#c4-4-个-demo-的-build--跑命令--期望输出">C.4 4 个 demo 的 build / 跑命令 / 期望输出</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Demo</th><th>build / 跑命令</th><th>期望输出</th></tr>
+</thead>
+<tbody>
+<tr><td>1 · leds-status.ko</td><td><code>cd ch20-leds-status &amp;&amp; make &amp;&amp; sudo dtoverlay leds-status.dtbo &amp;&amp; sudo insmod leds-status.ko</code></td><td><code>/sys/class/leds/status-led/</code> 出现，<code>echo 1 | sudo tee .../brightness</code> 点亮 LED</td></tr>
+<tr><td>2 · libgpiod</td><td><code>cd ch20-demo2-libgpiod &amp;&amp; make &amp;&amp; sudo ./blink_libgpiod</code></td><td>rmmod 后 LED 闪 20 下；insmod 内核驱动后 libgpiod 报 <code>Device or resource busy</code>（GPIO17 已被内核占用）</td></tr>
+<tr><td>3 · gdb container_of</td><td>QEMU virt 启 vmlinux + <code>gdb-multiarch vmlinux</code> + <code>target remote :1234</code> + <code>b status_led_brightness_set</code></td><td>gdb 打印 <code>&amp;led-&gt;cdev == led_cdev</code>（cdev 在第一字段，offset 0，两地址相同）</td></tr>
+<tr><td>4 · initcall</td><td><code>bash ch20-demo4-initcall/trace_initcall.sh</code></td><td>dmesg 看到 <code>initcall ... returned 0</code>；ftrace 看到 <code>status_led_probe</code> 被 <code>platform_drv_probe</code> 调用</td></tr>
+</tbody>
+</table>
+</div>
+<p>每个 demo 的具体讲解见各自 <code>README.md</code>。Demo 2 的核心观察是“同一颗 LED 两种接口完全互斥“：先 rmmod 再 libgpiod 直接拍 GPIO17 → LED 闪；再 insmod 后 libgpiod 拒绝（GPIO 已被内核占用）→ 只能走 sysfs。这一组对照让读者切身体会内核驱动和用户态直接控制 GPIO 的关系，对应 ch16 § 16.14（应用层 vs 内核层判断三步）。一颗 GPIO LED 这种通用外设，工业上 99% 的场景在用户态调 libgpiod 就够，只有把驱动写成内核态才能享受 led trigger / sysfs 自动节点这些子系统配套能力，所以“是否值得写内核驱动“是个工程判断题，不是技术能力题。Demo 3 把 ch13 字节级一致从教学代码搬到内核现场，gdb 打印的两个地址完全相等就是父类在第一字段时 <code>offsetof</code> 为 0 的最直观证据。Demo 4 把 ch17 initcall 链路从教学版宏搬到 <code>module_platform_driver</code> 宏，读者顺着 dmesg / kallsyms / ftrace 三条线索看完，会发现内核启动时数千个 initcall 不是魔法，就是一张按 level 排序的函数指针表加一个 for 循环。</p>
+<h2 id="c5-没有-rpi-怎么办"><a class="header" href="#c5-没有-rpi-怎么办">C.5 没有 RPi 怎么办</a></h2>
+<p>诚实给出三套方案：</p>
+<ul>
+<li><strong>WSL2 / Linux PC</strong>：可以 build 模块（装 kernel headers 即可），但不能 insmod 跑（除非自编内核 + 自加 dts overlay）。Demo 4 的 <code>trace_initcall.sh</code> 在任何 Linux 主机上都能跑，因为它读 <code>/proc/kallsyms</code> 和 <code>/sys/kernel/debug/tracing/</code>，不依赖 RPi 硬件</li>
+<li><strong>QEMU virt + 主线 Linux</strong>：跑 Demo 3 gdb 调试最理想，不需要 RPi 真板。<code>qemu-system-aarch64 -M virt -cpu cortex-a72 -kernel arch/arm64/boot/Image -append "console=ttyAMA0 nokaslr" -nographic -s -S</code> 启动后接 <code>gdb-multiarch vmlinux</code>，<code>target remote :1234</code> 即可</li>
+<li><strong>完全不跑·只读源</strong>：附录 C 每段代码都从 Linux 6.6 主线 / RPi 主线 dts 真源里抓出来。读者顺着下面的 permalink 一字不差核对：
+<ul>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/include/linux/leds.h</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/drivers/leds/led-class.c</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/drivers/leds/led-core.c</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/drivers/leds/leds-gpio.c</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/include/linux/container_of.h</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/include/linux/platform_device.h</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/include/linux/device/driver.h</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/include/linux/module.h</code></li>
+<li><code>https://github.com/torvalds/linux/blob/v6.6/arch/arm/boot/dts/broadcom/bcm2711-rpi-4-b.dts</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="c6-常见坑"><a class="header" href="#c6-常见坑">C.6 常见坑</a></h2>
+<ol>
+<li><strong>kernel headers 缺失</strong>：<code>sudo apt install raspberrypi-kernel-headers</code>。<code>uname -r</code> 拿到的版本要跟 headers 包匹配，跨大版本升级后要重装 headers</li>
+<li><strong>dts overlay 没加载</strong>：开机自动挂载要在 <code>/boot/config.txt</code> 加 <code>dtoverlay=leds-status</code> 并把 <code>.dtbo</code> 拷到 <code>/boot/overlays/</code>；运行时挂载用 <code>sudo dtoverlay leds-status.dtbo</code> 或 <code>sudo dtoverlay leds-status</code></li>
+<li><strong>module signing</strong>：开了 <code>CONFIG_MODULE_SIG_FORCE</code> 才需要签名，RPi OS 默认没强制。如果 <code>insmod</code> 报 <code>Required key not available</code>，关掉 secure boot 或自签</li>
+<li><strong>GPIO17 被占用</strong>：先 <code>pinctrl get 17</code> 确认没被别的 driver 占（旧 dtb 里如果把 17 给了别的功能会冲突）。同样的命令也能确认 dts overlay 加载后 GPIO17 是不是切到了 <code>output</code> 模式</li>
+<li><strong><code>/sys/class/leds/...</code> 不出现</strong>：dmesg 看 probe 是否被调用（of_match 是否匹配）。常见错位是 dts 里写 <code>compatible = "status-led"</code> 漏了逗号，或者驱动的 <code>status_led_of_match[].compatible</code> 字符串拼错</li>
+<li><strong>brightness_set 没生效</strong>：检查 <code>cdev.max_brightness</code> 不是 0。<code>led_classdev_register</code> 默认会把 0 改写成 <code>LED_FULL=255</code>，但有些代码路径会先读这一字段做 clamp，写了再说稳</li>
+</ol>
+<h2 id="c7-rpi-4b-主线驱动状态"><a class="header" href="#c7-rpi-4b-主线驱动状态">C.7 RPi 4B 主线驱动状态</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>外设</th><th>驱动文件</th><th>主线 6.6 状态</th></tr>
+</thead>
+<tbody>
+<tr><td>GPIO</td><td>drivers/pinctrl/bcm/pinctrl-bcm2835.c</td><td>first-class</td></tr>
+<tr><td>I2C</td><td>drivers/i2c/busses/i2c-bcm2835.c</td><td>first-class</td></tr>
+<tr><td>SPI</td><td>drivers/spi/spi-bcm2835.c</td><td>first-class</td></tr>
+<tr><td>PWM</td><td>drivers/pwm/pwm-bcm2835.c</td><td>first-class</td></tr>
+<tr><td>LED</td><td>drivers/leds/leds-gpio.c + dts</td><td>first-class</td></tr>
+</tbody>
+</table>
+</div>
+<p>结论：RPi 4B 在主线 6.6 是 first-class，所有教学需要的外设走主线驱动，不需要 vendor fork。这也是这本书选 RPi 4B 做参考板的理由：教学版代码读上游、读者跑同款上游，认知完全闭环。</p>
+<h2 id="c8-这一份附录在全书的位置"><a class="header" href="#c8-这一份附录在全书的位置">C.8 这一份附录在全书的位置</a></h2>
+<p>附录 C 跟附录 B 配对，是这本书工程判断力教学的两个工程兑现：</p>
+<ul>
+<li><strong>附录 B（裸机 STM32）</strong>：Zephyr 的 device subsystem 在某些受限场景仍要自抽 platform，那一份工程演示“必须自抽“长什么样</li>
+<li><strong>附录 C（Linux 6.6 + RPi 4B）</strong>：Linux 内核已经把 platform 抽象做完了，应用层和驱动层都不再自抽，那一份工程演示“内核做完别再抽“长什么样</li>
+</ul>
+<p>读完两份附录，读者能切身体会本书 ch15 § 15.16 / ch16 § 16.13 / ch16 § 16.14 的核心 takeaway：抽不抽 platform 层不是教条，要看你跑在哪个环境。判断依据是“内核有没有把 platform 抽象做完“。看到一份 Linux 应用层代码自抽 <code>platform_pin_xxx()</code>，第一反应是“这一层是不是多余“；看到一份裸机 STM32 代码不抽 platform 层、应用直接调 <code>HAL_GPIO_WritePin</code>，第一反应是“换芯片就崩“。这两种反应分得清，工程判断力就立住了。这也是本书前 18 章一直在铺的一条线：OOP 不是写法清单，是判断力训练。判断“谁该抽这一层“比写出“这一层怎么抽“重要十倍。</p>
 
                     </main>
 
