@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-5-章--hal-库源码漫游"><a class="header" href="#第-5-章--hal-库源码漫游">第 5 章 · HAL 库源码漫游</a></h1>
+                        <h1 id="第-5-章--hal-库源码漫游--从抽象接口到平台实现"><a class="header" href="#第-5-章--hal-库源码漫游--从抽象接口到平台实现">第 5 章 · HAL 库源码漫游 · 从抽象接口到平台实现</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/05-hal-mapping/"><code>oop-in-c/code/05-hal-mapping/</code></a></p>
 <h2 id="51-你天天用-hal_gpio_init"><a class="header" href="#51-你天天用-hal_gpio_init">5.1 你天天用 HAL_GPIO_Init</a></h2>
 <p>你知道它为什么叫这个名字吗？</p>
@@ -381,7 +381,7 @@ gpio_write(13, 1);
 sleep(1);
 gpio_write(13, 0);
 </code></pre>
-<p>sysfs 的“把硬件当文件“机制怎么和内核的 <code>file_operations</code> + <code>gpio_chip</code> 衔接起来，是第 16 章的内容。这一章先看到“用户态调用还是同一个套路“。</p>
+<p>sysfs 的“把硬件当文件“机制怎么和内核的 <code>file_operations</code> + <code>gpio_chip</code> 衔接起来：<code>gpio_chip</code> 是第 16 章的内容，<code>file_operations</code> 是第 18 章 § 18.1 的内容。这一章先看到“用户态调用还是同一个套路“。</p>
 <p>新内核推荐 libgpiod 替代 sysfs，附录 C 会展开。</p>
 <h2 id="511-工业代码里的对应"><a class="header" href="#511-工业代码里的对应">5.11 工业代码里的对应</a></h2>
 <p>我做的工业控制板项目里所有的驱动都按 HAL 这套路子组织。每个底层 driver 都有自己的 <code>&lt;MOD&gt;_TypeDef</code>、自己的 init/deinit、自己的命名前缀。</p>

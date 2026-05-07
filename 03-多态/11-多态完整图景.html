@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,11 +180,15 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-11-章--同名函数不同行为"><a class="header" href="#第-11-章--同名函数不同行为">第 11 章 · 同名函数不同行为</a></h1>
+                        <h1 id="第-11-章--同名函数不同行为--多态完整图景"><a class="header" href="#第-11-章--同名函数不同行为--多态完整图景">第 11 章 · 同名函数不同行为 · 多态完整图景</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/"><code>oop-in-c/code/11-polymorphism/</code></a></p>
 <h2 id="111-一个真实场景"><a class="header" href="#111-一个真实场景">11.1 一个真实场景</a></h2>
-<p>第 10 章每颗 LED 自带 ops 表。应用层调 <code>led_on(&amp;red_led.base)</code>，内部 <code>me-&gt;ops-&gt;on(me)</code> 走对的实现。</p>
-<p>但应用层有个不爽的地方：每次都得自己写 <code>me-&gt;ops-&gt;on(me)</code> 这一长串。能不能直接调一个 <code>led_on(me)</code>，让它自己找到对的函数？</p>
+<p>第 10 章每颗 LED 自带 ops 表。应用层每次调用还得自己写 <code>me-&gt;ops-&gt;on(me)</code> 这一长串：</p>
+<pre><code class="language-c">red_led.base.ops-&gt;on(&amp;red_led.base);
+blue_led.base.ops-&gt;on(&amp;blue_led.base);
+green_led.base.ops-&gt;on(&amp;green_led.base);
+</code></pre>
+<p>能不能把这层调用包成一个统一接口，叫它 <code>led_on(me)</code>，让它自己找到对的函数？</p>
 <p>而且应用层经常要把所有 LED 装在一个数组里循环跑：</p>
 <pre><code class="language-c">struct led_base *all_leds[3] = {
 	&amp;red_led.base,
@@ -339,7 +343,7 @@ for (auto led : all_leds)
 }
 </code></pre>
 <p>NULL 防御一句话挡住三个潜在 NULL 来源（<code>me</code> / <code>me-&gt;ops</code> / <code>me-&gt;ops-&gt;on</code>），任何一个 NULL 就退出，不进 dispatch。胶水函数的好处就在这：所有调用方只看到 <code>led_on</code> 这一个 API，NULL check 集中在这一处。</p>
-<p>这一章 <code>led_on</code> 是简化版，只做 NULL 防御 + dispatch 两件事。后面章节会引入“必填 / 选填“策略和 <code>assert</code> 抓忘填的子类，那是给函数表加一份契约，本章主题是“同名函数不同行为“，先不展开。</p>
+<p>这一章 <code>led_on</code> 是简化版，只做 NULL 防御 + dispatch 两件事。后面章节会给函数表加一份更严的契约，那是另一个工程话题，本章主题是“同名函数不同行为“，先不展开。</p>
 <h3 id="1172-dispatch-在内存里走的两步"><a class="header" href="#1172-dispatch-在内存里走的两步">11.7.2 dispatch 在内存里走的两步</a></h3>
 <p><code>me-&gt;ops-&gt;on(me)</code> 这一行展开就是两次访存加一次跳转。先从 <code>me</code> 这块内存里取出 <code>ops</code> 字段（base 第一个字段，偏移 0），拿到 ops 表的地址；再从 ops 表里取出 <code>on</code> 字段（ops 第一个字段，偏移 0），拿到目标函数地址；最后跳过去执行，参数 <code>me</code> 已经在那。</p>
 <p>红灯：<code>me-&gt;ops</code> 指向 <code>led_ops_gpio</code>，<code>me-&gt;ops-&gt;on</code> 是 <code>gpio_on</code>。落到 <code>gpio_on(me)</code>。
@@ -355,6 +359,7 @@ for (auto led : all_leds)
 <p><code>led_on / led_off / led_toggle</code> 这 3 个对外 API 一行不改。<code>struct led_base</code> 一行不改。<code>struct led_ops</code> 一行不改。所有应用层代码一行不改。</p>
 <p>这就是函数指针表 + base + dispatch 这一套在工程上的好处：加新功能不动老代码，老代码不会被加新东西改坏。</p>
 <h3 id="1174-配套代码-ops-字段说明"><a class="header" href="#1174-配套代码-ops-字段说明">11.7.4 配套代码 ops 字段说明</a></h3>
+<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP16 演示主线用 <code>on / off</code> 两个字段，已经够说清 dispatch 这件事。本章配套代码 <code>oop-in-c/code/11-polymorphism/</code> 沿用第 9 章 / 第 10 章的 <code>on / off / toggle</code> 三字段。三章代码包跨章演化字段一致，读者跟着改增量看得清楚。</p>
 <p>三个字段还是两个字段，dispatch 机制完全一样：通过 <code>me-&gt;ops</code> 找到表，按名字调到对的实现。</p>
 <h2 id="118-你现在的代码在-stm32-上长什么样"><a class="header" href="#118-你现在的代码在-stm32-上长什么样">11.8 你现在的代码在 STM32 上长什么样</a></h2>
@@ -407,17 +412,8 @@ struct led_base {
 	bool        is_on;
 	uint32_t    flags;
 };
-
-/* environment_export.h */
-extern struct led_base *green_led;
-extern struct led_base *red_led;
-extern struct led_base *led_array[];
 </code></pre>
-<p>应用层的代码长这样：</p>
-<pre><code class="language-c">for (int i = 0; led_array[i] != NULL; ++i)
-	led_off(led_array[i]);
-</code></pre>
-<p>不管 <code>led_array</code> 里挂了多少种 LED（GPIO 灯、PWM 灯、I2C 灯、SPI 矩阵），这个循环一次性把它们全关掉。<code>led_array[i]</code> 是 <code>struct led_base *</code>，应用层完全不关心你是什么子类。</p>
+<p>应用层调一次 <code>led_off(handle)</code>，背后是 <code>me-&gt;ops-&gt;off(me)</code> 这一行 dispatch，不管底下挂的是 GPIO 灯、PWM 灯还是 I2C 矩阵，调用方完全不知道走到哪个具体实现，落到对的就行。下一章把“应用层手里这些 <code>struct led_base *</code> 句柄从哪来“展开。</p>
 <p>这就是 Linux 内核 / Zephyr / GObject / 你这一章手写的代码同一种 dispatch 机制。OOP 不是 C++ 的特权，是工业代码里很普遍的做法。</p>
 <h2 id="1111-跑一遍"><a class="header" href="#1111-跑一遍">11.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/11-polymorphism/pc

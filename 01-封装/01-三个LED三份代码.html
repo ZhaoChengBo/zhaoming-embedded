@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-1-章--三个-led-三份代码"><a class="header" href="#第-1-章--三个-led-三份代码">第 1 章 · 三个 LED 三份代码</a></h1>
+                        <h1 id="第-1-章--三个-led-三份代码--第一次面对重复"><a class="header" href="#第-1-章--三个-led-三份代码--第一次面对重复">第 1 章 · 三个 LED 三份代码 · 第一次面对重复</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/"><code>oop-in-c/code/01-three-leds/</code></a></p>
 <h2 id="11-一个真实场景"><a class="header" href="#11-一个真实场景">1.1 一个真实场景</a></h2>
 <p>接手新项目。硬件工程师跟你说：板子上有三个状态指示灯，红灯接 GPIO Pin 13，绿灯接 Pin 14，蓝灯接 Pin 15。红灯指示心跳，绿灯指示运行正常，蓝灯指示有错误。</p>
@@ -500,7 +500,7 @@ GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
 <p>ST 自己的 HAL 也是封装：把“GPIO 端口“打包成 <code>GPIO_TypeDef</code>（一个 struct，里面是各个寄存器），通过 <code>GPIOx</code> 这个指针参数告诉函数操作哪个端口。<code>GPIOx</code> 就是 <code>me</code>，换了个名字。</p>
 <p><strong>关于这里的 platform 层写法</strong>：本节用的是“函数式包装“，直接 export 几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>。这是 ch01 阶段的教学简化形态，让你在还没接触虚函数表概念前先看到“换平台只改 platform 这一层“的好处。</p>
 <p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.10 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
-<p>第 11 章一步步推出 vptr 之后，会把 platform 层从函数式重构成 ops 表式，和工业代码对齐。</p>
+<p>第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
 <h2 id="19-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#19-你现在的-led-在-linux-用户态长什么样">1.9 你现在的 LED 在 Linux 用户态长什么样</a></h2>
 <p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/01-three-leds/linux-snippet/led_linux.c"><code>oop-in-c/code/01-three-leds/linux-snippet/led_linux.c</code></a>）：</p>
 <pre><code class="language-c">#include "led.h"
@@ -541,7 +541,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>Linux 把每个 GPIO 暴露成一个文件 <code>/sys/class/gpio/gpio13/value</code>。写 <code>'1'</code> 拉高，写 <code>'0'</code> 拉低。这种“把硬件当文件“的设计叫 sysfs，是 Linux 内核统一暴露驱动状态的标准接口（更现代的方案叫 libgpiod，附录 C 会展开）。</p>
 <p>注意：<code>led.h</code>、<code>led.c</code>、<code>main.c</code> 还是一字不改。这次变化的胶水是把 GPIO 操作转成 open / write / close。</p>
 <p>如果你是嵌入式 Linux 工程师，看到这个会发现：你已经在写这个抽象了。所有 Linux 驱动的用户态接口都是这个套路，从最基础的 GPIO，到复杂的网卡驱动。第 16 章会讲 Linux 内核态怎么把 sysfs 文件接到底层 GPIO controller。</p>
-<p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），等到第 11 章演化出 vptr 之后会把它改成和 1.10 节工业代码一致的形态。</p>
+<p>同 1.8 节，这里 Linux 端的 platform 层也是函数式包装的教学简化版。真正工业级的 platform 抽象用 ops 表（虚函数表），第 16 章会把它改成和 1.10 节工业代码一致的形态（gpio_chip 子系统）。</p>
 <h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
 <p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（基类与子类、ops 表 / 虚函数表、基类层 dispatch（分发：走到对的实现）、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分两层：基类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。基类那两份长这样：</p>
@@ -632,7 +632,7 @@ led_toggle(green_led);
 <li><strong>指针句柄持有</strong>：base 实例本身在驱动 <code>.c</code> 文件里 static 分配，应用层只拿 <code>extern struct led_base *green_led;</code> 这种指针句柄，从来不在自己代码里 <code>struct led_base x;</code> 直接定义实例。能拿到的只是别人给的指针，状态变更走 <code>led_on(green_led)</code> 是最自然的选择，绕过去反而费劲。ch04 4.7.8 节会单独讨论这种全局指针句柄合不合理</li>
 </ul>
 <p>Linux 内核也是这套纪律。<code>struct device</code> 几十个字段全部公开在 <code>include/linux/device.h</code> 里，谁的代码写 <code>dev-&gt;kobj.parent = NULL</code> 之类直接绕过 driver core，会被维护者一句话打回。Greg Kroah-Hartman 在内核驱动文档和邮件列表里多次强调这件事，靠的是<strong>编码约定 + review 文化</strong>，不是编译器。Zephyr RTOS、GObject 同一套路。这是 OOP-in-C 继承场景里几乎唯一可行的工业选择。</p>
-<p>ch02 会把这套纪律的两件工具讲透：<code>static</code> 锁内部工具函数（链接期硬锁）+ <code>/* private */</code> 字段注释（命名纪律 + code review 软锁）。同时会单独提一种更严格的隔离——字段彻底藏进 <code>.c</code>，编译器直接拒绝外部访问，叫不透明指针。它的真实用武之地是<strong>跨二进制库边界</strong>（libc 的 <code>FILE *</code>、POSIX 的 <code>pthread_t</code>、<code>sqlite3 *</code>、<code>CURL *</code>），应用代码和库实现物理分离·这些场景下应用代码不需要继承库类型。一旦涉及继承（这本书后续 18 章主线），就不能用那套写法。</p>
+<p>ch02 会把这套纪律的两件工具讲透：<code>static</code> 锁内部工具函数（链接期硬锁）+ <code>/* private */</code> 字段注释（命名纪律 + code review 软锁）。同时会单独提一种更严格的隔离：字段彻底藏进 <code>.c</code>，编译器直接拒绝外部访问，叫不透明指针。它的真实用武之地是<strong>跨二进制库边界</strong>（libc 的 <code>FILE *</code>、POSIX 的 <code>pthread_t</code>、<code>sqlite3 *</code>、<code>CURL *</code>），应用代码和库实现物理分离·这些场景下应用代码不需要继承库类型。一旦涉及继承（这本书后续 18 章主线），就不能用那套写法。</p>
 <h3 id="1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.10.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
 <p>你注意到三件事：</p>
 <ol>
@@ -651,7 +651,7 @@ led_toggle(green_led);
 <li>看到 <code>extern xxx_base *yyy;</code>，知道是别人创建好的句柄</li>
 </ul>
 <p>整套就是 struct + me 的工业放大版。你这一章学的核心，加上第 11 章的 ops 表演化，等于工业项目里所有驱动的骨架。</p>
-<p>反过来看，1.8 / 1.9 节给的 STM32 / Linux platform 层用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 11 章之后会把 platform 层从函数式升级成 ops 表式，完成这个对齐。</p>
+<p>反过来看，1.8 / 1.9 节给的 STM32 / Linux platform 层用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），完成这个对齐。</p>
 <h2 id="111-跑一遍"><a class="header" href="#111-跑一遍">1.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make
@@ -695,7 +695,7 @@ make
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>挂号单是敞开的。任何人都能直接 <code>red_led.pin = 999</code> 把它弄坏。你同事顺手改了一个值，所有 LED 全乱了。</p>
 <p>怎么把单子锁起来？下一章解决。</p>
-<p>下一篇：<a href="02-同事改了一行.html">第 2 章 · 同事改了一行你的 LED 全乱了</a></p>
+<p>下一篇：<a href="02-同事改了一行.html">第 2 章 · 同事改了一行 LED 全乱了 · static 与信息隐藏</a></p>
 
                     </main>
 

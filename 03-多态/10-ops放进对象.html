@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-10-章--ops-放进对象"><a class="header" href="#第-10-章--ops-放进对象">第 10 章 · ops 放进对象</a></h1>
+                        <h1 id="第-10-章--ops-放进对象--vptr-落地"><a class="header" href="#第-10-章--ops-放进对象--vptr-落地">第 10 章 · ops 放进对象 · vptr 落地</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/10-vptr/"><code>oop-in-c/code/10-vptr/</code></a></p>
 <p>第 9 章你把 3 个函数指针装进了 <code>struct led_ops</code> 一张电话簿。问题是这本电话簿独立存在。每次调 <code>test_led</code> 还得从外面把电话簿传进去。LED 自己不知道自己用哪本电话簿。</p>
 <p>这一章让每个 LED 把自己的电话簿揣身上。</p>
@@ -262,32 +262,23 @@ int led_pwm_init(struct led_pwm *me, const char *name,
 <p>GPIO 灯的 init 填 GPIO 的 ops 表，PWM 灯的 init 填 PWM 的 ops 表。各填各的，互不干扰。</p>
 <p>init 就是开门营业。手艺一次交付，终身受用。</p>
 <p><img src="../assets/ch10/slide3_init填充ops.png" alt="init 填充 ops"></p>
-<h2 id="104-test_led-的新样子"><a class="header" href="#104-test_led-的新样子">10.4 test_led 的新样子</a></h2>
-<p>ops 已经在每颗 LED 身上了。<code>test_led</code> 现在不需要再接 ops 参数：</p>
-<pre><code class="language-c">int test_led(struct led_base *me)
-{
-	if (!me || !me-&gt;ops ||
-	    !me-&gt;ops-&gt;on || !me-&gt;ops-&gt;off || !me-&gt;ops-&gt;toggle)
-		return -1;
-
-	printf("  [test] open ...\n");
-	me-&gt;ops-&gt;on(me);
-	printf("  [test] toggle ...\n");
-	me-&gt;ops-&gt;toggle(me);
-	printf("  [test] close ...\n");
-	me-&gt;ops-&gt;off(me);
-	return 0;
-}
+<h2 id="104-应用层的新样子"><a class="header" href="#104-应用层的新样子">10.4 应用层的新样子</a></h2>
+<p>ops 已经在每颗 LED 身上了。应用层调用不再需要从外面传 ops 表，直接从 LED 自己身上拿：</p>
+<pre><code class="language-c">me-&gt;ops-&gt;on(me);
+me-&gt;ops-&gt;off(me);
 </code></pre>
-<p>NULL check 把三个 ops 字段全检一遍（<code>on</code> / <code>off</code> / <code>toggle</code> 任意一个没填都不能跑），然后 open / toggle / close 三步走完一颗灯的完整测试。通过 <code>me</code> 找到 <code>me-&gt;ops</code>，再从 ops 里找到对应的函数指针调出去，调用方完全不用知道是哪种 LED。</p>
+<p>通过 <code>me</code> 找到 <code>me-&gt;ops</code>，再从 ops 里找到对应的函数指针调出去。换不同的 LED，<code>me</code> 不同，<code>me-&gt;ops</code> 自动指向对的那张表，落到对的实现。</p>
 <p>应用层的调用点变成：</p>
-<pre><code class="language-c">test_led(&amp;gpio_led.base);    /* 红灯 -&gt; 走 gpio_on / gpio_off */
-test_led(&amp;pwm_led.base);     /* 蓝灯 -&gt; 走 pwm_on  / pwm_off  */
-test_led(&amp;i2c_led.base);     /* 绿灯 -&gt; 走 i2c_on  / i2c_off  */
+<pre><code class="language-c">struct led_base *red   = &amp;gpio_led.base;
+struct led_base *blue  = &amp;pwm_led.base;
+struct led_base *green = &amp;i2c_led.base;
+
+red-&gt;ops-&gt;on(red);     /* 走 gpio_on */
+blue-&gt;ops-&gt;on(blue);   /* 走 pwm_on  */
+green-&gt;ops-&gt;on(green); /* 走 i2c_on  */
 </code></pre>
-<p>同一个 <code>test_led</code> 函数，传不同的 LED，各自执行各自的 on 和 off。</p>
-<p><code>test_led</code> 不认识 <code>gpio_on</code>，也不认识 <code>pwm_on</code>。它只管调 <code>me-&gt;ops-&gt;on</code>。谁的 ops？<code>me</code> 自己知道。不用你帮它记了。</p>
-<p>一路走来，参数从散装一堆，到 ch09 打包成两个，现在一个就够。</p>
+<p>每次都得自己写 <code>me-&gt;ops-&gt;on(me)</code> 这一长串。下一章会把它包成一个统一接口 <code>led_on(me)</code>，应用层不再写两次跳转，只调一个名字。</p>
+<p>一路走来，调用方传给灯的参数从散装一堆，到 ch09 打包成两个，现在一个就够：只要 <code>me</code>，ops 表自己跟着。</p>
 <p><img src="../assets/ch10/slide4_调用对比.png" alt="调用对比"></p>
 <h2 id="105-这个东西叫什么"><a class="header" href="#105-这个东西叫什么">10.5 这个东西叫什么</a></h2>
 <p>每个对象自带一个指针，指向一张属于自己类型的函数表。调用时通过这个指针找到表，再从表里找到具体函数。</p>
@@ -350,6 +341,7 @@ test_led(&amp;i2c_led.base);     /* 绿灯 -&gt; 走 i2c_on  / i2c_off  */
 <p>强转。<code>(struct led_gpio *)me</code>。因为 <code>struct led_base base</code> 是 <code>struct led_gpio</code> 的第一个字段，<code>&amp;red_led</code> 和 <code>&amp;red_led.base</code> 在内存里是同一个地址。同一字节，两个指针类型，强转后访问 <code>self-&gt;pin</code> 合法。</p>
 <p>这一招的前提是“base 在子类第一个字段“。Linux 内核为了打破这个限制（让 base 可以在中间），引入了一个宏来反向算地址。本章先用最朴素的强转，后面会展开更通用的做法。</p>
 <h3 id="1064-视频版与配套代码版字段差异说明"><a class="header" href="#1064-视频版与配套代码版字段差异说明">10.6.4 视频版与配套代码版字段差异说明</a></h3>
+<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP15 里 ops 表字段是 <code>on / off / set_brightness</code>（视频画面里能看到 PWM 调亮度的演示）。本章配套代码 <code>oop-in-c/code/10-vptr/</code> 用的是 <code>on / off / toggle</code>，和第 9 章配套代码字段保持一致。</p>
 <p>两边讲的是同一件事：三个函数指针装进 ops 表，按名字访问，运行时各自指向不同实现。换字段不影响 ops 表的设计本身。读视频以视频画面为准，跑代码以代码包为准，两种字段都能演示“对象自带操作表“这件事。</p>
 <p><code>set_brightness</code> 在 PC 上跑不出可视化亮度变化，所以代码包里改成了 <code>toggle</code>。开关来回切换，终端能看到。</p>

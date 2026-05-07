@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-3-章--你用-c-手搓了一个-class"><a class="header" href="#第-3-章--你用-c-手搓了一个-class">第 3 章 · 你用 C 手搓了一个 class</a></h1>
+                        <h1 id="第-3-章--你用-c-手搓了一个-class--句柄与操作函数"><a class="header" href="#第-3-章--你用-c-手搓了一个-class--句柄与操作函数">第 3 章 · 你用 C 手搓了一个 class · 句柄与操作函数</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/"><code>oop-in-c/code/03-handwritten-class/</code></a></p>
 <h2 id="31-一个真实场景"><a class="header" href="#31-一个真实场景">3.1 一个真实场景</a></h2>
 <p>第 2 章你给 LED 模块的字段标了 <code>/* private */</code>、把内部工具函数加 <code>static</code> 锁进了 <code>.c</code>。同事改不动你的数据，你松了一口气。</p>
@@ -473,7 +473,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>motor.h</code> / <code>motor.c</code> / <code>main.c</code> 全部一字不改。两个模块照样跑，前缀照样区分得开。变化的只是这层 platform 胶水。</p>
 <p>真实工程里电机的 PWM 速度控制会写到 TIM 通道的 CCRx 寄存器，这里教学简化为 GPIO 高低电平。第 5 章会展开 HAL 怎么做这种映射。</p>
-<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 11 章会演化对齐。</p>
+<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="39-你现在的代码在-linux-用户态长什么样"><a class="header" href="#39-你现在的代码在-linux-用户态长什么样">3.9 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/03-handwritten-class/linux-snippet/led_motor_linux.c"><code>oop-in-c/code/03-handwritten-class/linux-snippet/led_motor_linux.c</code></a>）：</p>
 <pre><code class="language-c">void platform_gpio_init(uint8_t pin, uint8_t mode)
@@ -510,7 +510,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>Linux 把每个 GPIO 暴露成文件 <code>/sys/class/gpio/gpio13/value</code>，sysfs 接口。</p>
 <p><code>led.h</code> / <code>led.c</code> / <code>motor.h</code> / <code>motor.c</code> / <code>main.c</code> 还是一字不改。</p>
 <p>新内核推荐 libgpiod，附录 C 会展开。</p>
-<p>同样是函数式包装的教学简化版，第 11 章后演化为 ops 表。</p>
+<p>同样是函数式包装的教学简化版，第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="310-工业代码里的模块长什么样"><a class="header" href="#310-工业代码里的模块长什么样">3.10 工业代码里的模块长什么样</a></h2>
 <p>我做的工业控制板项目里，每个驱动模块都按这套命名规范组织。看几个真实模块的 <code>.h</code> 列名：</p>
 <pre><code>drivers/

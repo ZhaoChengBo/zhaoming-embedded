@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-69e358bb.js"></script>
+        <script src="toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -188,7 +188,7 @@
 <p>正文加 B 站 19 期视频加 GitHub / Gitee 配套代码三位一体。视频讲的是直觉和现场感，正文补“视频里没讲透的几个细节“，是刻意留出来给文字载体的部分。</p>
 <h2 id="跟市面上不一样的几个点"><a class="header" href="#跟市面上不一样的几个点">跟市面上不一样的几个点</a></h2>
 <p>我自己读过几十本 C 和嵌入式书。我尽量列出我看到的、跟其他书的不一样：</p>
-<p><strong>不直接告诉你答案，渐进推理给你看</strong>。市面上 C 语言面向对象书绝大多数直接说“用函数指针实现多态“。这本书从 ch01 到 ch11 用 11 章演化展示“为什么演化成这样“。从三个 LED 重复代码的痛点，到结构体里的函数指针字段，到 ops 表，再到 vptr 落地，每一步都被前一步的痛点逼出来。一遍读完你会发现自己居然能跟着推下去，因为不是背答案，是在被推着思考。</p>
+<p><strong>不直接告诉你答案，渐进推理给你看</strong>。我看到的多数 C 语言 OOP 书直接说“用函数指针实现多态“。这本书从 ch01 到 ch11 用 11 章演化展示“为什么演化成这样“。从三个 LED 重复代码的痛点，到结构体里的函数指针字段，到 ops 表，再到 vptr 落地，每一步都被前一步的痛点逼出来。一遍读完你会发现自己居然能跟着推下去，因为不是背答案，是在被推着思考。</p>
 <p><strong>每个概念都验证到 4000 万行 Linux 内核</strong>。你学的不是教学幻灯片上的简化模型，是 v6.6 内核里到处都是的 <code>struct file_operations</code>、<code>struct gpio_chip</code>、<code>struct cdev</code>。这种“工业级“不是吹的。</p>
 <p><strong>C 与 C++ 双向对照</strong>。每章末尾“C 对比 C++“子节让你看到 C++ 编译器自动做的那一步、C 里手写出来是什么样。学完你回头看 C++ 的 virtual、inheritance，全是熟脸。</p>
 <p><strong>作者一线嵌入式现身说法</strong>。覆盖过 Cortex-M0 / M3 / M4 / M7 几代内核（STM32F0 到 STM32H7 系列），从裸机到 RTOS 到嵌入式 Linux，参与过工业控制板的主控、子控、全栈固件项目。这本书贴的工业代码骨架来自这些真项目，脱敏后保留教学需要的最小集合。哪一招在产品线上跑了几年没出问题，哪一招出过事故被替换掉，我自己心里有数。</p>

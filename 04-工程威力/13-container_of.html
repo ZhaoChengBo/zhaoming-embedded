@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -244,6 +244,7 @@ size_t off = offsetof(struct led_gpio, base);
 <p>做了什么？量距离。结果？一个数字（字节数）。什么时候算？编译期。</p>
 <p><img src="../assets/ch13/slide4_offsetof.png" alt="offsetof"></p>
 <h2 id="135-三步宏container_of"><a class="header" href="#135-三步宏container_of">13.5 三步宏：container_of</a></h2>
+<p>下面这个宏第一次看会头疼，先把三件事记住就够：接收<strong>成员指针 + struct 类型 + 成员名</strong>，返回<strong>外层 struct 首地址</strong>，<strong>编译期</strong>算好偏移量、运行时一条减法指令。带着这三件事往下读，每一行能落到对应的位置。</p>
 <p>有了 offsetof，把“成员地址减偏移“这一招包成一个宏：</p>
 <pre><code class="language-c">#define container_of(ptr, type, member)             \
 	((type *)((char *)(ptr) - offsetof(type, member)))
@@ -255,8 +256,7 @@ size_t off = offsetof(struct led_gpio, base);
 <li><code>(type *)</code>：把结果按外层 struct 的类型解读。</li>
 </ol>
 <p>一次减法。编译期算好偏移量，运行时零开销。</p>
-<p>注意一个事实：<strong><code>container_of</code> 不在 C 标准里</strong>。它是 Linux 内核自己写的宏，用 offsetof 构造出来。本书配套代码 <code>pc/container_of.h</code> 里就是上面这个最简版。Linux 内核真实版还在外面包了 <code>static_assert</code> 做编译期类型检查、用 statement expression 把 ptr 抓到局部变量避免重求值，原理同，细节见 § 13.8.5。</p>
-<p>刚看到这个宏觉得头疼？正常。先记住三件事就够：接收<strong>成员指针 + struct 类型 + 成员名</strong>，返回<strong>外层 struct 首地址</strong>，<strong>编译期</strong>算好偏移量、运行时一条减法指令。</p>
+<p>注意一个事实：<strong><code>container_of</code> 不在 C 标准里</strong>。它是 Linux 内核自己写的宏，用 offsetof 构造出来。本书配套代码 <code>pc/container_of.h</code> 里就是上面这个最简版。Linux 内核真实版还在外面包了 <code>static_assert</code> 做编译期类型检查、用 statement expression 把 ptr 抓到局部变量避免重求值，原理同，细节见 § 13.8.4。</p>
 <p><img src="../assets/ch13/slide5_container_of推导.png" alt="container_of 三步宏"></p>
 <h2 id="136-在-gpio_on-里用一下"><a class="header" href="#136-在-gpio_on-里用一下">13.6 在 gpio_on 里用一下</a></h2>
 <p>把第 12 章的 <code>gpio_on</code> 改成 container_of 版本：</p>
@@ -318,10 +318,12 @@ if (gpio) {
 	bool            on_level;
 };
 </code></pre>
-<p>跑一下 <code>./demo</code>：</p>
+<p>跑一下 <code>./demo</code>，节选 GPIO 子类那一段：</p>
 <pre><code>offsetof(struct led_gpio, base) = 4
 offsetof(struct led_pwm,  base) = 0
 offsetof(struct led_i2c,  base) = 0
+
+  [base] "ERR" common init done, ops=...
 [GPIO] Pin10 init as OUTPUT
 [GPIO] Pin10 -&gt; LOW (OFF)
 
@@ -333,18 +335,10 @@ offsetof(struct led_i2c,  base) = 0
 </code></pre>
 <p>GPIO 的 base 在偏移 4，但 <code>gpio_on</code> 还是正确还原了 <code>magic = 0xCAFE</code>、<code>pin = 10</code>、<code>on_level = true</code>。container_of 和位置无关。</p>
 <p>如果把 <code>container_of</code> 换回第 12 章的 <code>(struct led_gpio *)me</code>，self 指针位置算错 4 字节，<code>magic</code> 当场变成乱码。</p>
-<h3 id="1383-一句话给自己一个三件套"><a class="header" href="#1383-一句话给自己一个三件套">13.8.3 一句话给自己一个三件套</a></h3>
-<p>第一次看 container_of 觉得头疼，正常。不需要现在就完全理解每一步，记住三件事就够：</p>
-<ol>
-<li><strong>入：成员指针 + 外层 struct 类型 + 成员名</strong>。</li>
-<li><strong>出：外层 struct 的指针</strong>。</li>
-<li><strong>代价：编译期算偏移，运行时一条减法</strong>。</li>
-</ol>
-<p>后面写代码用几次，自然就懂了。</p>
-<h3 id="1384-container_of-在内核里出现多少次"><a class="header" href="#1384-container_of-在内核里出现多少次">13.8.4 container_of 在内核里出现多少次</a></h3>
+<h3 id="1383-container_of-在内核里出现多少次"><a class="header" href="#1383-container_of-在内核里出现多少次">13.8.3 container_of 在内核里出现多少次</a></h3>
 <p>整个 Linux 内核源码 <code>git grep -c container_of</code> 大概 4-5 万处。从字符设备到网络栈到块层到内存管理子系统，到处都是这一行。</p>
 <p>它撑起了 Linux 整套“基类（subsystem 的 struct）+ 子类（驱动 driver 的 struct）“模式。读到内核任何一个驱动的回调函数，第一行十有八九就是 container_of。</p>
-<h3 id="1385-linux-内核版宏剖析硬核可跳过"><a class="header" href="#1385-linux-内核版宏剖析硬核可跳过">13.8.5 Linux 内核版宏剖析（硬核·可跳过）</a></h3>
+<h3 id="1384-linux-内核版宏剖析硬核可跳过"><a class="header" href="#1384-linux-内核版宏剖析硬核可跳过">13.8.4 Linux 内核版宏剖析（硬核·可跳过）</a></h3>
 <p>刚学完 § 13.5 那个三步宏不需要看这一节。这里只是给后面真正读 Linux 内核源码的人留个完整记录，知道内核里那个长得吓人的版本到底在干什么。</p>
 <p>完整版定义在 Linux 内核 v6.6 LTS <code>include/linux/container_of.h</code> 第 18-23 行（如何获取内核源码做参考阅读见附录 D）：</p>
 <pre><code class="language-c">#define container_of(ptr, type, member) ({                              \
@@ -400,7 +394,8 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 </code></pre>
 <p>container_of 的实现里有一步 <code>(char *)(ptr)</code>（最简版）或 <code>(void *)(ptr)</code>（内核版），强转之后 const 就没了。Linux 内核 6.5 之后引入了 <code>container_of_const</code> 用 <code>_Generic</code> 保住 const，但老代码到处都在用裸的 container_of。需要严格 const-correctness 时手动检查一下。</p>
 <p>PC 上不依赖 GNU C 扩展的最简版就是 § 13.5 那个三步宏，本书配套代码 <code>pc/container_of.h</code> 里就是这一份。逻辑等价，编译期约束少一点，PC 上跑没影响。生产代码里可以直接用内核版，那个 static_assert 能在 commit 前帮你抓住低级错。</p>
-<h3 id="1386-配套代码-ops-表多了一个字段set_brightness"><a class="header" href="#1386-配套代码-ops-表多了一个字段set_brightness">13.8.6 配套代码 ops 表多了一个字段：set_brightness</a></h3>
+<h3 id="1385-配套代码-ops-表多了一个字段set_brightness"><a class="header" href="#1385-配套代码-ops-表多了一个字段set_brightness">13.8.5 配套代码 ops 表多了一个字段：set_brightness</a></h3>
+<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>打开本章配套代码 <code>oop-in-c/code/13-container-of/pc/led.h</code>，会发现 <code>struct led_ops</code> 比第 12 章多了一个字段：</p>
 <pre><code class="language-c">struct led_ops {
 	int (*on)(struct led_base *me);
@@ -414,7 +409,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.12。</p>
 <h2 id="139-你现在的代码在-stm32-上长什么样"><a class="header" href="#139-你现在的代码在-stm32-上长什么样">13.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>container_of 在 STM32 上是同一个宏，编译产物就是 ARM Cortex-M 的 <code>SUB Rd, Rn, #imm</code>。STM32 工程里你直接 <code>#include &lt;linux/types.h&gt;</code> 不行（那是内核头），但 STM32CubeIDE 的 <code>arm-none-eabi-gcc</code> 自带 <code>&lt;stddef.h&gt;</code>，offsetof 一直可用。把 § 13.5 那个三步宏放进 utility 头文件就能用。</p>
-<p>本节用的是函数式包装的教学简化版（4 个 <code>platform_gpio_*</code> 独立函数）。真正工业级的 platform 抽象用 ops 表（虚函数表）。第 15 章会把 platform 层重构成 ops 表式，和工业代码对齐。</p>
+<p>本节用的是函数式包装的教学简化版（4 个 <code>platform_gpio_*</code> 独立函数）。真正工业级的 platform 抽象用 ops 表（虚函数表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
 <p>完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/stm32-snippet/"><code>oop-in-c/code/13-container-of/stm32-snippet/</code></a>。</p>
 <h2 id="1310-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1310-你现在的代码在-linux-用户态长什么样">13.10 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>Linux 用户态可以直接借 <code>&lt;stddef.h&gt;</code> 的 offsetof。绝大多数 user-space 项目自定义自己的 container_of 宏，比如 systemd、gobject、libnl 都各写一份，逻辑都一样。在 Linux 用户态写 OOP 风格 C 代码，container_of 这一招几乎是入场券。</p>
@@ -464,8 +459,12 @@ make
 offsetof(struct led_gpio, base) = 4
 offsetof(struct led_pwm,  base) = 0
 offsetof(struct led_i2c,  base) = 0
+
+  [base] "ERR" common init done, ops=...
 [GPIO] Pin10 init as OUTPUT
 [GPIO] Pin10 -&gt; LOW (OFF)
+  [base] "STAT" common init done, ops=...
+  [base] "NET" common init done, ops=...
 
 --- toggle ERR ---
 [GPIO] Pin10 -&gt; HIGH (ON)
@@ -492,8 +491,9 @@ offsetof(struct led_i2c,  base) = 0
 <p>几处看点：</p>
 <ul>
 <li><code>offsetof(struct led_gpio, base) = 4</code> 证明 GPIO 子类 base 故意挪到了第二个位置（<code>magic</code> 占了前 2 字节 + 2 字节 padding）。</li>
+<li>三行 <code>[base] "..." common init done</code> 是 <code>led_base_init</code> 打的，跟 ch10 / ch11 一样：每个子类 init 第一行调 <code>led_base_init</code>，把对应的 const ops 表交给 base，共有字段一次填好。<code>ops=...</code> 是表的运行时地址，每次链接会变。</li>
 <li><code>[ERR] GPIO Pin10 ON (magic=0xCAFE)</code> 这一行里 <code>magic = 0xCAFE</code> 准确还原，证明 <code>container_of</code> 在 base 偏移 4 的布局下也能正确反推回 <code>struct led_gpio</code> 起点。</li>
-<li><code>--- breath stat ---</code> 段是 <code>led_set_brightness(handles[1], 60)</code> 和 <code>led_set_brightness(handles[1], 0)</code> 两次调用的输出。STAT 是 PWM 子类，填了 <code>pwm_set_brightness</code>，duty 从 60% 改到 0%。GPIO 和 I2C 子类没填这个字段，调用会被 § 13.8.6 提到的“NULL 字段安静返回 0“挡掉，不会有任何输出（详见第 14 章）。</li>
+<li><code>--- breath stat ---</code> 段是 <code>led_set_brightness(handles[1], 60)</code> 和 <code>led_set_brightness(handles[1], 0)</code> 两次调用的输出。STAT 是 PWM 子类，填了 <code>pwm_set_brightness</code>，duty 从 60% 改到 0%。GPIO 和 I2C 子类没填这个字段，具体行为见第 14 章「虚函数不实现 · 三种策略」。</li>
 </ul>
 <h2 id="1313-视频回放"><a class="header" href="#1313-视频回放">13.13 视频回放</a></h2>
 <blockquote>

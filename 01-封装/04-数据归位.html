@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-4-章--你的全局变量该死了"><a class="header" href="#第-4-章--你的全局变量该死了">第 4 章 · 你的全局变量该死了</a></h1>
+                        <h1 id="第-4-章--你的全局变量该死了--数据三级分类"><a class="header" href="#第-4-章--你的全局变量该死了--数据三级分类">第 4 章 · 你的全局变量该死了 · 数据三级分类</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/04-data-classification/"><code>oop-in-c/code/04-data-classification/</code></a></p>
 <h2 id="41-一个真实场景"><a class="header" href="#41-一个真实场景">4.1 一个真实场景</a></h2>
 <p>你的 <code>.c</code> 文件开头有几个全局变量？</p>
@@ -529,7 +529,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 }
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。<code>static struct led led_pool[8]</code> 落到 STM32 的 <code>.bss</code> 段，启动时清零，运行期池子大小固定。这里用对象池是 4.5 节解释过的演示选择，LED 这种数量固定的全局对象用直接静态实例（4.7.2 节写法 A）也很常见，工业级代码两种都用。</p>
-<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 11 章会演化对齐。</p>
+<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="49-你现在的代码在-linux-用户态长什么样"><a class="header" href="#49-你现在的代码在-linux-用户态长什么样">4.9 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/04-data-classification/linux-snippet/led_linux.c"><code>oop-in-c/code/04-data-classification/linux-snippet/led_linux.c</code></a>）：</p>
 <pre><code class="language-c">void platform_gpio_init(uint8_t pin, uint8_t mode)
@@ -557,7 +557,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 还是一字不改。</p>
 <p>Linux 上的进程有充足的堆，用 <code>malloc</code> 是常态，glibc 的多 arena malloc 在长跑场景里也很稳。本章配套代码用静态池只是为了让同一份代码在 PC / STM32 / Linux 三平台对照演示同一个机制，不是说 Linux 用户态必须避开 <code>malloc</code>。真实 Linux 应用代码（LVGL、systemd、各种 daemon）大量用动态内存，靠 <code>goto cleanup</code> 风格的资源管理 + valgrind / AddressSanitizer 审计 leak，是工业级常态。</p>
 <p><code>led_pool[8]</code> 在 Linux 进程的 <code>.bss</code> 段，进程启动时由 loader 清零。这个例子里整个进程生命周期不需要任何 <code>malloc</code>，但这是配套代码的演示选择，不是 Linux 编程纪律。</p>
-<p>同样，本节的 platform 是函数式包装的教学简化版，第 11 章后演化为 ops 表。</p>
+<p>同样，本节的 platform 是函数式包装的教学简化版，第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="410-工业代码里的数据归位长什么样"><a class="header" href="#410-工业代码里的数据归位长什么样">4.10 工业代码里的数据归位长什么样</a></h2>
 <p>我做的工业控制板项目里，数据归位是一个跨模块的纪律。每个驱动 <code>.c</code> 文件开头都遵循同一套结构：</p>
 <pre><code class="language-c">/* drivers/eeprom/ds2433.c · 简化结构 */

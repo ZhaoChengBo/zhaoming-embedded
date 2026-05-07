@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,18 +180,23 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-16-章--为什么-linux-一点都不难"><a class="header" href="#第-16-章--为什么-linux-一点都不难">第 16 章 · 为什么 Linux 一点都不难</a></h1>
+                        <h1 id="第-16-章--为什么-linux-一点都不难--你已经在写-linux-风格代码"><a class="header" href="#第-16-章--为什么-linux-一点都不难--你已经在写-linux-风格代码">第 16 章 · 为什么 Linux 一点都不难 · 你已经在写 Linux 风格代码</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/16-linux-style/"><code>oop-in-c/code/16-linux-style/</code></a></p>
 <p>做嵌入式 11 年，我发现 Linux 一点都不难。</p>
 <p>是有人故意让你觉得它难。</p>
 <p>这一章给你戳穿。前提是你已经懂了 ch15 的 platform 抽象。</p>
 <h2 id="161-上一章隔离了主板但芯片层呢"><a class="header" href="#161-上一章隔离了主板但芯片层呢">16.1 上一章隔离了主板，但芯片层呢</a></h2>
 <p>ch15 的 LED 框架隔离了主板：换主板方案，应用层 0 改动。</p>
-<p>但 <code>gpio_on</code> 里头调的是 <code>platform_gpio_write</code> 这个封装函数，封装函数内部走 ops 分发到当前选定的 platform 实例（PC 版 / STM32 版 / Linux 版），platform 实例本身就是写寄存器、写 sysfs 的具体代码。换芯片呢？从 STM32 换到瑞萨，BSRR 寄存器换名字了，platform_ops_stm32.c 里的实现要重写。</p>
+<p>但 <code>gpio_on</code> 里头调的是 <code>platform_gpio_write</code> 这个封装函数，封装函数内部走 ops 分发到当前选定的 platform 实例（PC 版 / STM32 版 / Linux 版），platform 实例本身就是写寄存器、写 sysfs 的具体代码。换芯片呢？从 STM32 换到瑞萨，BSRR 寄存器换名字了，<code>led_stm32.c</code> 里的实现要重写。</p>
 <p>主板的变化你的 LED 层隔离了。芯片的变化，谁来隔离？</p>
 <p><img src="../assets/ch16/slide1_芯片层问题.png" alt="芯片层问题"></p>
 <h2 id="162-同一招用第二次再加一层"><a class="header" href="#162-同一招用第二次再加一层">16.2 同一招用第二次：再加一层</a></h2>
 <p>答案，再加一层。Platform 层。</p>
+<p>ch15 的 <code>struct led_base + led_ops</code> 框架是设备层，跑在 LED / sensor / motor 这一类业务对象上。ch16 要在它下面加一层，把“具体芯片的 GPIO 怎么写电平“这件事也用 ops 表抽象出来。结构和上一章一字不差，只是层次往下移了一层：</p>
+<pre><code>ch15 设备层：    led_base   +   led_ops          应用层调 led_on(handle)
+ch16 平台层：    gpio_chip  +   gpio_chip 里的函数指针   led 驱动调 gpiod_set_value(desc)
+</code></pre>
+<p>之前你看不到的 <code>platform_gpio_write</code> 内部，今天打开看里面：它要落到具体芯片的寄存器，本章把这一层用 <code>gpio_chip</code> 抽象起来。</p>
 <p>不看寄存器，看功能。</p>
 <p>每家芯片的 GPIO 都能干什么？设方向、写电平、读电平。功能一样，寄存器不同。</p>
 <p>每家芯片的 I2C 都能干什么？发起传输、接收数据。功能一样，寄存器不同。</p>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-9-章--参数长到换行"><a class="header" href="#第-9-章--参数长到换行">第 9 章 · 参数长到换行</a></h1>
+                        <h1 id="第-9-章--参数长到换行--ops-操作表"><a class="header" href="#第-9-章--参数长到换行--ops-操作表">第 9 章 · 参数长到换行 · ops 操作表</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/09-ops-table/"><code>oop-in-c/code/09-ops-table/</code></a></p>
 <h2 id="91-一个真实场景"><a class="header" href="#91-一个真实场景">9.1 一个真实场景</a></h2>
 <p>第 8 章我们用 <code>void (*on)(int)</code> 演示了函数指针当参数。第三个参数 <code>int id</code> 是通用名，够看清“延迟决定“这件事本身。</p>
@@ -357,6 +357,7 @@ typedef struct {            /* 早期 C 风格, 大写驼峰 */
 </code></pre>
 <p>本书用 <code>struct led_ops</code> 的写法，和 ch01 已经定下的“struct 名字小写、不藏类型信息“风格一致。Linus 在内核编码风格文档里反对的就是 <code>LedOps_t</code> 这种 typedef。读到 <code>LedOps_t</code> 不知道它是 struct 还是基本类型，要去翻定义。<code>struct led_ops</code> 写出来就明白。</p>
 <h3 id="956-视频版与配套代码版的三处差异"><a class="header" href="#956-视频版与配套代码版的三处差异">9.5.6 视频版与配套代码版的三处差异</a></h3>
+<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
 <p>视频 EP14 演示用的 ops 表设计是这样：</p>
 <ul>
 <li>typedef 三个不同名字：<code>led_on_fn / led_off_fn / led_brightness_fn</code>，都返回 <code>void</code></li>
@@ -391,7 +392,7 @@ struct led_ops {
 <p>本节用的还是函数式包装的 platform 抽象层（<code>platform_gpio_write(pin, value)</code> 这种独立函数），是教学简化版。真正工业级的 platform 抽象用 ops 表的形式。后面章节会把 platform 层从函数式重构成 ops 表式，和工业代码对齐。</p>
 <h2 id="97-你现在的代码在-linux-用户态长什么样"><a class="header" href="#97-你现在的代码在-linux-用户态长什么样">9.7 你现在的代码在 Linux 用户态长什么样</a></h2>
 <p>Linux 端的 ops 表完全一样的写法。<code>gcc / clang</code> 把 <code>const struct</code> 放到 <code>.rodata</code>，进程加载时在虚拟内存里只读映射，全进程共享。</p>
-<p><code>led_base.h / led_base.c / led.h / led.c / main.c</code> 一字不改。同 9.6 节 STM32 端，platform 层是教学简化版，第 11 章后会演化成 ops 表式。</p>
+<p><code>led_base.h / led_base.c / led.h / led.c / main.c</code> 一字不改。同 9.6 节 STM32 端，platform 层是教学简化版，第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="98-工业代码里的-ops-表"><a class="header" href="#98-工业代码里的-ops-表">9.8 工业代码里的 ops 表</a></h2>
 <p>工业控制板项目里，每个驱动都有一张 ops 表。LED 驱动这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,7 +183,8 @@
                         <h1 id="第-12-章--一个指针指所有-led--向上转型"><a class="header" href="#第-12-章--一个指针指所有-led--向上转型">第 12 章 · 一个指针指所有 LED · 向上转型</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/"><code>oop-in-c/code/12-upcasting/</code></a></p>
 <h2 id="121-上一章的代码里藏着一个秘密"><a class="header" href="#121-上一章的代码里藏着一个秘密">12.1 上一章的代码里藏着一个秘密</a></h2>
-<p>第 11 章末尾你写过这样的调用：</p>
+<p>本章配套代码相对第 11 章给 <code>led_gpio</code> 加了一个 <code>on_level</code> 字段（第四个参数 <code>true</code> 表示高电平点亮，低电平点亮就传 <code>false</code>），子类构造签名跟着多了一个参数。这个改动 § 12.8.7 会展开，先记住第四个参数是干什么的。</p>
+<p>第 11 章末尾你写过这样的调用（已经是 ch12 形态）：</p>
 <pre><code class="language-c">struct led_gpio gpio_led;
 led_gpio_init(&amp;gpio_led, "ERR", 10, true);
 
@@ -253,18 +254,24 @@ struct led_base *g_led_error;          /* 句柄定义 */
 struct led_base *g_led_status;
 struct led_base *g_led_network;
 
-void board_init(void)
+int board_init(void)
 {
-	led_gpio_init(&amp;s_led_err,    "ERR",  10, true);
-	led_pwm_init (&amp;s_led_status, "STAT",  1, 50);
-	led_i2c_init (&amp;s_led_net,    "NET",   0, 0x20);
+	int rc;
+
+	rc = led_gpio_init(&amp;s_led_err,    "ERR",  10, true);
+	if (rc != 0) return rc;
+	rc = led_pwm_init (&amp;s_led_status, "STAT",  1, 50);
+	if (rc != 0) return rc;
+	rc = led_i2c_init (&amp;s_led_net,    "NET",   0, 0x20);
+	if (rc != 0) return rc;
 
 	g_led_error   = &amp;s_led_err.base;
 	g_led_status  = &amp;s_led_status.base;
 	g_led_network = &amp;s_led_net.base;
+	return 0;
 }
 </code></pre>
-<p>三步：实例化子类对象、跑子类构造函数、把 <code>&amp;xxx.base</code> 赋给全局句柄。</p>
+<p>三步：实例化子类对象、跑子类构造函数、把 <code>&amp;xxx.base</code> 赋给全局句柄。子类 init 返回 <code>int</code> 错误码，<code>board_init</code> 把任何一颗 LED 的初始化失败原样上抛给 <code>main</code>，板级出问题立刻暴露。</p>
 <p>最后这三行是这一章的核心。它把 <code>s_led_err</code> 这个 <code>struct led_gpio</code> 对象，“当作” <code>struct led_base *</code> 句柄在用。<strong>子类对象当父类指针看，就是向上转型。</strong></p>
 <p><img src="../assets/ch12/slide3_全局句柄.png" alt="全局句柄 + 板级绑定"></p>
 <p><code>board_init</code> 在 <code>main</code> 里开机调一次。这一招在嵌入式叫板级初始化（Board Support Package 的核心）。每个项目一份 <code>board_init.c</code>，配置不同板子上 LED 接的是 GPIO 还是 PWM 还是 I2C 扩展芯片。</p>
@@ -377,7 +384,8 @@ struct led_base * const g_led_error;   /* 不让别人重新指向 */
 </code></pre>
 <p>向上转型时写 <code>&amp;gpio_data-&gt;cdev</code>。整个 Linux LED 子系统就是这一招的工业级展开。</p>
 <h3 id="1287-配套代码相对第-11-章的演化点"><a class="header" href="#1287-配套代码相对第-11-章的演化点">12.8.7 配套代码相对第 11 章的演化点</a></h3>
-<p>打开第 12 章配套代码 <code>oop-in-c/code/12-upcasting/</code>，跟第 11 章 <code>oop-in-c/code/11-polymorphism/</code> 对一下，会发现几处字段和签名变了。这些变化在主线叙事里没特别说，这里集中说一下。本章 § 12.1 引的 <code>led_gpio_init(&amp;gpio_led, "ERR", 10, true)</code> 和 § 12.2 画的 <code>struct led_gpio { base; pin; on_level; }</code>，都已经是下面这个 ch12 的形态。</p>
+<p>差异原则详见 preface「配套代码 vs 视频版」。下面是本章具体差异。</p>
+<p>打开第 12 章配套代码 <code>oop-in-c/code/12-upcasting/</code>，跟第 11 章 <code>oop-in-c/code/11-polymorphism/</code> 对一下，会发现两处变化。这些变化在主线叙事里没特别说，这里集中说一下。本章 § 12.1 引的 <code>led_gpio_init(&amp;gpio_led, "ERR", 10, true)</code> 和 § 12.2 画的 <code>struct led_gpio { base; pin; on_level; }</code>，都已经是下面这个 ch12 的形态。</p>
 <p><code>struct led_gpio</code> 加了 <code>on_level</code> 字段：</p>
 <pre><code class="language-c">/* ch11: */
 struct led_gpio {
@@ -392,16 +400,7 @@ struct led_gpio {
 	bool            on_level;     /* 高电平亮 = true，低电平亮 = false */
 };
 </code></pre>
-<p>不是所有 LED 都是高电平亮。GPIO 反向接法（共阳极接法）需要拉低电平才点亮。<code>on_level</code> 把这个硬件极性差异封装在子类里，应用层 <code>led_on(handle)</code> 不用知道具体是高还是低。</p>
-<p><code>led_gpio_init</code> 多了一个参数：</p>
-<pre><code class="language-c">/* ch11: */
-int led_gpio_init(struct led_gpio *me, const char *name, uint8_t pin);
-
-/* ch12: */
-void led_gpio_init(struct led_gpio *me, const char *name,
-                   uint8_t pin, bool on_level);
-</code></pre>
-<p>第四个参数对应新加的 <code>on_level</code> 字段。返回类型从 <code>int</code> 改成 <code>void</code>，因为子类 init 失败现在直接 panic（板级 init 失败应该立刻暴露，而不是让上层去判断错误码）。</p>
+<p>不是所有 LED 都是高电平亮。GPIO 反向接法（共阳极接法）需要拉低电平才点亮。<code>on_level</code> 把这个硬件极性差异封装在子类里，应用层 <code>led_on(handle)</code> 不用知道具体是高还是低。<code>led_gpio_init</code> 也跟着多了一个 <code>bool on_level</code> 参数，签名从三参变成四参，返回类型仍是 <code>int</code>，跟第 10、11 章一脉相承，所有错误码都向上抛给 <code>board_init</code>。</p>
 <p><code>struct led_ops</code> 字段集收缩：</p>
 <pre><code class="language-c">/* ch11: */
 typedef int (*led_action_fn)(struct led_base *me);
@@ -419,6 +418,7 @@ struct led_ops {
 };
 </code></pre>
 <p>第 12 章主题是向上转型，应用层只调 <code>led_on / led_off</code>，<code>toggle</code> 在这一章用不上，先收缩成两字段，让代码更聚焦。<code>led_action_fn</code> typedef 也跟着撤掉，改成内联函数指针类型。typedef 一旦字段集不再统一就没意义。第 13 章及以后会按需要再重新加字段。</p>
+<p><code>led_base.h</code> / <code>led_base.c</code> 跟第 10、11 章一字不改地传下来：父类 <code>struct led_base</code> 字段集（<code>ops</code> + <code>name</code> + <code>is_on</code>）和通用 <code>led_base_init</code> 都还在，三种子类（GPIO / PWM / I2C）的 init 第一行都调 <code>led_base_init</code> 把对应的 ops 表填进去。这样哪天 base 加了一个公共字段（例如 <code>owner</code> / <code>lock</code>），只改 <code>led_base_init</code> 一个点，三种子类的 init 不用动。</p>
 <h2 id="129-你现在的代码在-stm32-上长什么样"><a class="header" href="#129-你现在的代码在-stm32-上长什么样">12.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>应用层 <code>main.c</code>、父类 <code>led.c</code>、板级 <code>board_init.c</code> 一字不改。<code>platform_pc.c</code> 替换成 <code>led_stm32.c</code>，里面是 <code>platform_gpio_xxx</code> 的真实 HAL 实现：</p>
 <pre><code class="language-c">#include "led.h"
@@ -515,8 +515,11 @@ make
   ch12 - upcasting
   one led_base * handle, any subclass
 =========================================
+  [base] "ERR" common init done, ops=0040b1b8
 [GPIO] Pin10 init as OUTPUT
 [GPIO] Pin10 -&gt; LOW (OFF)
+  [base] "STAT" common init done, ops=0040b1f8
+  [base] "NET" common init done, ops=0040b250
 
 --- alarm_blink ---
 [GPIO] Pin10 -&gt; HIGH (ON)
@@ -532,6 +535,7 @@ make
   app layer: zero hardware reference
 =========================================
 </code></pre>
+<p>开机阶段三行 <code>[base] "X" common init done</code> 是父类 <code>led_base_init</code> 打的，三种子类 init 第一行都调它把 ops 表填到 base，再各自跑硬件层 init（<code>[GPIO] Pin10 init as OUTPUT</code> 这一段就是 GPIO 子类 init 末尾把灯先关掉的过程）。</p>
 <p>两个业务函数，两种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
 <h2 id="1213-视频回放"><a class="header" href="#1213-视频回放">12.13 视频回放</a></h2>
 <blockquote>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="第-2-章--同事改了一行-led-全乱了"><a class="header" href="#第-2-章--同事改了一行-led-全乱了">第 2 章 · 同事改了一行 LED 全乱了</a></h1>
+                        <h1 id="第-2-章--同事改了一行-led-全乱了--static-与信息隐藏"><a class="header" href="#第-2-章--同事改了一行-led-全乱了--static-与信息隐藏">第 2 章 · 同事改了一行 LED 全乱了 · static 与信息隐藏</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/"><code>oop-in-c/code/02-static-hiding/</code></a></p>
 <h2 id="21-一个真实场景"><a class="header" href="#21-一个真实场景">2.1 一个真实场景</a></h2>
 <p>第 1 章你给三颗 LED 发了挂号单，代码只写一份，问题解决了。</p>
@@ -431,7 +431,7 @@ struct _IO_FILE {
 <p><code>include/linux/fs.h</code> 里 <strong><code>struct file</code> 的字段是公开的</strong>：驱动代码 <code>#include &lt;linux/fs.h&gt;</code> 看得到 <code>f_pos / f_flags / f_inode</code> 等字段。这是软 private：内核内部所有子系统共享同一份头文件，字段公开是为了允许内核子系统嵌套和读取。</p>
 <p>但内核<strong>强烈劝阻驱动直接读字段</strong>。内核驱动的工程惯例是 <code>f-&gt;f_op-&gt;read(f, ...)</code> 走 ops 表，字段层不该碰。Greg Kroah-Hartman 在 LKML 邮件和驱动文档里反复强调过：驱动直接读 <code>struct file</code> 字段是设计味道（design smell），review 时会被打回。这是命名纪律 + code review 的工程层。</p>
 <p>为什么不直接搞成硬 private（不透明指针）？因为 <code>struct file</code> 嵌套在 <code>struct task_struct</code> 里，VFS 层自己也要按字段操作它，藏起来整个内核就跑不动。这是软 / 硬 private 的真实权衡：内核选软 private 是被嵌套继承需求拽过去的。</p>
-<p>这本书第 16 章会展开 <code>struct file</code> 和 <code>struct file_operations</code> 的工业级用法。这一章你只需要看到：你刚才在 <code>struct led</code> 上做的事，字段公开 + 命名纪律 + 内部工具加 <code>static</code>，Linux 内核 4000 万行代码也在做，规模不一样而已。</p>
+<p>这本书第 18 章 § 18.1 会展开 <code>struct file</code> 和 <code>struct file_operations</code> 的工业级用法。这一章你只需要看到：你刚才在 <code>struct led</code> 上做的事，字段公开 + 命名纪律 + 内部工具加 <code>static</code>，Linux 内核 4000 万行代码也在做，规模不一样而已。</p>
 <h3 id="266-命名前缀---private--注释--工业纪律"><a class="header" href="#266-命名前缀---private--注释--工业纪律">2.6.6 命名前缀 + /* private */ 注释 = 工业纪律</a></h3>
 <p><code>led_</code> 这个前缀不只是为了下章解决名字冲突。<strong>对外 API 全部 <code>led_xxx</code></strong> 这件事还顺带传达了一个工程纪律：</p>
 <pre><code class="language-c">struct led red_led;
@@ -476,7 +476,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。字段在 <code>led.h</code> 里依然公开（标了 <code>/* private */</code>），<code>update_hardware</code> / <code>brightness_valid</code> 在 <code>led.c</code> 里依然加了 <code>static</code>，命名纪律依然要求外部走 <code>led_xxx</code> 接口。变化的只是这层 platform 胶水。</p>
 <p>软 private 在 ARM Cortex-M 上和 x86 上行为完全一致。它是工程纪律 + 编译期 <code>static</code> 锁，跨平台规则一致。</p>
-<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 11 章演化出 vptr 之后，会把 platform 层重构成 ops 表式，和 2.9 节工业代码对齐。</p>
+<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和 2.9 节工业代码对齐。</p>
 <h2 id="28-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#28-你现在的-led-在-linux-用户态长什么样">2.8 你现在的 LED 在 Linux 用户态长什么样</a></h2>
 <p>嵌入式 Linux 端长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c"><code>oop-in-c/code/02-static-hiding/linux-snippet/led_linux.c</code></a>）：</p>
 <pre><code class="language-c">void platform_gpio_init(uint8_t pin, uint8_t mode)
@@ -512,7 +512,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p>Linux 把每个 GPIO 暴露成文件 <code>/sys/class/gpio/gpio13/value</code>。写 <code>'1'</code> 拉高，写 <code>'0'</code> 拉低。这种“把硬件当文件“的设计叫 sysfs。</p>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 还是一字不改。</p>
-<p>这一节同样是函数式包装的教学简化形态，工业级用 ops 表。第 11 章之后会演化对齐。</p>
+<p>这一节同样是函数式包装的教学简化形态，工业级用 ops 表。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
 <h2 id="29-工业代码里的-led-长什么样"><a class="header" href="#29-工业代码里的-led-长什么样">2.9 工业代码里的 led 长什么样</a></h2>
 <p>我做的工业控制板项目里，LED 这一块的 <code>led_base.h</code> 是这样：</p>
 <pre><code class="language-c">/* led_base.h - 应用层只看这一份 */

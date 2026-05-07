@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>A · 三大开源项目对照（Linux 内核 / Zephyr / GObject） - C 语言面向对象编程·嵌入式实战</title>
+        <title>附录 A · 三大开源项目对照（Linux 内核 / Zephyr / GObject） - C 语言面向对象编程·嵌入式实战</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -546,7 +546,7 @@ GtkButton *button = G_TYPE_CHECK_INSTANCE_CAST(widget,
 <p>这套写法不是任何单一团队发明的，是 1980 至 2000 年代 C 工程界几代人逐步沉淀出来的。</p>
 <p>最早的形式可以追到 1980 年代 BSD UNIX 的设备驱动框架（<code>struct cdevsw</code>，是 <code>file_operations</code> 的祖先）。1990 年代 GTK / GNOME 项目把 OOP 模式系统化，催生 GObject。同期 Linux 内核 0.x 年代，Linus 把 BSD 的 <code>cdevsw</code> 引入 Linux 并演化成 <code>file_operations</code>。2000 年代各家 RTOS（FreeRTOS / RT-Thread / Zephyr 等）继承这套模式并按嵌入式资源限制做精简版。</p>
 <p>到 2020 年代，这套模式已经是 C 大型项目的事实标准。任何想做“可扩展、可移植、可维护“的 C 项目，最后都会收敛到这种形态。区别只在每个项目按自己的语境做了微调（命名、宏的写法、是否有 RTTI 等）。</p>
-<p>中国市面上的嵌入式书绝大多数没有讲到这一层。它们停留在“配寄存器“或“调用 HAL 函数“，没有再往上抽象。所以工程师从书里学到的代码组织方式和真实工业项目之间有断层。</p>
+<p>我看到的中国嵌入式书多数停留在寄存器配置这一层·讲到 OOP 抽象的不多。它们停留在“配寄存器“或“调用 HAL 函数“，没有再往上抽象。所以工程师从书里学到的代码组织方式和真实工业项目之间有断层。</p>
 <p>这本书前 18 章铺垫的所有抽象，加 ch19-ch20 的工业代码，加这一附录的三大开源对照，目的就是把这个断层补上：让你看完之后，看 Linux 内核源码不陌生，看 Zephyr 不陌生，看 GTK 不陌生，看任何一份工业 C 代码不陌生。</p>
 <h2 id="a7-怎么读这三个项目的源码"><a class="header" href="#a7-怎么读这三个项目的源码">A.7 怎么读这三个项目的源码</a></h2>
 <p>如果你想自己动手读这三个项目的源码：</p>

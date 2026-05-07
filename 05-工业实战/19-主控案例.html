@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b75e1978.js";
+            window.path_to_searchindex_js = "../searchindex-c2009a43.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-69e358bb.js"></script>
+        <script src="../toc-0f4fc518.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -960,7 +960,7 @@ SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0), temp_get,
 <p>附录 B（STM32 完整工程）和附录 C（Linux 完整工程）里有更可移植的精简版 initcall（基于 Linux 用户态 <code>__attribute__((constructor))</code> + ELF section），可以直接 <code>make &amp;&amp; ./demo</code> 跑通。读 19.6 节读到链接器收集机制不太顺时，可以跳过去先看附录 C 的实现。</p>
 <h3 id="1996-中间件197-节"><a class="header" href="#1996-中间件197-节">19.9.6 中间件（19.7 节）</a></h3>
 <p><code>lwrb</code> / <code>Letter Shell</code> / <code>EasyLogger</code> / <code>MultiButton</code> 都是公开的开源项目，本仓库不重复打包。每个库的 GitHub 仓库链接见附录 D 参考资料索引。</p>
-<h3 id="一句话总结"><a class="header" href="#一句话总结">一句话总结</a></h3>
+<h3 id="一段话回顾"><a class="header" href="#一段话回顾">一段话回顾</a></h3>
 <p>本章不是“抄完代码 <code>make &amp;&amp; ./demo</code>“的章节，是“看清楚工业代码长什么样“的章节。每个驱动模块对应到 <code>industrial/</code> 目录下的真实骨架文件 + 章节正文里的实现节选，两者合起来就是这块主控板上 LED / EEPROM / 温度传感器 / 风扇 / 注册表 / initcall 这六件事的完整 OOP 设计图。如果你想看一份完整可跑的小工程，从前 18 章任何一章的 <code>oop-in-c/code/&lt;chapter&gt;/pc/</code> 入手，那里每一章都有 <code>make &amp;&amp; ./demo</code>。</p>
 <h2 id="1910-下一章"><a class="header" href="#1910-下一章">19.10 下一章</a></h2>
 <p>主控板讲完，下一章是子控板。子控板控两路电机的运动，整个工程的核心是一个 24 个虚方法的电机驱动加一套完整的 Platform 抽象层加跨芯片移植清单。这一章你看到的 LED / 温度传感器 / 风扇是工业 OOP 的入门曲线，下一章的电机驱动是工业 OOP 的高潮。</p>
