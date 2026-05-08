@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-acf94d84.js";
+            window.path_to_searchindex_js = "searchindex-ea4704e9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-9dbf4cc9.js"></script>
@@ -4391,7 +4391,7 @@ struct led_ops {
 ├── leds.h    / board_init.c   板级 BSP（全局句柄 + 板级 init）
 └── main.c                     应用层
 </code></pre>
-<p>每个子类一对 <code>.h</code> / <code>.c</code> 是 Linux 内核和工业项目通用风格 – <code>git blame</code> 定位改动到具体子类、ABI 调整时只动一对文件。子类 <code>.c</code> 里的 <code>gpio_ops</code> / <code>pwm_ops</code> / <code>i2c_ops</code> 表分别提升为 <code>extern const struct led_ops led_ops_gpio</code> 等公开符号（第 11 章里也是这种风格），但应用层永远拿不到这些表 – 只有 <code>board_init.c</code> 这种“认识硬件“的位置 <code>#include "led_gpio.h"</code> 之类的子类头才能间接绑上。</p>
+<p>每个子类一对 <code>.h</code> / <code>.c</code> 是 Linux 内核和工业项目通用风格 – <code>git blame</code> 定位改动到具体子类、ABI 调整时只动一对文件。子类 <code>.c</code> 里的 <code>gpio_ops</code> / <code>pwm_ops</code> / <code>i2c_ops</code> 表全部 <code>static const</code> 锁在自己 <code>.c</code> 内 – 子类 init 第一行 <code>led_base_init(&amp;me-&gt;base, name, &amp;xxx_ops)</code> 就把 ops 表交给 base，外面（包括 <code>board_init.c</code> 和应用层）拿不到也用不到。子类 <code>.h</code> 只暴露 <code>struct led_xxx</code> 字段集 + 构造函数 <code>led_xxx_init</code> 声明，第 11 章里也是这种风格。</p>
 <h2 id="129-你现在的代码在-stm32-上长什么样"><a class="header" href="#129-你现在的代码在-stm32-上长什么样">12.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>应用层 <code>main.c</code>、父类 <code>led_base.c</code> 一字不改。<code>board_init.c</code> 里把 GPIO 子类的 pin 参数从 PC 占位换成真实板子的 PIN_NUM，PWM / I2C 不动。<code>platform_pc.c</code> 替换成 <code>platform-mcu/stm32/</code> 下三个文件 – 每个子类一个：<code>led_gpio.c</code> 装 GPIO 子类实现 + <code>platform_gpio_xxx</code> 真实 HAL 胶水（<code>PIN_NUM('A', 13)</code> 这套编码 <code>_gpio_table</code> 查表拿到 <code>GPIOA</code>）；<code>led_pwm.c</code> 装 PWM 子类实现 + TIM 操作；<code>led_i2c.c</code> 装 I2C 子类实现 + <code>HAL_I2C_Master_Transmit</code>：</p>
 <pre><code class="language-c">#include "led.h"
@@ -6144,7 +6144,7 @@ make
 <p><strong>RT-Thread 第二推荐.</strong> 国产 RTOS, 中文文档全, <code>rt_pin_write / rt_device_register</code> 一套接口和 ch16 教的 <code>gpio_chip</code> 多态 dispatch 一字不差. 国内项目和厂家芯片支持也到位, BSP 列表覆盖主流国产 MCU.</p>
 <p><strong>FreeRTOS 是裸机化 RTOS, 慎用.</strong> 它只是一个调度核 + 同步原语, 不带 device subsystem, 不带 driver model. 用 FreeRTOS 等于 “FreeRTOS + HAL + 你自己抽 platform 层”, 这本书 ch15 教的全套你得自己造一遍, 维护成本你扛. 简单板卡可以这么干, 中等以上规模 (10+ 路硬件 / 多客户多产品形态) 别这么干.</p>
 <p><strong>资源极紧但仍想用这套思想</strong>, 不要自己手写 platform 层. clone Zephyr 或 RT-Thread, 把它们的 driver framework 拔下来直接用 – driver 注册机制 + ops 表 + device tree 解析这一坨, Zephyr / RT-Thread 已经写了十几年, 上万种硬件验证过, 比你三周自抽出来的 ops 表稳得多. 你拔下来用就完了, 自己写一份是没意义的.</p>
-<p><strong>这本书 stm32_full 工程那一份 platform 层是教学示范.</strong> 让读者建立认知 – 看清 platform 抽象长什么样、ops 表怎么挂、register 机制怎么落. 真实工程里, 这一份你别自己写, 去用 Zephyr / RT-Thread.</p>
+<p><strong>这本书 ch15 配套代码 (<code>oop-in-c/code/15-platform/</code>) 那一份 platform 层是教学示范.</strong> 让读者建立认知 – 看清 platform 抽象长什么样、ops 表怎么挂、register 机制怎么落. 真实工程里, 这一份你别自己写, 去用 Zephyr / RT-Thread.</p>
 <p><strong>MPU / SoC 平台直接用 Linux</strong>. 跑得起 Linux 内核的硬件, driver model + bus 框架 + device tree + sysfs / udev 全套完整, 你 ch16 / 附录 C 看到的就是工业级原型. 应用层走 libgpiod / iio / spidev, 内核驱动写在 driver_model 里, 全平台都不用自己抽 platform 层.</p>
 <p>把它合成一句话: <strong>MCU 用 Zephyr / RT-Thread, MPU / SoC 用 Linux, 全平台都不要自己抽 platform 层</strong>. 这才是工业级.</p>
 <p>那 ch15 这一章是不是白学了? 不是. 你学的是 Zephyr / RT-Thread / Linux 内核 driver model 在做什么 – 它们底下就是 ops 表 + 多子类多态 + 子类向上转型 + 父类统一接口, 一字不差. 没看过 ch15 / ch16 这一遍, 你打开 Zephyr 源码看 <code>gpio_driver_api</code>、打开 RT-Thread 源码看 <code>rt_pin_ops</code>, 第一反应是 “这函数指针表怎么这么乱”. 看完 ch15 / ch16, 你的反应是 “ops 表 + 子类填表, ch15 教过, 直接用”.</p>

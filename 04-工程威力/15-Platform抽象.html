@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
+            window.path_to_searchindex_js = "../searchindex-ea4704e9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -1154,7 +1154,7 @@ make
 <p><strong>RT-Thread 第二推荐.</strong> 国产 RTOS, 中文文档全, <code>rt_pin_write / rt_device_register</code> 一套接口和 ch16 教的 <code>gpio_chip</code> 多态 dispatch 一字不差. 国内项目和厂家芯片支持也到位, BSP 列表覆盖主流国产 MCU.</p>
 <p><strong>FreeRTOS 是裸机化 RTOS, 慎用.</strong> 它只是一个调度核 + 同步原语, 不带 device subsystem, 不带 driver model. 用 FreeRTOS 等于 “FreeRTOS + HAL + 你自己抽 platform 层”, 这本书 ch15 教的全套你得自己造一遍, 维护成本你扛. 简单板卡可以这么干, 中等以上规模 (10+ 路硬件 / 多客户多产品形态) 别这么干.</p>
 <p><strong>资源极紧但仍想用这套思想</strong>, 不要自己手写 platform 层. clone Zephyr 或 RT-Thread, 把它们的 driver framework 拔下来直接用 – driver 注册机制 + ops 表 + device tree 解析这一坨, Zephyr / RT-Thread 已经写了十几年, 上万种硬件验证过, 比你三周自抽出来的 ops 表稳得多. 你拔下来用就完了, 自己写一份是没意义的.</p>
-<p><strong>这本书 stm32_full 工程那一份 platform 层是教学示范.</strong> 让读者建立认知 – 看清 platform 抽象长什么样、ops 表怎么挂、register 机制怎么落. 真实工程里, 这一份你别自己写, 去用 Zephyr / RT-Thread.</p>
+<p><strong>这本书 ch15 配套代码 (<code>oop-in-c/code/15-platform/</code>) 那一份 platform 层是教学示范.</strong> 让读者建立认知 – 看清 platform 抽象长什么样、ops 表怎么挂、register 机制怎么落. 真实工程里, 这一份你别自己写, 去用 Zephyr / RT-Thread.</p>
 <p><strong>MPU / SoC 平台直接用 Linux</strong>. 跑得起 Linux 内核的硬件, driver model + bus 框架 + device tree + sysfs / udev 全套完整, 你 ch16 / 附录 C 看到的就是工业级原型. 应用层走 libgpiod / iio / spidev, 内核驱动写在 driver_model 里, 全平台都不用自己抽 platform 层.</p>
 <p>把它合成一句话: <strong>MCU 用 Zephyr / RT-Thread, MPU / SoC 用 Linux, 全平台都不要自己抽 platform 层</strong>. 这才是工业级.</p>
 <p>那 ch15 这一章是不是白学了? 不是. 你学的是 Zephyr / RT-Thread / Linux 内核 driver model 在做什么 – 它们底下就是 ops 表 + 多子类多态 + 子类向上转型 + 父类统一接口, 一字不差. 没看过 ch15 / ch16 这一遍, 你打开 Zephyr 源码看 <code>gpio_driver_api</code>、打开 RT-Thread 源码看 <code>rt_pin_ops</code>, 第一反应是 “这函数指针表怎么这么乱”. 看完 ch15 / ch16, 你的反应是 “ops 表 + 子类填表, ch15 教过, 直接用”.</p>
