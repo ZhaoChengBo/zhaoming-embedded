@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -522,11 +522,9 @@ GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
 </code></pre>
 <p>ST 自己的 HAL 也是封装：把“GPIO 端口“打包成 <code>GPIO_TypeDef</code>（一个 struct，里面是各个寄存器），通过 <code>GPIOx</code> 这个指针参数告诉函数操作哪个端口。<code>GPIOx</code> 就是 <code>me</code>，换了个名字。</p>
 <p><strong>关于这里的 platform 层写法</strong>：本节用的是“函数式包装“，直接 export 几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>。这是 ch01 阶段的教学简化形态，让你在还没接触虚函数表概念前先看到“换平台只改 platform 这一层“的好处。</p>
-<p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.10 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
+<p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.9 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
 <p>第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
-<h2 id="19-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#19-你现在的-led-在-linux-用户态长什么样">1.9 你现在的 LED 在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
+<h2 id="19-工业代码里的-led-长什么样"><a class="header" href="#19-工业代码里的-led-长什么样">1.9 工业代码里的 led 长什么样</a></h2>
 <p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（父类与子类、ops 表 / 虚函数表、父类层 dispatch（分发：走到对的实现）、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分两层：父类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。父类那两份长这样：</p>
 <pre><code class="language-c">/* drivers/led/led_base.h · 父类公共头·子类和应用层都 #include */
@@ -607,7 +605,7 @@ led_off(red_led);
 led_toggle(green_led);
 </code></pre>
 <p>应用层看到的就是普通函数调用 <code>led_on(green_led)</code>。它根本不知道下面有 ops 表、有 dispatch、有具体子类（GPIO LED / PWM LED / I²C LED 等）。这种“应用层只见接口、看不见实现“的写法叫封装层，工业代码里所有驱动都做这件事。</p>
-<h3 id="1101-字段公开但应用层不去碰纪律式封装"><a class="header" href="#1101-字段公开但应用层不去碰纪律式封装">1.10.1 字段公开但应用层不去碰：纪律式封装</a></h3>
+<h3 id="191-字段公开但应用层不去碰纪律式封装"><a class="header" href="#191-字段公开但应用层不去碰纪律式封装">1.9.1 字段公开但应用层不去碰：纪律式封装</a></h3>
 <p><code>struct led_base</code> 的字段定义就在 <code>led_base.h</code> 头文件里，应用层 <code>#include "led_base.h"</code> 之后，技术上写 <code>green_led-&gt;is_on = true</code> 编译能过。<strong>工业代码里的“封装“，主要靠纪律，不是靠编译器强制</strong>。</p>
 <p>为什么不把字段藏到 <code>.c</code> 里、让编译器拒绝外部访问？因为后面 ch06 起要讲继承：每种具体 LED（GPIO / PWM / I²C）都是一个<strong>子类</strong>，子类要把 <code>struct led_base base;</code> 作为自己的第一个字段嵌进来。子类源文件得知道 <code>struct led_base</code> 的完整字段（要算 sizeof、要对偏移），所以 base 的字段定义必须放在头文件里、给子类可见。<strong>字段藏 <code>.c</code> 和继承机制层互斥</strong>：一选了藏，子类就编译过不去。</p>
 <p>那应用层为什么不会乱碰？两层纪律一起作用：</p>
@@ -617,7 +615,7 @@ led_toggle(green_led);
 </ul>
 <p>Linux 内核也是这套纪律。<code>struct device</code> 几十个字段全部公开在 <code>include/linux/device.h</code> 里，谁的代码写 <code>dev-&gt;kobj.parent = NULL</code> 之类直接绕过 driver core，会被维护者一句话打回。Greg Kroah-Hartman 在内核驱动文档和邮件列表里多次强调这件事，靠的是<strong>编码约定 + review 文化</strong>，不是编译器。Zephyr RTOS、GObject 同一套路。这是 OOP-in-C 继承场景里几乎唯一可行的工业选择。</p>
 <p>ch02 会把这套纪律的两件工具讲透：<code>static</code> 锁内部工具函数（链接期硬锁）+ <code>/* private */</code> 字段注释（命名纪律 + code review 软锁）。同时会单独提一种更严格的隔离：字段彻底藏进 <code>.c</code>，编译器直接拒绝外部访问，叫不透明指针。它的真实用武之地是<strong>跨二进制库边界</strong>（libc 的 <code>FILE *</code>、POSIX 的 <code>pthread_t</code>、<code>sqlite3 *</code>、<code>CURL *</code>），应用代码和库实现物理分离·这些场景下应用代码不需要继承库类型。一旦涉及继承（这本书后续 18 章主线），就不能用那套写法。</p>
-<h3 id="1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.10.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
+<h3 id="192-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#192-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.9.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
 <p>你注意到三件事：</p>
 <ol>
 <li><code>struct led_base</code> 多了一个字段 <code>ops</code>，是一张函数指针表（虚函数表）</li>
@@ -626,7 +624,7 @@ led_toggle(green_led);
 </ol>
 <p>第 11 章会从函数指针一步步推导出这套机制，把 <code>led_on()</code> 内部那行 dispatch 讲透：编译器把它编译成什么 ARM 汇编、ops 表存在内存哪、为什么 <code>ops</code> 必须是 <code>struct led_base</code> 第一个字段。</p>
 <p>现在你不用看懂细节，只要看出：<strong>工业代码里的 led，骨架还是 struct + me，外面套了一层 ops 表（让应用层无视具体硬件）和一层封装函数（让应用层不直接碰函数指针）</strong>。这两层都是工程纪律，不是炫技。</p>
-<h3 id="1103-一眼看懂工业代码的眼光"><a class="header" href="#1103-一眼看懂工业代码的眼光">1.10.3 一眼看懂工业代码的眼光</a></h3>
+<h3 id="193-一眼看懂工业代码的眼光"><a class="header" href="#193-一眼看懂工业代码的眼光">1.9.3 一眼看懂工业代码的眼光</a></h3>
 <p>这就是这本书要让你形成的眼光。拿到一份陌生的工业代码：</p>
 <ul>
 <li>看到 <code>xxx_base.h</code> 里 <code>struct xxx_base { const struct xxx_ops *ops; ... };</code>，知道这是父类 + ops 表 / 虚函数表</li>
@@ -636,7 +634,7 @@ led_toggle(green_led);
 </ul>
 <p>整套就是 struct + me 的工业放大版。你这一章学的核心，加上第 11 章的 ops 表演化，等于工业项目里所有驱动的骨架。</p>
 <p>反过来看，1.8 节给的 STM32 platform 层（以及附录 C 的 Linux 完整工程）用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），完成这个对齐。</p>
-<h2 id="111-跑一遍"><a class="header" href="#111-跑一遍">1.11 跑一遍</a></h2>
+<h2 id="110-跑一遍"><a class="header" href="#110-跑一遍">1.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make
 ./demo
@@ -677,13 +675,13 @@ make
     └── stm32/          STM32 端 platform 实现（HAL 写寄存器）
 </code></pre>
 <p>跨章共享的部分在 <code>oop-in-c/code/common/</code>：<code>platform.h</code> 是这本书每一章 <code>pc/</code> 都 #include 的对外接口头（也是 STM32 端 <code>led_stm32.c</code> 实现的同一个头），<code>platform_pc.c</code> 是 PC 端的 platform 实现。本章你看到的 <code>[GPIO] PA.13 ...</code> 日志就出自这一份。</p>
-<p>ch01-ch10 早期教学章节配套代码都简化为这两份对照（PC + STM32），让你专注 OOP 概念本身。Linux 用户态完整工程见附录 C，工业级 ops 表 / 多子类 / 多平台见后面工业实战章节。</p>
-<h2 id="112-视频回放"><a class="header" href="#112-视频回放">1.12 视频回放</a></h2>
+<p>ch01-ch10 早期教学章节配套代码都简化为这两份对照（PC + STM32），让你专注 OOP 概念本身。工业级 ops 表 / 多子类 / 多平台见后面工业实战章节。</p>
+<h2 id="111-视频回放"><a class="header" href="#111-视频回放">1.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1PyDHB8E3Q/">《C 语言：三个 LED 你写了三份代码？一个挂号单的思路让你秒懂封装》</a></p>
 </blockquote>
-<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）、STM32 真机对照（1.8 节）、工业代码全景（1.10 节）。Linux 用户态完整对照工程见附录 C。</p>
+<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）、STM32 真机对照（1.8 节）、工业代码全景（1.9 节）。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>挂号单是敞开的。任何人都能直接 <code>red_led.pin = 999</code> 把它弄坏。你同事顺手改了一个值，所有 LED 全乱了。</p>
 <p>怎么把单子锁起来？下一章解决。</p>

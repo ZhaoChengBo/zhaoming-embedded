@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-545adf65.js";
+            window.path_to_searchindex_js = "searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-9dbf4cc9.js"></script>
@@ -305,14 +305,13 @@ sudo insmod leds-status.ko
 <p><strong>不实操也能完全理解。</strong></p>
 <p>读技术书最常见的挫折是“看懂了字面意思但还是不知道为什么这样写“。这本书的写法是：每一段代码改动，都解释“如果不这么改会怎样“。每一个 <code>static</code>、每一个 <code>void *</code>、每一个 <code>container_of</code> 都讲到不开 IDE 也能 follow。</p>
 <p>如果你有经验，扫读一遍就懂。如果你刚入行，每段代码盯着看 3 分钟也能跟上。</p>
-<p><strong>三套代码并行。</strong></p>
-<p>每一章的核心代码（struct + 函数）在 PC、STM32、Linux 用户态三个平台上都能跑。书里的安排是：</p>
+<p><strong>双平台代码并行。</strong></p>
+<p>每一章的核心代码（struct + 函数）在 PC + STM32 两个平台上都能跑。书里的安排是：</p>
 <ul>
 <li>主体代码用 PC 模拟实现，gcc 一句编译就能看到效果</li>
 <li>章末贴 STM32 HAL 等效片段，告诉你换到真实硬件长什么样</li>
-<li>章末贴 Linux 用户态等效片段（sysfs 或 libgpiod），告诉你嵌入式 Linux 端长什么样</li>
 </ul>
-<p>完整的 STM32 工程和 Linux 用户态工程见附录 B、附录 C。</p>
+<p>完整的 STM32 Zephyr 工程见附录 B，Linux 内核驱动实战工程见附录 C。</p>
 <p><strong>真实工业代码做案例。</strong></p>
 <p>第五部分两章基于我参与的工业控制板真实项目代码。前面章节铺垫的所有抽象，到了这两章你能看到它们在真实项目里实际长什么样。中国其它嵌入式书几乎都用“LED 闪烁、按键消抖“这种 toy 案例。</p>
 <p><strong>代码 100% 跑通。</strong></p>
@@ -374,7 +373,7 @@ sudo insmod leds-status.ko
 <h2 id="怎么动手"><a class="header" href="#怎么动手">怎么动手</a></h2>
 <p><strong>有经验的工程师可以完全不跑代码</strong>。书里每段代码每行的意图都讲透了，不开 IDE 也能完全理解。扫读一遍就走的话也对得起这本书。</p>
 <p>如果你刚入行或者想要更强的体感，跑一次代码会让你印象深刻。特别是第一次看到三颗 LED 共用一份函数被同一行 <code>led_on()</code> 依次点亮的时候。</p>
-<p>每章对应一个 <code>oop-in-c/code/&lt;章节名&gt;/</code> 目录，里面是完整可编译的代码。第 1 章对应 <code>oop-in-c/code/01-three-leds/</code>，目录里 <code>pc/</code> 子目录是完整可跑的 PC 模拟版；STM32 / Linux 真机端的完整工程跨章节统一收在 ch15 <code>15-platform/</code> 的 <code>drivers/</code> + <code>platform/</code> + <code>linux-driver/</code> 一组目录里 (见 ch15 § 15.13)·前 14 章每章不再单独贴 STM32 / Linux 端片段。</p>
+<p>每章对应一个 <code>oop-in-c/code/&lt;章节名&gt;/</code> 目录，里面是完整可编译的代码。第 1 章对应 <code>oop-in-c/code/01-three-leds/</code>，目录里 <code>pc/</code> 子目录是完整可跑的 PC 模拟版；STM32 真机端片段贴在每章 <code>platform-mcu/stm32/</code> 下做对照。完整的跨平台工程（STM32 + Linux 用户态）从 ch15 起统一收在 <code>15-platform/</code> 的 <code>drivers/</code> + <code>platform/</code> + <code>linux-driver/</code> 一组目录里 (见 ch15 § 15.13)。</p>
 <p>跑代码三步：</p>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make
@@ -796,11 +795,9 @@ GPIOx-&gt;BSRR = (uint32_t)GPIO_Pin &lt;&lt; 16;    /* RESET */
 </code></pre>
 <p>ST 自己的 HAL 也是封装：把“GPIO 端口“打包成 <code>GPIO_TypeDef</code>（一个 struct，里面是各个寄存器），通过 <code>GPIOx</code> 这个指针参数告诉函数操作哪个端口。<code>GPIOx</code> 就是 <code>me</code>，换了个名字。</p>
 <p><strong>关于这里的 platform 层写法</strong>：本节用的是“函数式包装“，直接 export 几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>。这是 ch01 阶段的教学简化形态，让你在还没接触虚函数表概念前先看到“换平台只改 platform 这一层“的好处。</p>
-<p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.10 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
+<p>真正工业级的 platform 抽象层用的是<strong>虚函数表（ops 表）</strong>：把所有 platform 操作打包进一个 struct，应用层通过指针访问，可以 runtime 切换平台。1.9 节贴的工业代码 <code>led_base + led_ops</code> 就是这种形态。</p>
 <p>第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
-<h2 id="19-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#19-你现在的-led-在-linux-用户态长什么样">1.9 你现在的 LED 在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="110-工业代码里的-led-长什么样"><a class="header" href="#110-工业代码里的-led-长什么样">1.10 工业代码里的 led 长什么样</a></h2>
+<h2 id="19-工业代码里的-led-长什么样"><a class="header" href="#19-工业代码里的-led-长什么样">1.9 工业代码里的 led 长什么样</a></h2>
 <p><strong>这一节是工业终态的早期一瞥，给你一张“未来三个月你会写出什么样的代码“的全景图</strong>。下面要出现的概念（父类与子类、ops 表 / 虚函数表、父类层 dispatch（分发：走到对的实现）、纪律式封装）每一个都是后面 ch06 / ch09 / ch10 / ch11 才会系统展开的。<strong>现在不用看懂任何细节</strong>，只要扫一眼“代码最终长这样、应用层调用看不到 ops、换硬件不改应用层“就够了。看完本节回到 1.1 节继续从最朴素的状态走起，等读完 ch11 再回来重读这一节，那时候每一行都会自动通透。</p>
 <p>我做的工业控制板项目里，LED 这一块分两层：父类一对 <code>.h / .c</code>，每种具体子类（GPIO LED / PWM LED / I²C LED）一对 <code>.h / .c</code>。父类那两份长这样：</p>
 <pre><code class="language-c">/* drivers/led/led_base.h · 父类公共头·子类和应用层都 #include */
@@ -881,7 +878,7 @@ led_off(red_led);
 led_toggle(green_led);
 </code></pre>
 <p>应用层看到的就是普通函数调用 <code>led_on(green_led)</code>。它根本不知道下面有 ops 表、有 dispatch、有具体子类（GPIO LED / PWM LED / I²C LED 等）。这种“应用层只见接口、看不见实现“的写法叫封装层，工业代码里所有驱动都做这件事。</p>
-<h3 id="1101-字段公开但应用层不去碰纪律式封装"><a class="header" href="#1101-字段公开但应用层不去碰纪律式封装">1.10.1 字段公开但应用层不去碰：纪律式封装</a></h3>
+<h3 id="191-字段公开但应用层不去碰纪律式封装"><a class="header" href="#191-字段公开但应用层不去碰纪律式封装">1.9.1 字段公开但应用层不去碰：纪律式封装</a></h3>
 <p><code>struct led_base</code> 的字段定义就在 <code>led_base.h</code> 头文件里，应用层 <code>#include "led_base.h"</code> 之后，技术上写 <code>green_led-&gt;is_on = true</code> 编译能过。<strong>工业代码里的“封装“，主要靠纪律，不是靠编译器强制</strong>。</p>
 <p>为什么不把字段藏到 <code>.c</code> 里、让编译器拒绝外部访问？因为后面 ch06 起要讲继承：每种具体 LED（GPIO / PWM / I²C）都是一个<strong>子类</strong>，子类要把 <code>struct led_base base;</code> 作为自己的第一个字段嵌进来。子类源文件得知道 <code>struct led_base</code> 的完整字段（要算 sizeof、要对偏移），所以 base 的字段定义必须放在头文件里、给子类可见。<strong>字段藏 <code>.c</code> 和继承机制层互斥</strong>：一选了藏，子类就编译过不去。</p>
 <p>那应用层为什么不会乱碰？两层纪律一起作用：</p>
@@ -891,7 +888,7 @@ led_toggle(green_led);
 </ul>
 <p>Linux 内核也是这套纪律。<code>struct device</code> 几十个字段全部公开在 <code>include/linux/device.h</code> 里，谁的代码写 <code>dev-&gt;kobj.parent = NULL</code> 之类直接绕过 driver core，会被维护者一句话打回。Greg Kroah-Hartman 在内核驱动文档和邮件列表里多次强调这件事，靠的是<strong>编码约定 + review 文化</strong>，不是编译器。Zephyr RTOS、GObject 同一套路。这是 OOP-in-C 继承场景里几乎唯一可行的工业选择。</p>
 <p>ch02 会把这套纪律的两件工具讲透：<code>static</code> 锁内部工具函数（链接期硬锁）+ <code>/* private */</code> 字段注释（命名纪律 + code review 软锁）。同时会单独提一种更严格的隔离：字段彻底藏进 <code>.c</code>，编译器直接拒绝外部访问，叫不透明指针。它的真实用武之地是<strong>跨二进制库边界</strong>（libc 的 <code>FILE *</code>、POSIX 的 <code>pthread_t</code>、<code>sqlite3 *</code>、<code>CURL *</code>），应用代码和库实现物理分离·这些场景下应用代码不需要继承库类型。一旦涉及继承（这本书后续 18 章主线），就不能用那套写法。</p>
-<h3 id="1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#1102-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.10.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
+<h3 id="192-ops-表--封装层让-led_on-一行胶水管所有-led-子类"><a class="header" href="#192-ops-表--封装层让-led_on-一行胶水管所有-led-子类">1.9.2 ops 表 + 封装层：让 led_on 一行胶水管所有 LED 子类</a></h3>
 <p>你注意到三件事：</p>
 <ol>
 <li><code>struct led_base</code> 多了一个字段 <code>ops</code>，是一张函数指针表（虚函数表）</li>
@@ -900,7 +897,7 @@ led_toggle(green_led);
 </ol>
 <p>第 11 章会从函数指针一步步推导出这套机制，把 <code>led_on()</code> 内部那行 dispatch 讲透：编译器把它编译成什么 ARM 汇编、ops 表存在内存哪、为什么 <code>ops</code> 必须是 <code>struct led_base</code> 第一个字段。</p>
 <p>现在你不用看懂细节，只要看出：<strong>工业代码里的 led，骨架还是 struct + me，外面套了一层 ops 表（让应用层无视具体硬件）和一层封装函数（让应用层不直接碰函数指针）</strong>。这两层都是工程纪律，不是炫技。</p>
-<h3 id="1103-一眼看懂工业代码的眼光"><a class="header" href="#1103-一眼看懂工业代码的眼光">1.10.3 一眼看懂工业代码的眼光</a></h3>
+<h3 id="193-一眼看懂工业代码的眼光"><a class="header" href="#193-一眼看懂工业代码的眼光">1.9.3 一眼看懂工业代码的眼光</a></h3>
 <p>这就是这本书要让你形成的眼光。拿到一份陌生的工业代码：</p>
 <ul>
 <li>看到 <code>xxx_base.h</code> 里 <code>struct xxx_base { const struct xxx_ops *ops; ... };</code>，知道这是父类 + ops 表 / 虚函数表</li>
@@ -910,7 +907,7 @@ led_toggle(green_led);
 </ul>
 <p>整套就是 struct + me 的工业放大版。你这一章学的核心，加上第 11 章的 ops 表演化，等于工业项目里所有驱动的骨架。</p>
 <p>反过来看，1.8 节给的 STM32 platform 层（以及附录 C 的 Linux 完整工程）用的是函数式（几个 <code>platform_gpio_*</code> 函数独立 export），是教学简化版。工业代码的 platform 层和这里 <code>led_base</code> 一样，都是 ops 表（虚函数表）形式。两者都对，只是抽象程度不同。书里第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），完成这个对齐。</p>
-<h2 id="111-跑一遍"><a class="header" href="#111-跑一遍">1.11 跑一遍</a></h2>
+<h2 id="110-跑一遍"><a class="header" href="#110-跑一遍">1.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/01-three-leds/pc
 make
 ./demo
@@ -951,13 +948,13 @@ make
     └── stm32/          STM32 端 platform 实现（HAL 写寄存器）
 </code></pre>
 <p>跨章共享的部分在 <code>oop-in-c/code/common/</code>：<code>platform.h</code> 是这本书每一章 <code>pc/</code> 都 #include 的对外接口头（也是 STM32 端 <code>led_stm32.c</code> 实现的同一个头），<code>platform_pc.c</code> 是 PC 端的 platform 实现。本章你看到的 <code>[GPIO] PA.13 ...</code> 日志就出自这一份。</p>
-<p>ch01-ch10 早期教学章节配套代码都简化为这两份对照（PC + STM32），让你专注 OOP 概念本身。Linux 用户态完整工程见附录 C，工业级 ops 表 / 多子类 / 多平台见后面工业实战章节。</p>
-<h2 id="112-视频回放"><a class="header" href="#112-视频回放">1.12 视频回放</a></h2>
+<p>ch01-ch10 早期教学章节配套代码都简化为这两份对照（PC + STM32），让你专注 OOP 概念本身。工业级 ops 表 / 多子类 / 多平台见后面工业实战章节。</p>
+<h2 id="111-视频回放"><a class="header" href="#111-视频回放">1.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1PyDHB8E3Q/">《C 语言：三个 LED 你写了三份代码？一个挂号单的思路让你秒懂封装》</a></p>
 </blockquote>
-<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）、STM32 真机对照（1.8 节）、工业代码全景（1.10 节）。Linux 用户态完整对照工程见附录 C。</p>
+<p>视频和书互相补强。视频更直观看口播节奏和挂号单类比的现场感。书里补了视频没讲透的 6 个细节（1.7 节）、STM32 真机对照（1.8 节）、工业代码全景（1.9 节）。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>挂号单是敞开的。任何人都能直接 <code>red_led.pin = 999</code> 把它弄坏。你同事顺手改了一个值，所有 LED 全乱了。</p>
 <p>怎么把单子锁起来？下一章解决。</p>
@@ -1277,10 +1274,8 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。字段在 <code>led.h</code> 里依然公开（标了 <code>/* private */</code>），<code>update_hardware</code> / <code>brightness_valid</code> 在 <code>led.c</code> 里依然加了 <code>static</code>，命名纪律依然要求外部走 <code>led_xxx</code> 接口。变化的只是这层 platform 胶水。</p>
 <p>软 private 在 ARM Cortex-M 上和 x86 上行为完全一致。它是工程纪律 + 编译期 <code>static</code> 锁，跨平台规则一致。</p>
-<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和 2.9 节工业代码对齐。</p>
-<h2 id="28-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#28-你现在的-led-在-linux-用户态长什么样">2.8 你现在的 LED 在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="29-工业代码里的-led-长什么样"><a class="header" href="#29-工业代码里的-led-长什么样">2.9 工业代码里的 led 长什么样</a></h2>
+<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和 2.8 节工业代码对齐。</p>
+<h2 id="28-工业代码里的-led-长什么样"><a class="header" href="#28-工业代码里的-led-长什么样">2.8 工业代码里的 led 长什么样</a></h2>
 <p>我做的工业控制板项目里，LED 这一块的 <code>led_base.h</code> 是这样：</p>
 <pre><code class="language-c">/* led_base.h - 应用层只看这一份 */
 #include "platform.h"
@@ -1334,7 +1329,7 @@ const char *who = led_base_get_name(green_led);
 <p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏 = 字段默认 private + 工具加 static + 命名纪律“这一招学透就够，不用懂 ops 表。</p>
 </blockquote>
 <p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果字段没标 private 也没 setter API，是 ch01 阶段的代码，正在等一次 ch02 重构。如果 <code>.h</code> 里同时摆着 struct 和一组 <code>xxx_*</code> 命名一致的 API（不管字段挂没挂 <code>/* private */</code> 注释），就是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
-<h2 id="210-跑一遍"><a class="header" href="#210-跑一遍">2.10 跑一遍</a></h2>
+<h2 id="29-跑一遍"><a class="header" href="#29-跑一遍">2.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/02-static-hiding/pc
 make
 ./demo
@@ -1375,12 +1370,12 @@ collect2: error: ld returned 1 exit status
 </code></pre>
 <p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是文件私有符号（file-private symbol），外部连名字都看不到。这是机制层的硬锁。</p>
 <p>字段方面，<code>red.pin = 999</code> 这一行编译能过：这是命名纪律 + code review 拦的位置，不是编译器拦的位置。理解这两层强度的差别，就理解了 C 圈子的“软 private 字段 + 硬 private 工具函数“工程现实。</p>
-<h2 id="211-视频回放"><a class="header" href="#211-视频回放">2.11 视频回放</a></h2>
+<h2 id="210-视频回放"><a class="header" href="#210-视频回放">2.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1MzDZBzEDf/">《你同事改了一行代码·LED 全乱了｜C 语言信息隐藏：static 和头文件到底怎么用》</a></p>
 </blockquote>
-<p>视频里讲了银行类比、后厨类比、菜单类比的现场感，节奏更紧凑。书里补了视频没讲透的 6 个细节（2.6 节）和工业代码的对照（2.9 节）。</p>
+<p>视频里讲了银行类比、后厨类比、菜单类比的现场感，节奏更紧凑。书里补了视频没讲透的 6 个细节（2.6 节）和工业代码的对照（2.8 节）。</p>
 <h2 id="下一章-1"><a class="header" href="#下一章-1">下一章</a></h2>
 <p>锁了后厨，标了字段 private，对外暴露了一份接口契约。但你的契约清单上现在有 <code>led_init / led_on / led_off / led_deinit / led_set_brightness / led_get_state</code> 七八个函数。</p>
 <p>你同事接手代码，打开 <code>led.h</code>，第一个问题是：我先调哪个？</p>
@@ -1683,9 +1678,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p><code>led.h</code> / <code>led.c</code> / <code>motor.h</code> / <code>motor.c</code> / <code>main.c</code> 全部一字不改。两个模块照样跑，前缀照样区分得开。变化的只是这层 platform 胶水。</p>
 <p>真实工程里电机的 PWM 速度控制会写到 TIM 通道的 CCRx 寄存器，这里教学简化为 GPIO 高低电平。第 5 章会展开 HAL 怎么做这种映射。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="39-你现在的代码在-linux-用户态长什么样"><a class="header" href="#39-你现在的代码在-linux-用户态长什么样">3.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="310-工业代码里的模块长什么样"><a class="header" href="#310-工业代码里的模块长什么样">3.10 工业代码里的模块长什么样</a></h2>
+<h2 id="39-工业代码里的模块长什么样"><a class="header" href="#39-工业代码里的模块长什么样">3.9 工业代码里的模块长什么样</a></h2>
 <p>我做的工业控制板项目里，每个驱动模块都按这套命名规范组织。看几个真实模块的 <code>.h</code> 列名：</p>
 <pre><code>drivers/
 ├── led/
@@ -1713,7 +1706,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </ul>
 <p><code>xxx_base</code> 是抽象父类（属于第 6 章继承的内容），<code>xxx_gpio</code> / <code>ds2433</code> / <code>max31827</code> 是具体实现。这层结构对应“虚函数表 + 具体设备的 ops 表“，是第 9 章到第 11 章的内容。</p>
 <p>到这里你能看出：你这一章学的命名规范，是工业代码的“地基“。50 个驱动文件全按这个规范命名，新人接手不用读所有文档，看文件名 + 函数名就知道哪个是哪个。</p>
-<h2 id="311-跑一遍"><a class="header" href="#311-跑一遍">3.11 跑一遍</a></h2>
+<h2 id="310-跑一遍"><a class="header" href="#310-跑一遍">3.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/03-handwritten-class/pc
 make
 ./demo
@@ -1757,12 +1750,12 @@ make
 </code></pre>
 <p><code>led_*</code> 和 <code>motor_*</code> 在同一个 main.c 里跑，没有任何冲突。<code>init</code> 失败有 <code>-1 / -2</code> 区分（NULL 指针 / 参数超范围），<code>initialized</code> 标志位拦住了“没 init 就用“的错误（返回 <code>-3</code>）。</p>
 <p>这就是一个工程纪律完整的 C 模块该有的样子。</p>
-<h2 id="312-视频回放"><a class="header" href="#312-视频回放">3.12 视频回放</a></h2>
+<h2 id="311-视频回放"><a class="header" href="#311-视频回放">3.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1dsQuBmEEx/">《你用 C 手搓了一个 class｜C 语言面向对象·封装篇》</a></p>
 </blockquote>
-<p>视频里讲了沙县小吃 / 兰州拉面的类比、门把手的 affordance 类比，节奏更紧凑。书里补了视频没讲透的 6 个细节（3.7 节）和工业代码的对照（3.10 节）。</p>
+<p>视频里讲了沙县小吃 / 兰州拉面的类比、门把手的 affordance 类比，节奏更紧凑。书里补了视频没讲透的 6 个细节（3.7 节）和工业代码的对照（3.9 节）。</p>
 <h2 id="下一章-2"><a class="header" href="#下一章-2">下一章</a></h2>
 <p>到这里 LED 和 motor 都是“工程纪律完整的模块“了。但回头看 <code>led.c</code> 文件开头，你可能还有几个全局变量：累计 init 次数、调试开关、最大亮度常量。</p>
 <p>这些全局变量都该死了。下一章把它们一个一个判刑。</p>
@@ -2118,10 +2111,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。<code>static struct led led_pool[8]</code> 落到 STM32 的 <code>.bss</code> 段，启动时清零，运行期池子大小固定。这里用对象池是 4.5 节解释过的演示选择，LED 这种数量固定的全局对象用直接静态实例（4.7.2 节写法 A）也很常见，工业级代码两种都用。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="49-你现在的代码在-linux-用户态长什么样"><a class="header" href="#49-你现在的代码在-linux-用户态长什么样">4.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<p>Linux 上的进程有充足的堆，用 <code>malloc</code> 是常态，glibc 的多 arena malloc 在长跑场景里也很稳。本章配套代码用静态池只是为了让同一份代码在 PC / STM32 / Linux 三平台对照演示同一个机制，不是说 Linux 用户态必须避开 <code>malloc</code>。真实 Linux 应用代码（LVGL、systemd、各种 daemon）大量用动态内存，靠 <code>goto cleanup</code> 风格的资源管理 + valgrind / AddressSanitizer 审计 leak，是工业级常态。</p>
-<h2 id="410-工业代码里的数据归位长什么样"><a class="header" href="#410-工业代码里的数据归位长什么样">4.10 工业代码里的数据归位长什么样</a></h2>
+<h2 id="49-工业代码里的数据归位长什么样"><a class="header" href="#49-工业代码里的数据归位长什么样">4.9 工业代码里的数据归位长什么样</a></h2>
 <p>我做的工业控制板项目里，数据归位是一个跨模块的纪律。每个驱动 <code>.c</code> 文件开头都遵循同一套结构：</p>
 <pre><code class="language-c">/* drivers/eeprom/ds2433.c · 简化结构 */
 
@@ -2152,7 +2142,7 @@ struct ds2433 *ds2433_top = &amp;ds2433_main;     /* 应用层句柄 */
 <li>跨模块 bug 锁定时，全局污染面小</li>
 </ul>
 <p>这就是工业级 C 代码的骨架。第 5 章会打开 STM32 HAL 库源码，看看 ST 工程师怎么遵守同一套规则。</p>
-<h2 id="411-跑一遍"><a class="header" href="#411-跑一遍">4.11 跑一遍</a></h2>
+<h2 id="410-跑一遍"><a class="header" href="#410-跑一遍">4.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/04-data-classification/pc
 make
 ./demo
@@ -2201,12 +2191,12 @@ make
 </code></pre>
 <p>Part 1 重现了全局变量的 bug：第二次 init 覆盖第一次，“红灯“操作的实际是绿灯的引脚。</p>
 <p>Part 2 演示数据归位完成形态：每个 LED 有自己的 <code>pin / brightness</code>，通过 <code>led_get_init_count()</code> 函数访问模块级数据，对象池满了 acquire 返回 NULL。</p>
-<h2 id="412-视频回放"><a class="header" href="#412-视频回放">4.12 视频回放</a></h2>
+<h2 id="411-视频回放"><a class="header" href="#411-视频回放">4.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1pAD9BmEu8/">《C 语言：你的全局变量·该死了｜C 语言封装篇终章·数据归位》</a></p>
 </blockquote>
-<p>视频里讲了白板类比（全局变量被路过的人擦掉）、部门文件夹类比（static 文件私有），节奏更紧凑。书里补了视频没讲透的 6 个细节（4.7 节）和工业代码的对照（4.10 节）。</p>
+<p>视频里讲了白板类比（全局变量被路过的人擦掉）、部门文件夹类比（static 文件私有），节奏更紧凑。书里补了视频没讲透的 6 个细节（4.7 节）和工业代码的对照（4.9 节）。</p>
 <p>封装篇到这里：第 1 章 struct + me、第 2 章 static + <code>/* private */</code> 纪律、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。所有零件凑齐了。</p>
 <p><img src="assets/ch04/slide9_CvsCpp.png" alt="C 对 C++"></p>
 <h2 id="下一章-3"><a class="header" href="#下一章-3">下一章</a></h2>
@@ -2400,16 +2390,7 @@ HAL_Delay(500);
 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 </code></pre>
 <p>PC 模拟版和 STM32 真实版的接口几乎一字不差。前 4 章学的所有概念，在真实硬件上原样落地。</p>
-<h2 id="510-你现在的代码在-linux-用户态长什么样"><a class="header" href="#510-你现在的代码在-linux-用户态长什么样">5.10 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 用户态没有 STM32 那种 BSRR 寄存器直写。从用户态到硬件的路径是这样：</p>
-<pre><code class="language-c">write("/sys/class/gpio/gpio13/value", "1")
-   -&gt; kernel 调 gpio_chip 的 .set 方法
-   -&gt; 具体 GPIO controller driver
-   -&gt; 最终还是 BSRR 或类似的硬件寄存器
-</code></pre>
-<p>sysfs 的“把硬件当文件“机制怎么和内核的 <code>file_operations</code> + <code>gpio_chip</code> 衔接起来：<code>gpio_chip</code> 是第 16 章的内容，<code>file_operations</code> 是第 18 章 § 18.1 的内容。这一章先看到“用户态调用还是同一个套路“。</p>
-<p>完整工程见附录 C（新内核推荐 libgpiod 替代 sysfs，附录里展开）。</p>
-<h2 id="511-工业代码里的对应"><a class="header" href="#511-工业代码里的对应">5.11 工业代码里的对应</a></h2>
+<h2 id="510-工业代码里的对应"><a class="header" href="#510-工业代码里的对应">5.10 工业代码里的对应</a></h2>
 <p>我做的工业控制板项目里所有的驱动都按 HAL 这套路子组织。每个底层 driver 都有自己的 <code>&lt;MOD&gt;_TypeDef</code>、自己的 init/deinit、自己的命名前缀。</p>
 <p>随便举一个例子。DS2433（1-Wire EEPROM）的头文件骨架：</p>
 <pre><code class="language-c">/* drivers/eeprom/ds2433.h - DS2433 1-Wire EEPROM */
@@ -2436,7 +2417,7 @@ int ds2433_write(ds2433_t *me, uint32_t addr, const void *buf, size_t n);
 </blockquote>
 <p>字段 / 命名 / 生命周期一应俱全，和 HAL 库的 GPIO 是同一个骨架。</p>
 <p>如果你有项目维护经验，应该能看出来：50 个驱动按这套路子写完，新人接手看一个文件就懂结构。这就是命名规范的复利效应。</p>
-<h2 id="512-跑一遍"><a class="header" href="#512-跑一遍">5.12 跑一遍</a></h2>
+<h2 id="511-跑一遍"><a class="header" href="#511-跑一遍">5.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/05-hal-mapping/pc
 make
 ./demo
@@ -2468,7 +2449,7 @@ make
 ==============================================
 </code></pre>
 <p>教学版用真实 HAL 命名跑了一个最小例子。所有概念对应关系一目了然。</p>
-<h2 id="513-视频回放"><a class="header" href="#513-视频回放">5.13 视频回放</a></h2>
+<h2 id="512-视频回放"><a class="header" href="#512-视频回放">5.12 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1feQbBVECg/">《HAL 库几千个函数·就一个套路｜C 语言封装·源码验证》</a></p>
@@ -2484,7 +2465,7 @@ make
 <h1 id="第-6-章--你的代码一半是重复的--共性提取的痛点"><a class="header" href="#第-6-章--你的代码一半是重复的--共性提取的痛点">第 6 章 · 你的代码一半是重复的 · 共性提取的痛点</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/"><code>oop-in-c/code/06-inherit-pain/</code></a></p>
 <h2 id="61-一个真实场景"><a class="header" href="#61-一个真实场景">6.1 一个真实场景</a></h2>
-<p>第 5 章你已经把 LED 写干净了：<code>struct led { pin, brightness, is_on }</code>，三套平台 PC / STM32 / Linux 用户态都能跑。</p>
+<p>第 5 章你已经把 LED 写干净了：<code>struct led { pin, brightness, is_on }</code>，PC 模拟版 + STM32 真机版都能跑。</p>
 <p>但板子上的 LED 不止一种点法。报警灯接 GPIO，呼吸灯接 PWM，扩展板上还有一颗 I2C 控制的 LED。三种 LED，每一颗都需要：</p>
 <ul>
 <li><code>name</code>：日志打印用（比如 <code>[LED red] turning on</code>）</li>
@@ -2814,9 +2795,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>注意：<code>led_base.h</code>、<code>led_base.c</code>、<code>led_gpio.h</code>、<code>led_gpio.c</code>、<code>led_pwm.h</code>、<code>led_pwm.c</code>、<code>main.c</code> 一字不改。</p>
 <p>继承的所有变化都在驱动层内部。平台胶水的写法不变，因为父类抽象的是“驱动数据怎么组织“，不是“硬件怎么访问“。</p>
 <p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。真正工业级用虚函数表（ops 表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="69-你现在的代码在-linux-用户态长什么样"><a class="header" href="#69-你现在的代码在-linux-用户态长什么样">6.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="610-工业代码里的父类长什么样"><a class="header" href="#610-工业代码里的父类长什么样">6.10 工业代码里的父类长什么样</a></h2>
+<h2 id="69-工业代码里的父类长什么样"><a class="header" href="#69-工业代码里的父类长什么样">6.9 工业代码里的父类长什么样</a></h2>
 <p>工业控制板项目里，base 抽象是这样的（不是完整代码，是片段）：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;        /* forward decl */
@@ -2845,7 +2824,7 @@ extern struct led_base *red_led;
 </ol>
 <p>第 3 点是这本书后面要讲的“向上转型“（第 12 章）。父类指针把所有具体类型藏起来，应用层只看到一个统一的 <code>struct led_base *</code>。</p>
 <p>但骨架就是你这一章学的：<strong>子类把父类放在第一个字段，硬件特定字段下沉到子类</strong>。剩下的复杂度都是这条骨架上的演化。</p>
-<h2 id="611-跑一遍"><a class="header" href="#611-跑一遍">6.11 跑一遍</a></h2>
+<h2 id="610-跑一遍"><a class="header" href="#610-跑一遍">6.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/06-inherit-pain/pc
 make
 ./demo
@@ -2872,7 +2851,7 @@ make
 </code></pre>
 <p><code>led_base_init</code> 这一行代码，给 GPIO LED 和 PWM LED 都跑了。<code>led_base_get_name</code> 这个函数写了一次，伺候两个子类。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/"><code>oop-in-c/code/06-inherit-pain/</code></a>。</p>
-<h2 id="612-视频回放"><a class="header" href="#612-视频回放">6.12 视频回放</a></h2>
+<h2 id="611-视频回放"><a class="header" href="#611-视频回放">6.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1hvQnB6EBa/">《你的代码·有一半是复制粘贴的｜C 语言继承·struct 嵌套》</a></p>
@@ -3093,9 +3072,7 @@ gpio_action_fn fp;        /* 简洁多了 */
 </code></pre>
 <p>应用层多了一行声明：<code>void (*fp)(uint8_t)</code>。把 <code>gpio_on</code> 存进 <code>fp</code>，再通过 <code>fp</code> 调用，跑出来的指令序列和直接调 <code>gpio_on</code> 几乎一样，多一次 LDR + 一次间接 BLX。在 STM32 这种 MCU 上完全无感。</p>
 <p>下一章把 <code>fp</code> 当作参数传给 <code>test_led</code>，开始有真实的工程含义。</p>
-<h2 id="78-你现在的代码在-linux-用户态长什么样"><a class="header" href="#78-你现在的代码在-linux-用户态长什么样">7.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>完整工程见附录 C。Linux 端 <code>gpio_on</code> 写 sysfs，应用层把 <code>gpio_on</code> 存进 <code>fp</code>、通过 <code>fp</code> 调用，行为和直接调 <code>gpio_on</code> 等价。Linux 用户态的 branch predictor 比 MCU 强得多，间接调用开销几乎看不出来。</p>
-<h2 id="79-跑一遍"><a class="header" href="#79-跑一遍">7.9 跑一遍</a></h2>
+<h2 id="78-跑一遍"><a class="header" href="#78-跑一遍">7.8 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/07-function-pointer/pc
 make
 ./demo
@@ -3126,7 +3103,7 @@ make
 </code></pre>
 <p>同一个变量 <code>fp</code>，存进不同的函数地址，拨出去通的就是不同的函数。<code>fp</code> 这个变量本身一字没改，里面存的数字变了一下，整个调用就走到了别处。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/"><code>oop-in-c/code/07-function-pointer/</code></a>。</p>
-<h2 id="710-视频回放"><a class="header" href="#710-视频回放">7.10 视频回放</a></h2>
+<h2 id="79-视频回放"><a class="header" href="#79-视频回放">7.9 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1AZdBBWEuj/">《C 语言：写死的函数怎么换｜函数指针·通讯录类比》</a></p>
@@ -3254,11 +3231,7 @@ void pwm_on(int channel)
 </code></pre>
 <p>signature 完全一样，调用方写 <code>test_led(gpio_on, gpio_off, 13)</code> 这一行 PC / STM32 都能编译通过。<code>test_led</code> 内部 <code>on(id)</code> 这一句机器码也完全相同，区别只在 <code>on</code> 这个函数指针指向哪段代码。</p>
 <p>这一章 snippet 是函数式的最朴素形态：每种硬件直接写 6 个独立函数。第三个参数 <code>id</code> 在 STM32 上 GPIO 当引脚号、PWM 当通道号、I2C 当从机地址。后续章节会把这 6 个函数收进 ops 表，再演化到 platform 层可切换的工业化形态。</p>
-<h2 id="88-你现在的代码在-linux-用户态长什么样"><a class="header" href="#88-你现在的代码在-linux-用户态长什么样">8.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端 6 个函数的 signature 一字不变，只是函数体改成走 sysfs / i2c-dev。完整工程见附录 C。</p>
-<p><code>test_led(on, off, id)</code> 同样一字不改。<code>gpio_on</code> PC 版打 stdout，Linux 版写 <code>/sys/class/gpio/gpioN/value</code> 节点，STM32 版调 <code>HAL_GPIO_WritePin</code>。三套实现，同一份 signature，同一份 <code>test_led</code> 内部 <code>on(id)</code> 调用。</p>
-<p>同 8.7 节，本章 snippet 是函数式最朴素形态，6 个独立函数。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="89-工业代码里的函数指针当参数"><a class="header" href="#89-工业代码里的函数指针当参数">8.9 工业代码里的函数指针当参数</a></h2>
+<h2 id="88-工业代码里的函数指针当参数"><a class="header" href="#88-工业代码里的函数指针当参数">8.8 工业代码里的函数指针当参数</a></h2>
 <p><code>test_led(on, off, id)</code> 这种“测试工具函数 + 函数指针入参“的形态，在工业代码里非常常见。模式是同一个：<strong>通用的循环 / 时序 / 测试逻辑写一份，被测对象的具体动作通过函数指针入参传进来</strong>。</p>
 <p>举几个例子：</p>
 <ul>
@@ -3267,7 +3240,7 @@ void pwm_on(int channel)
 <li><strong>通用排序 / 查找</strong>：标准库 <code>qsort(arr, n, size, compare)</code> 这一行就是函数指针当参数。<code>compare</code> 这只字不识 <code>arr</code> 是结构体还是 <code>int</code>，按你给的比较函数排就行。</li>
 </ul>
 <p><code>test_led</code> 是这一类工具函数最朴素的形态。一旦你在一份代码里写过这种函数，你就开始注意到工业代码里到处都是它的影子。</p>
-<h2 id="810-跑一遍"><a class="header" href="#810-跑一遍">8.10 跑一遍</a></h2>
+<h2 id="89-跑一遍"><a class="header" href="#89-跑一遍">8.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/08-callback/pc
 make
 ./demo
@@ -3306,7 +3279,7 @@ make
 </code></pre>
 <p>三段输出。同一个 <code>test_led</code> 函数体跑了三次，<code>[test] open / hold / close</code> 这三行都出自 <code>test_led</code> 内部，没动一个字符。每段中间夹的 <code>[GPIO] / [PWM] / [I2C]</code> 行，是调用方传进去的那对函数指针真正落到了哪段机器码。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/"><code>oop-in-c/code/08-callback/</code></a>。</p>
-<h2 id="811-视频回放"><a class="header" href="#811-视频回放">8.11 视频回放</a></h2>
+<h2 id="810-视频回放"><a class="header" href="#810-视频回放">8.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1ysdWBUEQA/">《C 语言·函数指针传参｜把号码给别人拨·延迟决定》</a></p>
@@ -3530,11 +3503,7 @@ struct led_ops {
 </code></pre>
 <p>100 颗 LED 仅有 24 字节 ops 表代价。每颗 LED 自己的 struct 实例（在 <code>.bss</code> 或栈上）和这张 ops 表无关。</p>
 <p>本节用的还是函数式包装的 platform 抽象层（<code>platform_gpio_write(pin, value)</code> 这种独立函数），是教学简化版。真正工业级的 platform 抽象用 ops 表的形式。后面章节会把 platform 层从函数式重构成 ops 表式，和工业代码对齐。</p>
-<h2 id="97-你现在的代码在-linux-用户态长什么样"><a class="header" href="#97-你现在的代码在-linux-用户态长什么样">9.7 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端的 ops 表写法和 PC / STM32 完全一样，<code>gcc / clang</code> 把 <code>const struct</code> 放到 <code>.rodata</code>，进程加载时只读映射，全进程共享。</p>
-<p>不同的是 Linux 上<strong>没有 platform 抽象层</strong>。GPIO 子类内部直接调 libgpiod（<code>gpiod_line_set_value</code>），背后是 Linux 内核完整的 gpio chardev / gpiolib（内核已经把 platform 抽象做完了，应用层再套一层是反工程）。完整工程见附录 C。</p>
-<p><code>led_base.h / led_base.c / main.c</code> 一字不改。“换硬件不改应用“在 Linux 上兑现成“换子类内部实现，应用层和 base 层完全一致”。判断标准见 § 15.15。</p>
-<h2 id="98-工业代码里的-ops-表"><a class="header" href="#98-工业代码里的-ops-表">9.8 工业代码里的 ops 表</a></h2>
+<h2 id="97-工业代码里的-ops-表"><a class="header" href="#97-工业代码里的-ops-表">9.7 工业代码里的 ops 表</a></h2>
 <p>工业控制板项目里，每个驱动都有一张 ops 表。LED 驱动这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;
@@ -3555,7 +3524,7 @@ const struct led_ops led_ops_gpio = {
 <p>注意 ops 表里函数指针的参数是 <code>struct led_base *</code>，不是某个具体子类。所有子类的 ops 表必须类型一致。</p>
 <p>EEPROM、风扇、蜂鸣器、按键这些 driver 的 ops 表结构各不相同，但写法都是这一套：定义 ops struct，每种实现 fill 一张 const ops 表，外部传一张表进去就跑对应的实现。</p>
 <p>这就是 Linux 内核 <code>struct file_operations</code> 的 OOP 骨架。你这一章亲手推了一遍。</p>
-<h2 id="99-跑一遍"><a class="header" href="#99-跑一遍">9.9 跑一遍</a></h2>
+<h2 id="98-跑一遍"><a class="header" href="#98-跑一遍">9.8 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/09-ops-table/pc
 make
 ./demo
@@ -3587,7 +3556,7 @@ make
 </code></pre>
 <p><code>test_led</code> 函数体没改。换一张 ops 表，跑出完全不同的行为。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/09-ops-table/"><code>oop-in-c/code/09-ops-table/</code></a>。</p>
-<h2 id="910-视频回放"><a class="header" href="#910-视频回放">9.10 视频回放</a></h2>
+<h2 id="99-视频回放"><a class="header" href="#99-视频回放">9.9 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1iLdrBUEvf/">《C 语言·ops 操作表｜参数长到换行·虚函数表》</a></p>
@@ -3834,10 +3803,7 @@ int led_base_init(struct led_base *me, const struct led_ops *ops) {
 <p><code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / led_pwm.h / led_pwm.c / main.c</code> 一字不改。</p>
 <p>但 <code>sizeof(struct led_base)</code> 从 8 字节涨到 12 字节（在 32 位 ARM 上 <code>ops</code> 4 + <code>name</code> 4 + <code>is_on</code> 1 + padding 3）。100 颗 LED 多用 400 字节 RAM。换来的是应用层完全不知道“调谁“这件事，加新 LED 不改驱动核心。在 STM32H7（1MB RAM）上完全划得来；在 ATmega328（2KB RAM）上要算账。</p>
 <p>本节用的是函数式包装的 platform 抽象层，是教学简化版（<code>platform_gpio_init / platform_gpio_write</code> 几个独立函数）。真正工业级的 platform 抽象用 ops 表的形式，把所有 platform 操作打包进一个 struct，应用层通过指针访问。第 16 章会把 platform 层按这个套路重构一遍，和工业代码对齐。</p>
-<h2 id="108-你现在的代码在-linux-用户态长什么样"><a class="header" href="#108-你现在的代码在-linux-用户态长什么样">10.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上 GPIO 子类内部直接调 libgpiod，应用层和 base 层一字不改（完整工程见附录 C）。Linux 用户态没有 platform 抽象层，内核 driver model 已经把 platform 抽象做完了，应用层再套一层是反工程（§ 15.15）。</p>
-<p>进程的 <code>.rodata</code> 段里多出 <code>led_ops_gpio / led_ops_pwm</code> 两张 const 表（每张 12 字节）。每个 LED 实例的 <code>.bss</code> 中多 4-8 字节的 <code>ops</code> 指针（32 位 4 字节，64 位 8 字节）。这一笔账和 PC / STM32 一样，跨平台一致。</p>
-<h2 id="109-工业代码里的-base--ops-字段"><a class="header" href="#109-工业代码里的-base--ops-字段">10.9 工业代码里的 base + ops 字段</a></h2>
+<h2 id="108-工业代码里的-base--ops-字段"><a class="header" href="#108-工业代码里的-base--ops-字段">10.8 工业代码里的 base + ops 字段</a></h2>
 <p>工业控制板项目里的 <code>led_base</code> 长这样：</p>
 <pre><code class="language-c">struct led_base {
 	const struct led_ops *ops;     /* 操作函数表, 第一个字段 */
@@ -3871,7 +3837,7 @@ int led_gpio_init(struct led_gpio *me, ...)
 <li><strong>ops 在 base 第一个字段</strong>。Linux 内核 <code>struct file</code> 把 <code>f_op</code> 也放在前面，<code>file_operations</code> 表也是 const 表</li>
 </ol>
 <p>这就是 Linux 内核 <code>struct file</code> 的设计骨架。每个打开的文件（<code>struct file *file</code>）通过 <code>file-&gt;f_op</code> 找到一张 ops 表（<code>file_operations</code>），里面装着 <code>read / write / ioctl</code> 等函数指针。各种文件系统（ext4 / NFS / procfs）各自填一张 ops 表，VFS 层通过 <code>file-&gt;f_op-&gt;...</code> 找到对应实现。机制和你这一章手写的一字不差，只是规模不同。</p>
-<h2 id="1010-跑一遍"><a class="header" href="#1010-跑一遍">10.10 跑一遍</a></h2>
+<h2 id="109-跑一遍"><a class="header" href="#109-跑一遍">10.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/10-vptr/pc
 make
 ./demo
@@ -3882,7 +3848,7 @@ make
 <li>调用阶段：同一个调用链 <code>me-&gt;ops-&gt;on(me)</code>，红灯走到 <code>gpio_on</code>（拉引脚），蓝灯走到 <code>pwm_on</code>（按 duty 配 PWM）。各做各的，互不干扰</li>
 </ul>
 <p>完整源码和实际输出见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/10-vptr/"><code>oop-in-c/code/10-vptr/</code></a>。</p>
-<h2 id="1011-视频回放"><a class="header" href="#1011-视频回放">10.11 视频回放</a></h2>
+<h2 id="1010-视频回放"><a class="header" href="#1010-视频回放">10.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1K3dSBsEJu/">《C 语言·ops 放进对象｜对象自带说明书·vptr 雏形》</a></p>
@@ -4113,9 +4079,7 @@ struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
 </code></pre>
 <p>这一节 platform 层用的是函数式包装的教学简化版（几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>），和 ch01 起一字不变。真正工业级的 platform 抽象用 ops 表的形式做成可切换。这件事第 16 章会专门展开。</p>
 <p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/platform-mcu/stm32/"><code>oop-in-c/code/11-polymorphism/platform-mcu/stm32/</code></a>（每个子类一个文件：<code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code>，分别走 HAL_GPIO_* / HAL_TIM_PWM_* / HAL_I2C_Master_Transmit）。完整跑通的 STM32 工程见附录 B。</p>
-<h2 id="119-linux-用户态完整工程"><a class="header" href="#119-linux-用户态完整工程">11.9 Linux 用户态完整工程</a></h2>
-<p>Linux 上 GPIO / PWM / I2C 三种子类各自直接调内核暴露的 libgpiod / sysfs PWM / i2c-dev，应用层 <code>led_base / main.c</code> 一字不改，“换硬件不改应用“在 Linux 上兑现成“换子类内部实现”。完整跑通的工程见附录 C。</p>
-<h2 id="1110-工业代码里的多态"><a class="header" href="#1110-工业代码里的多态">11.10 工业代码里的多态</a></h2>
+<h2 id="119-工业代码里的多态"><a class="header" href="#119-工业代码里的多态">11.9 工业代码里的多态</a></h2>
 <p>工业控制板项目里的 LED 驱动到这一章已经和书里你写的几乎一模一样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;
@@ -4135,7 +4099,7 @@ struct led_base {
 </code></pre>
 <p>应用层调一次 <code>led_off(handle)</code>，背后是 <code>me-&gt;ops-&gt;off(me)</code> 这一行 dispatch，不管底下挂的是 GPIO 灯、PWM 灯还是 I2C 矩阵，调用方完全不知道走到哪个具体实现，落到对的就行。下一章把“应用层手里这些 <code>struct led_base *</code> 句柄从哪来“展开。</p>
 <p>这就是 Linux 内核 / Zephyr / GObject / 你这一章手写的代码同一种 dispatch 机制。OOP 不是 C++ 的特权，是工业代码里很普遍的做法。</p>
-<h2 id="1111-跑一遍"><a class="header" href="#1111-跑一遍">11.11 跑一遍</a></h2>
+<h2 id="1110-跑一遍"><a class="header" href="#1110-跑一遍">11.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/11-polymorphism/pc
 make
 ./demo
@@ -4166,7 +4130,7 @@ make
 </code></pre>
 <p>注意 ops 地址：三颗灯各自指向不同的 ops 表（<code>led_ops_gpio</code> / <code>led_ops_pwm</code> / <code>led_ops_i2c</code>），具体地址因 build 环境会变。同一个循环，三种硬件机制（拉引脚、配 duty、写 I2C 寄存器）各自 dispatch 到对的实现，应用层一字不知谁是谁。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/"><code>oop-in-c/code/11-polymorphism/</code></a>。</p>
-<h2 id="1112-视频回放"><a class="header" href="#1112-视频回放">11.12 视频回放</a></h2>
+<h2 id="1111-视频回放"><a class="header" href="#1111-视频回放">11.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1FzonBiE9M/">《C 语言·多态｜同名函数不同行为·ops dispatch》</a></p>
@@ -4456,9 +4420,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/platform-mcu/stm32/"><code>oop-in-c/code/12-upcasting/platform-mcu/stm32/</code></a>（含 <code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code> 三个子类文件 + STM32 版 <code>board_init.c</code>）。完整跑通的 STM32 工程见附录 B。</p>
 <p>PWM 子类在真实硬件上会用 <code>HAL_TIM_PWM_Start</code> + <code>__HAL_TIM_SET_COMPARE</code>。I2C 子类会用 <code>HAL_I2C_Master_Transmit</code>。</p>
 <p>本节展示的是 ch11 起整本书统一的函数式包装：<code>platform_gpio_init / platform_gpio_write / platform_gpio_deinit / platform_gpio_read</code> 四个函数声明在 <code>common/platform.h</code>，PC 上跑 printf 模拟，STM32 上跑真实 HAL。上层一字不改。</p>
-<h2 id="1210-linux-用户态完整工程"><a class="header" href="#1210-linux-用户态完整工程">12.10 Linux 用户态完整工程</a></h2>
-<p>Linux 上 GPIO / PWM / I2C 三种子类内部各自直接调内核暴露的 libgpiod / sysfs PWM / i2c-dev，内核已经把 platform 抽象做完了，应用层再套一层是反工程（§ 15.15）。应用层向上转型的招数和 PC / STM32 一字不变：拿 <code>&amp;xxx_led.base</code> 就是 <code>struct led_base *</code>，应用层只对父类指针编程。换的是子类内部实现，不是这一招。完整跑通的工程见附录 C。</p>
-<h2 id="1211-工业代码里的向上转型长什么样"><a class="header" href="#1211-工业代码里的向上转型长什么样">12.11 工业代码里的向上转型长什么样</a></h2>
+<h2 id="1210-工业代码里的向上转型长什么样"><a class="header" href="#1210-工业代码里的向上转型长什么样">12.10 工业代码里的向上转型长什么样</a></h2>
 <p>工业控制板项目里，板级初始化是这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h（节选） */
 struct led_base;
@@ -4493,7 +4455,7 @@ led_off(red_led);
 </code></pre>
 <p>应用层代码里 <code>grep led_gpio</code> / <code>grep led_pwm</code> 全部 0 行。换硬件方案、换板子型号，应用层一行不动。</p>
 <p>这就是向上转型在真实工业项目里的最终形态。</p>
-<h2 id="1212-跑一遍"><a class="header" href="#1212-跑一遍">12.12 跑一遍</a></h2>
+<h2 id="1211-跑一遍"><a class="header" href="#1211-跑一遍">12.11 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/12-upcasting/pc
 make
 ./demo
@@ -4525,7 +4487,7 @@ make
 </code></pre>
 <p>开机阶段三行 <code>[base] "X" common init done</code> 是父类 <code>led_base_init</code> 打的，三种子类 init 第一行都调它把 ops 表填到 base，再各自跑硬件层 init（<code>[GPIO] Pin10 init as OUTPUT</code> 这一段就是 GPIO 子类 init 末尾把灯先关掉的过程）。</p>
 <p>两个业务函数，两种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
-<h2 id="1213-视频回放"><a class="header" href="#1213-视频回放">12.13 视频回放</a></h2>
+<h2 id="1212-视频回放"><a class="header" href="#1212-视频回放">12.12 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1N6o4BFEvG/">《C 语言·向上转型｜一个指针指所有 LED·父类指针·设备句柄》</a></p>
 </blockquote>
@@ -4784,7 +4746,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>PWM 子类填了 <code>pwm_set_brightness</code>，按 duty 调亮度。GPIO 和 I2C 子类没填，<code>set_brightness</code> 字段保持 NULL。</p>
 <p>为什么这一章就把 <code>set_brightness</code> 加进 ops 表？因为后续章节代码包沿用同一份字段集，提前加进去，跨章演化更平滑。这一章的主线还是 container_of，<code>set_brightness</code> 字段只是顺便挂上。</p>
 <p>至于“<code>set_brightness</code> 字段为 NULL 怎么办“、“PWM 填、GPIO 不填这种’子类各自决定’怎么处理”，正是第 14 章「虚函数不实现 · 三种策略」的主题。这一章先把字段挂上，下一章展开机制。</p>
-<p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.12。</p>
+<p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.11。</p>
 <h3 id="1386-配套代码文件组织每个子类一个文件"><a class="header" href="#1386-配套代码文件组织每个子类一个文件">13.8.6 配套代码文件组织：每个子类一个文件</a></h3>
 <p>本章 <code>pc/</code> 目录沿用第 12 章的“每个子类一个文件“组织：</p>
 <pre><code>oop-in-c/code/13-container-of/pc/
@@ -4801,9 +4763,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>container_of 在 STM32 上是同一个宏，编译产物就是 ARM Cortex-M 的 <code>SUB Rd, Rn, #imm</code>。STM32 工程里你直接 <code>#include &lt;linux/types.h&gt;</code> 不行（那是内核头），但 STM32CubeIDE 的 <code>arm-none-eabi-gcc</code> 自带 <code>&lt;stddef.h&gt;</code>，offsetof 一直可用。把 § 13.5 那个三步宏放进 utility 头文件就能用。</p>
 <p>本节用的是函数式包装的教学简化版（4 个 <code>platform_gpio_*</code> 独立函数）。真正工业级的 platform 抽象用 ops 表（虚函数表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
 <p>完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/platform-mcu/stm32/"><code>oop-in-c/code/13-container-of/platform-mcu/stm32/</code></a>（用 <code>PIN_NUM('A', 13)</code> 编码 + <code>_gpio_table</code> 查表）。完整跑通的 STM32 工程见附录 B。</p>
-<h2 id="1310-linux-用户态完整工程"><a class="header" href="#1310-linux-用户态完整工程">13.10 Linux 用户态完整工程</a></h2>
-<p>Linux 用户态可以直接借 <code>&lt;stddef.h&gt;</code> 的 offsetof。绝大多数 user-space 项目自定义自己的 container_of 宏，比如 systemd、gobject、libnl 都各写一份，逻辑都一样。在 Linux 用户态写 OOP 风格 C 代码，container_of 这一招几乎是入场券。三种子类内部各自直接调 Linux 内核暴露的接口（GPIO 走 libgpiod，PWM 走 sysfs PWM，I2C 走 i2c-dev），container_of 这一招在哪个子类内部都用，跟平台无关，判断标准见 § 15.15。完整跑通的工程见附录 C。</p>
-<h2 id="1311-工业代码里的-container_of"><a class="header" href="#1311-工业代码里的-container_of">13.11 工业代码里的 container_of</a></h2>
+<h2 id="1310-工业代码里的-container_of"><a class="header" href="#1310-工业代码里的-container_of">13.10 工业代码里的 container_of</a></h2>
 <p>工业控制板 driver 里：</p>
 <pre><code class="language-c">/* drivers/encoder/encoder.h */
 struct encoder_base;
@@ -4835,7 +4795,7 @@ static int quad_read(struct encoder_base *me, int32_t *count)
 </code></pre>
 <p>整个工业项目里，10 多个 driver 模块，每个子类实现函数第一行都是 container_of。这一行已经稳定到所有同事看一眼就知道意思，不需要解释。</p>
 <p>读完这一章，你拿到内核源码、读到 driver 源码、读到 GObject 源码，第一行的 container_of 不会再让你头疼。</p>
-<h2 id="1312-跑一遍"><a class="header" href="#1312-跑一遍">13.12 跑一遍</a></h2>
+<h2 id="1311-跑一遍"><a class="header" href="#1311-跑一遍">13.11 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/13-container-of/pc
 make
 ./demo
@@ -4883,7 +4843,7 @@ offsetof(struct led_i2c,  base) = 0
 <li><code>[ERR] GPIO Pin10 ON (magic=0xCAFE)</code> 这一行里 <code>magic = 0xCAFE</code> 准确还原，证明 <code>container_of</code> 在 base 偏移 4 的布局下也能正确反推回 <code>struct led_gpio</code> 起点。</li>
 <li><code>--- breath stat ---</code> 段是 <code>led_set_brightness(handles[1], 60)</code> 和 <code>led_set_brightness(handles[1], 0)</code> 两次调用的输出。STAT 是 PWM 子类，填了 <code>pwm_set_brightness</code>，duty 从 60% 改到 0%。GPIO 和 I2C 子类没填这个字段，具体行为见第 14 章「虚函数不实现 · 三种策略」。</li>
 </ul>
-<h2 id="1313-视频回放"><a class="header" href="#1313-视频回放">13.13 视频回放</a></h2>
+<h2 id="1312-视频回放"><a class="header" href="#1312-视频回放">13.12 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1LEo4B5EZu/">《C 语言·向下转型｜container_of·从成员反推 struct》</a></p>
 </blockquote>
@@ -5151,9 +5111,7 @@ public:
 	} while (0)
 </code></pre>
 <p>错误日志写到非易失存储，下次开机能拉出来看哪一行炸了。完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/platform-mcu/stm32/"><code>oop-in-c/code/14-pure-virtual/platform-mcu/stm32/</code></a>（用 <code>PIN_NUM('A', 13)</code> 编码 + <code>_gpio_table</code> 查表）。完整跑通的 STM32 工程见附录 B。</p>
-<h2 id="1410-linux-用户态完整工程"><a class="header" href="#1410-linux-用户态完整工程">14.10 Linux 用户态完整工程</a></h2>
-<p>Linux 用户态 assert 直接走 glibc 的实现，会把诊断信息打到 stderr 然后 abort。core dump 如果 ulimit 开了，gdb 拉出来能看到完整调用栈。子类内部直接调内核接口（GPIO 走 libgpiod，PWM 走 sysfs PWM）。“必填走 assert / 选填走父类默认行为“的纪律落在父类统一接口里，跟平台无关。判断标准见 § 15.15。完整跑通的工程见附录 C。</p>
-<h2 id="1411-工业代码里的策略选择"><a class="header" href="#1411-工业代码里的策略选择">14.11 工业代码里的策略选择</a></h2>
+<h2 id="1410-工业代码里的策略选择"><a class="header" href="#1410-工业代码里的策略选择">14.10 工业代码里的策略选择</a></h2>
 <p>工业控制板的 led 模块用混合策略（on / off 必填，set_brightness 选填），和本章 14.3 节一致。motor 模块就不一样，motor_base 的 ops 表有 24 个 op，全部必填：</p>
 <pre><code class="language-c">struct motor_ops {
 	int (*init)(struct motor_base *me, const struct motor_cfg *cfg);
@@ -5169,7 +5127,7 @@ public:
 </code></pre>
 <p>电机这种安全相关、行为复杂的对象，每一个 op 子类都必须明确表态，能做就实现，不能做就报错返回。没有“合理默认“。motor_ops 是接口风格的典型。</p>
 <p>判据回到 14.7.3：<strong>有没有合理的默认</strong>。没有，全必填，做成接口。有，混合。</p>
-<h2 id="1412-跑一遍"><a class="header" href="#1412-跑一遍">14.12 跑一遍</a></h2>
+<h2 id="1411-跑一遍"><a class="header" href="#1411-跑一遍">14.11 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/14-pure-virtual/pc
 make
 ./demo
@@ -5203,7 +5161,7 @@ make
 </code></pre>
 <p>GPIO 灯调 set_brightness 走默认行为（“no dimming support, skip”），不崩。PWM 灯三件套全填，每次都走子类。sensor 三件套全必填，调过去都能进子类实现。</p>
 <p>如果你想体验“忘了填 on“的崩溃：把 <code>led_gpio_init</code> 里的 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_gpio);</code> 这一行注释掉，<code>me-&gt;base.ops</code> 就是没装上的状态，再编译跑，<code>led_on</code> 里的 assert 立刻报错。</p>
-<h2 id="1413-视频回放"><a class="header" href="#1413-视频回放">14.13 视频回放</a></h2>
+<h2 id="1412-视频回放"><a class="header" href="#1412-视频回放">14.12 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1ZeoxB5EGS/">《C 语言·虚函数不实现会怎样｜纯虚·虚函数·接口》</a></p>
 </blockquote>
@@ -5624,7 +5582,7 @@ static const struct platform_pin_ops _stm32_pin_ops = {
 </code></pre>
 <p><code>drivers/led/led_gpio.c</code> 子类调 <code>platform_pin_write(self-&gt;pin, ...)</code>, framework 内部 dispatch 就落到 <code>_stm32_pin_write</code>, 最终 <code>HAL_GPIO_WritePin -&gt; GPIOx-&gt;BSRR = (1u &lt;&lt; pin)</code>, 一次 32 位 store, 原子。</p>
 <p>PIN 编码: 高 4 位 port (字母 A-Z 偏移), 低 4 位 num. PA.0 = 0x00, PD.12 = 0x3C, PI.14 = 0x8E。一份 <code>uint8_t</code> 同时编码 port 字母和 pin 号, 接口签名只有一个 <code>pin</code> 参数 – 换 MCU 时接口不动, 解码表跟着换。</p>
-<h2 id="1511-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1511-你现在的代码在-linux-用户态长什么样">15.11 你现在的代码在 Linux 用户态长什么样</a></h2>
+<h2 id="1511-linux-用户态对照内核做完别再抽"><a class="header" href="#1511-linux-用户态对照内核做完别再抽">15.11 Linux 用户态对照·内核做完别再抽</a></h2>
 <p>Linux 用户态实现这一套, <strong>禁自抽 platform 层</strong>, 内核已经做完。libgpiod / sysfs PWM / i2c-dev 这一组接口本身就是内核 driver model 暴露给用户态的 OOP 接口, 应用层再套一层 <code>platform_gpio_write -&gt; gpiod_line_set_value</code> 就是过度封装, 没拦下任何变化, 反而多了一层没意义的 indirection。</p>
 <p><code>linux-driver/userspace/</code> 给的就是 “内核做完别再抽” 的代码兑现版本: <code>led_gpio.c</code> 直接 <code>gpiod_line_set_value(self-&gt;line, ...)</code>, <code>led_pwm.c</code> 直接写 <code>/sys/class/pwm/pwmchipN/pwmM/duty_cycle</code>, <code>led_i2c.c</code> 直接 <code>open("/dev/i2c-1") + ioctl(I2C_SLAVE) + write(fd, [reg, val], 2)</code>. 没有 <code>platform_gpio_init</code> 这种自抽中间层。父类 ops 表保留 (OOP 抽象任何平台都该有), 但 platform 抽象层没有, 内核已经做完。</p>
 <p>LED 这种通用外设 Linux 内核已经有 <code>drivers/leds/leds-gpio.c</code> 这份内核驱动 – 标准 driver model 写好的版本, 上千种板子用过。所以本目录 <code>linux-driver/</code> 不再贴自家内核驱动版本, 应用层只走用户态 libgpiod / sysfs / i2c-dev 三条路径。要看真实工业级原型, 直接读内核源 <code>drivers/leds/leds-gpio.c</code>, 完整论述见 § 15.15 + ch16 § 16.13 + 附录 C。“应用层 vs 内核层“这个判断标准 ch16 § 16.14 还会展开。</p>
@@ -7346,7 +7304,7 @@ MODULE_INIT(led_stm32_init);
 </code></pre>
 <p><code>main</code> 里启动期 <code>do_initcalls()</code> 调一次。每加一个新驱动就多一份 <code>.c</code> + 一行 <code>MODULE_INIT</code>，<code>main</code> 0 改动，链接器自动把所有驱动收集到那个段里。</p>
 <p>完整说明见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/platform-mcu/stm32/README.md"><code>oop-in-c/code/17-initcall/platform-mcu/stm32/README.md</code></a>。</p>
-<h2 id="1711-你现在的代码在-linux-上长什么样"><a class="header" href="#1711-你现在的代码在-linux-上长什么样">17.11 你现在的代码在 Linux 上长什么样</a></h2>
+<h2 id="1711-linux-用户态对照attributeconstructor-同款机制"><a class="header" href="#1711-linux-用户态对照attributeconstructor-同款机制">17.11 Linux 用户态对照·<strong>attribute</strong>((constructor)) 同款机制</a></h2>
 <p>Linux 用户态代码（不写内核驱动）也能用同一招。glibc 的 <code>__attribute__((constructor))</code> 把函数指针塞进 <code>.init_array</code> 段，crt0 启动期遍历。等价于你的 <code>MODULE_INIT</code>：</p>
 <pre><code class="language-c">__attribute__((constructor))
 static void my_init(void)

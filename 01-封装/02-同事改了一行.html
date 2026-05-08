@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -494,10 +494,8 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。字段在 <code>led.h</code> 里依然公开（标了 <code>/* private */</code>），<code>update_hardware</code> / <code>brightness_valid</code> 在 <code>led.c</code> 里依然加了 <code>static</code>，命名纪律依然要求外部走 <code>led_xxx</code> 接口。变化的只是这层 platform 胶水。</p>
 <p>软 private 在 ARM Cortex-M 上和 x86 上行为完全一致。它是工程纪律 + 编译期 <code>static</code> 锁，跨平台规则一致。</p>
-<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和 2.9 节工业代码对齐。</p>
-<h2 id="28-你现在的-led-在-linux-用户态长什么样"><a class="header" href="#28-你现在的-led-在-linux-用户态长什么样">2.8 你现在的 LED 在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="29-工业代码里的-led-长什么样"><a class="header" href="#29-工业代码里的-led-长什么样">2.9 工业代码里的 led 长什么样</a></h2>
+<p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和 2.8 节工业代码对齐。</p>
+<h2 id="28-工业代码里的-led-长什么样"><a class="header" href="#28-工业代码里的-led-长什么样">2.8 工业代码里的 led 长什么样</a></h2>
 <p>我做的工业控制板项目里，LED 这一块的 <code>led_base.h</code> 是这样：</p>
 <pre><code class="language-c">/* led_base.h - 应用层只看这一份 */
 #include "platform.h"
@@ -551,7 +549,7 @@ const char *who = led_base_get_name(green_led);
 <p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏 = 字段默认 private + 工具加 static + 命名纪律“这一招学透就够，不用懂 ops 表。</p>
 </blockquote>
 <p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果字段没标 private 也没 setter API，是 ch01 阶段的代码，正在等一次 ch02 重构。如果 <code>.h</code> 里同时摆着 struct 和一组 <code>xxx_*</code> 命名一致的 API（不管字段挂没挂 <code>/* private */</code> 注释），就是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
-<h2 id="210-跑一遍"><a class="header" href="#210-跑一遍">2.10 跑一遍</a></h2>
+<h2 id="29-跑一遍"><a class="header" href="#29-跑一遍">2.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/02-static-hiding/pc
 make
 ./demo
@@ -592,12 +590,12 @@ collect2: error: ld returned 1 exit status
 </code></pre>
 <p>链接器扫所有 <code>.o</code> 的全局符号表都找不到 <code>update_hardware</code>：它在 <code>led.c</code> 里加了 <code>static</code>，是文件私有符号（file-private symbol），外部连名字都看不到。这是机制层的硬锁。</p>
 <p>字段方面，<code>red.pin = 999</code> 这一行编译能过：这是命名纪律 + code review 拦的位置，不是编译器拦的位置。理解这两层强度的差别，就理解了 C 圈子的“软 private 字段 + 硬 private 工具函数“工程现实。</p>
-<h2 id="211-视频回放"><a class="header" href="#211-视频回放">2.11 视频回放</a></h2>
+<h2 id="210-视频回放"><a class="header" href="#210-视频回放">2.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1MzDZBzEDf/">《你同事改了一行代码·LED 全乱了｜C 语言信息隐藏：static 和头文件到底怎么用》</a></p>
 </blockquote>
-<p>视频里讲了银行类比、后厨类比、菜单类比的现场感，节奏更紧凑。书里补了视频没讲透的 6 个细节（2.6 节）和工业代码的对照（2.9 节）。</p>
+<p>视频里讲了银行类比、后厨类比、菜单类比的现场感，节奏更紧凑。书里补了视频没讲透的 6 个细节（2.6 节）和工业代码的对照（2.8 节）。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>锁了后厨，标了字段 private，对外暴露了一份接口契约。但你的契约清单上现在有 <code>led_init / led_on / led_off / led_deinit / led_set_brightness / led_get_state</code> 七八个函数。</p>
 <p>你同事接手代码，打开 <code>led.h</code>，第一个问题是：我先调哪个？</p>

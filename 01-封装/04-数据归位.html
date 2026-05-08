@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -530,10 +530,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p><code>led.h</code> / <code>led.c</code> / <code>main.c</code> 一字不改。<code>static struct led led_pool[8]</code> 落到 STM32 的 <code>.bss</code> 段，启动时清零，运行期池子大小固定。这里用对象池是 4.5 节解释过的演示选择，LED 这种数量固定的全局对象用直接静态实例（4.7.2 节写法 A）也很常见，工业级代码两种都用。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="49-你现在的代码在-linux-用户态长什么样"><a class="header" href="#49-你现在的代码在-linux-用户态长什么样">4.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<p>Linux 上的进程有充足的堆，用 <code>malloc</code> 是常态，glibc 的多 arena malloc 在长跑场景里也很稳。本章配套代码用静态池只是为了让同一份代码在 PC / STM32 / Linux 三平台对照演示同一个机制，不是说 Linux 用户态必须避开 <code>malloc</code>。真实 Linux 应用代码（LVGL、systemd、各种 daemon）大量用动态内存，靠 <code>goto cleanup</code> 风格的资源管理 + valgrind / AddressSanitizer 审计 leak，是工业级常态。</p>
-<h2 id="410-工业代码里的数据归位长什么样"><a class="header" href="#410-工业代码里的数据归位长什么样">4.10 工业代码里的数据归位长什么样</a></h2>
+<h2 id="49-工业代码里的数据归位长什么样"><a class="header" href="#49-工业代码里的数据归位长什么样">4.9 工业代码里的数据归位长什么样</a></h2>
 <p>我做的工业控制板项目里，数据归位是一个跨模块的纪律。每个驱动 <code>.c</code> 文件开头都遵循同一套结构：</p>
 <pre><code class="language-c">/* drivers/eeprom/ds2433.c · 简化结构 */
 
@@ -564,7 +561,7 @@ struct ds2433 *ds2433_top = &amp;ds2433_main;     /* 应用层句柄 */
 <li>跨模块 bug 锁定时，全局污染面小</li>
 </ul>
 <p>这就是工业级 C 代码的骨架。第 5 章会打开 STM32 HAL 库源码，看看 ST 工程师怎么遵守同一套规则。</p>
-<h2 id="411-跑一遍"><a class="header" href="#411-跑一遍">4.11 跑一遍</a></h2>
+<h2 id="410-跑一遍"><a class="header" href="#410-跑一遍">4.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/04-data-classification/pc
 make
 ./demo
@@ -613,12 +610,12 @@ make
 </code></pre>
 <p>Part 1 重现了全局变量的 bug：第二次 init 覆盖第一次，“红灯“操作的实际是绿灯的引脚。</p>
 <p>Part 2 演示数据归位完成形态：每个 LED 有自己的 <code>pin / brightness</code>，通过 <code>led_get_init_count()</code> 函数访问模块级数据，对象池满了 acquire 返回 NULL。</p>
-<h2 id="412-视频回放"><a class="header" href="#412-视频回放">4.12 视频回放</a></h2>
+<h2 id="411-视频回放"><a class="header" href="#411-视频回放">4.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1pAD9BmEu8/">《C 语言：你的全局变量·该死了｜C 语言封装篇终章·数据归位》</a></p>
 </blockquote>
-<p>视频里讲了白板类比（全局变量被路过的人擦掉）、部门文件夹类比（static 文件私有），节奏更紧凑。书里补了视频没讲透的 6 个细节（4.7 节）和工业代码的对照（4.10 节）。</p>
+<p>视频里讲了白板类比（全局变量被路过的人擦掉）、部门文件夹类比（static 文件私有），节奏更紧凑。书里补了视频没讲透的 6 个细节（4.7 节）和工业代码的对照（4.9 节）。</p>
 <p>封装篇到这里：第 1 章 struct + me、第 2 章 static + <code>/* private */</code> 纪律、第 3 章前缀 + init/deinit、第 4 章数据三级归位（实例 / 模块 / 常量）。所有零件凑齐了。</p>
 <p><img src="../assets/ch04/slide9_CvsCpp.png" alt="C 对 C++"></p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>

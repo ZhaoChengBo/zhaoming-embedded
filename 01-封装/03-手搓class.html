@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -475,9 +475,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p><code>led.h</code> / <code>led.c</code> / <code>motor.h</code> / <code>motor.c</code> / <code>main.c</code> 全部一字不改。两个模块照样跑，前缀照样区分得开。变化的只是这层 platform 胶水。</p>
 <p>真实工程里电机的 PWM 速度控制会写到 TIM 通道的 CCRx 寄存器，这里教学简化为 GPIO 高低电平。第 5 章会展开 HAL 怎么做这种映射。</p>
 <p>这一节用的是函数式包装的 platform 抽象，是教学简化版。真正工业级用虚函数表（ops 表），允许 runtime 切换平台。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="39-你现在的代码在-linux-用户态长什么样"><a class="header" href="#39-你现在的代码在-linux-用户态长什么样">3.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="310-工业代码里的模块长什么样"><a class="header" href="#310-工业代码里的模块长什么样">3.10 工业代码里的模块长什么样</a></h2>
+<h2 id="39-工业代码里的模块长什么样"><a class="header" href="#39-工业代码里的模块长什么样">3.9 工业代码里的模块长什么样</a></h2>
 <p>我做的工业控制板项目里，每个驱动模块都按这套命名规范组织。看几个真实模块的 <code>.h</code> 列名：</p>
 <pre><code>drivers/
 ├── led/
@@ -505,7 +503,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 </ul>
 <p><code>xxx_base</code> 是抽象父类（属于第 6 章继承的内容），<code>xxx_gpio</code> / <code>ds2433</code> / <code>max31827</code> 是具体实现。这层结构对应“虚函数表 + 具体设备的 ops 表“，是第 9 章到第 11 章的内容。</p>
 <p>到这里你能看出：你这一章学的命名规范，是工业代码的“地基“。50 个驱动文件全按这个规范命名，新人接手不用读所有文档，看文件名 + 函数名就知道哪个是哪个。</p>
-<h2 id="311-跑一遍"><a class="header" href="#311-跑一遍">3.11 跑一遍</a></h2>
+<h2 id="310-跑一遍"><a class="header" href="#310-跑一遍">3.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/03-handwritten-class/pc
 make
 ./demo
@@ -549,12 +547,12 @@ make
 </code></pre>
 <p><code>led_*</code> 和 <code>motor_*</code> 在同一个 main.c 里跑，没有任何冲突。<code>init</code> 失败有 <code>-1 / -2</code> 区分（NULL 指针 / 参数超范围），<code>initialized</code> 标志位拦住了“没 init 就用“的错误（返回 <code>-3</code>）。</p>
 <p>这就是一个工程纪律完整的 C 模块该有的样子。</p>
-<h2 id="312-视频回放"><a class="header" href="#312-视频回放">3.12 视频回放</a></h2>
+<h2 id="311-视频回放"><a class="header" href="#311-视频回放">3.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1dsQuBmEEx/">《你用 C 手搓了一个 class｜C 语言面向对象·封装篇》</a></p>
 </blockquote>
-<p>视频里讲了沙县小吃 / 兰州拉面的类比、门把手的 affordance 类比，节奏更紧凑。书里补了视频没讲透的 6 个细节（3.7 节）和工业代码的对照（3.10 节）。</p>
+<p>视频里讲了沙县小吃 / 兰州拉面的类比、门把手的 affordance 类比，节奏更紧凑。书里补了视频没讲透的 6 个细节（3.7 节）和工业代码的对照（3.9 节）。</p>
 <h2 id="下一章"><a class="header" href="#下一章">下一章</a></h2>
 <p>到这里 LED 和 motor 都是“工程纪律完整的模块“了。但回头看 <code>led.c</code> 文件开头，你可能还有几个全局变量：累计 init 次数、调试开关、最大亮度常量。</p>
 <p>这些全局变量都该死了。下一章把它们一个一个判刑。</p>

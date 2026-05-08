@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -430,7 +430,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>PWM 子类填了 <code>pwm_set_brightness</code>，按 duty 调亮度。GPIO 和 I2C 子类没填，<code>set_brightness</code> 字段保持 NULL。</p>
 <p>为什么这一章就把 <code>set_brightness</code> 加进 ops 表？因为后续章节代码包沿用同一份字段集，提前加进去，跨章演化更平滑。这一章的主线还是 container_of，<code>set_brightness</code> 字段只是顺便挂上。</p>
 <p>至于“<code>set_brightness</code> 字段为 NULL 怎么办“、“PWM 填、GPIO 不填这种’子类各自决定’怎么处理”，正是第 14 章「虚函数不实现 · 三种策略」的主题。这一章先把字段挂上，下一章展开机制。</p>
-<p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.12。</p>
+<p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.11。</p>
 <h3 id="1386-配套代码文件组织每个子类一个文件"><a class="header" href="#1386-配套代码文件组织每个子类一个文件">13.8.6 配套代码文件组织：每个子类一个文件</a></h3>
 <p>本章 <code>pc/</code> 目录沿用第 12 章的“每个子类一个文件“组织：</p>
 <pre><code>oop-in-c/code/13-container-of/pc/
@@ -447,9 +447,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>container_of 在 STM32 上是同一个宏，编译产物就是 ARM Cortex-M 的 <code>SUB Rd, Rn, #imm</code>。STM32 工程里你直接 <code>#include &lt;linux/types.h&gt;</code> 不行（那是内核头），但 STM32CubeIDE 的 <code>arm-none-eabi-gcc</code> 自带 <code>&lt;stddef.h&gt;</code>，offsetof 一直可用。把 § 13.5 那个三步宏放进 utility 头文件就能用。</p>
 <p>本节用的是函数式包装的教学简化版（4 个 <code>platform_gpio_*</code> 独立函数）。真正工业级的 platform 抽象用 ops 表（虚函数表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统），和工业代码对齐。</p>
 <p>完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/13-container-of/platform-mcu/stm32/"><code>oop-in-c/code/13-container-of/platform-mcu/stm32/</code></a>（用 <code>PIN_NUM('A', 13)</code> 编码 + <code>_gpio_table</code> 查表）。完整跑通的 STM32 工程见附录 B。</p>
-<h2 id="1310-linux-用户态完整工程"><a class="header" href="#1310-linux-用户态完整工程">13.10 Linux 用户态完整工程</a></h2>
-<p>Linux 用户态可以直接借 <code>&lt;stddef.h&gt;</code> 的 offsetof。绝大多数 user-space 项目自定义自己的 container_of 宏，比如 systemd、gobject、libnl 都各写一份，逻辑都一样。在 Linux 用户态写 OOP 风格 C 代码，container_of 这一招几乎是入场券。三种子类内部各自直接调 Linux 内核暴露的接口（GPIO 走 libgpiod，PWM 走 sysfs PWM，I2C 走 i2c-dev），container_of 这一招在哪个子类内部都用，跟平台无关，判断标准见 § 15.15。完整跑通的工程见附录 C。</p>
-<h2 id="1311-工业代码里的-container_of"><a class="header" href="#1311-工业代码里的-container_of">13.11 工业代码里的 container_of</a></h2>
+<h2 id="1310-工业代码里的-container_of"><a class="header" href="#1310-工业代码里的-container_of">13.10 工业代码里的 container_of</a></h2>
 <p>工业控制板 driver 里：</p>
 <pre><code class="language-c">/* drivers/encoder/encoder.h */
 struct encoder_base;
@@ -481,7 +479,7 @@ static int quad_read(struct encoder_base *me, int32_t *count)
 </code></pre>
 <p>整个工业项目里，10 多个 driver 模块，每个子类实现函数第一行都是 container_of。这一行已经稳定到所有同事看一眼就知道意思，不需要解释。</p>
 <p>读完这一章，你拿到内核源码、读到 driver 源码、读到 GObject 源码，第一行的 container_of 不会再让你头疼。</p>
-<h2 id="1312-跑一遍"><a class="header" href="#1312-跑一遍">13.12 跑一遍</a></h2>
+<h2 id="1311-跑一遍"><a class="header" href="#1311-跑一遍">13.11 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/13-container-of/pc
 make
 ./demo
@@ -529,7 +527,7 @@ offsetof(struct led_i2c,  base) = 0
 <li><code>[ERR] GPIO Pin10 ON (magic=0xCAFE)</code> 这一行里 <code>magic = 0xCAFE</code> 准确还原，证明 <code>container_of</code> 在 base 偏移 4 的布局下也能正确反推回 <code>struct led_gpio</code> 起点。</li>
 <li><code>--- breath stat ---</code> 段是 <code>led_set_brightness(handles[1], 60)</code> 和 <code>led_set_brightness(handles[1], 0)</code> 两次调用的输出。STAT 是 PWM 子类，填了 <code>pwm_set_brightness</code>，duty 从 60% 改到 0%。GPIO 和 I2C 子类没填这个字段，具体行为见第 14 章「虚函数不实现 · 三种策略」。</li>
 </ul>
-<h2 id="1313-视频回放"><a class="header" href="#1313-视频回放">13.13 视频回放</a></h2>
+<h2 id="1312-视频回放"><a class="header" href="#1312-视频回放">13.12 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1LEo4B5EZu/">《C 语言·向下转型｜container_of·从成员反推 struct》</a></p>
 </blockquote>

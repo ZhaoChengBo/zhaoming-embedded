@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -388,9 +388,7 @@ gpio_action_fn fp;        /* 简洁多了 */
 </code></pre>
 <p>应用层多了一行声明：<code>void (*fp)(uint8_t)</code>。把 <code>gpio_on</code> 存进 <code>fp</code>，再通过 <code>fp</code> 调用，跑出来的指令序列和直接调 <code>gpio_on</code> 几乎一样，多一次 LDR + 一次间接 BLX。在 STM32 这种 MCU 上完全无感。</p>
 <p>下一章把 <code>fp</code> 当作参数传给 <code>test_led</code>，开始有真实的工程含义。</p>
-<h2 id="78-你现在的代码在-linux-用户态长什么样"><a class="header" href="#78-你现在的代码在-linux-用户态长什么样">7.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>完整工程见附录 C。Linux 端 <code>gpio_on</code> 写 sysfs，应用层把 <code>gpio_on</code> 存进 <code>fp</code>、通过 <code>fp</code> 调用，行为和直接调 <code>gpio_on</code> 等价。Linux 用户态的 branch predictor 比 MCU 强得多，间接调用开销几乎看不出来。</p>
-<h2 id="79-跑一遍"><a class="header" href="#79-跑一遍">7.9 跑一遍</a></h2>
+<h2 id="78-跑一遍"><a class="header" href="#78-跑一遍">7.8 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/07-function-pointer/pc
 make
 ./demo
@@ -421,7 +419,7 @@ make
 </code></pre>
 <p>同一个变量 <code>fp</code>，存进不同的函数地址，拨出去通的就是不同的函数。<code>fp</code> 这个变量本身一字没改，里面存的数字变了一下，整个调用就走到了别处。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/07-function-pointer/"><code>oop-in-c/code/07-function-pointer/</code></a>。</p>
-<h2 id="710-视频回放"><a class="header" href="#710-视频回放">7.10 视频回放</a></h2>
+<h2 id="79-视频回放"><a class="header" href="#79-视频回放">7.9 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1AZdBBWEuj/">《C 语言：写死的函数怎么换｜函数指针·通讯录类比》</a></p>

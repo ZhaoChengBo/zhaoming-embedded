@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -410,10 +410,7 @@ int led_base_init(struct led_base *me, const struct led_ops *ops) {
 <p><code>led_base.h / led_base.c / led_gpio.h / led_gpio.c / led_pwm.h / led_pwm.c / main.c</code> 一字不改。</p>
 <p>但 <code>sizeof(struct led_base)</code> 从 8 字节涨到 12 字节（在 32 位 ARM 上 <code>ops</code> 4 + <code>name</code> 4 + <code>is_on</code> 1 + padding 3）。100 颗 LED 多用 400 字节 RAM。换来的是应用层完全不知道“调谁“这件事，加新 LED 不改驱动核心。在 STM32H7（1MB RAM）上完全划得来；在 ATmega328（2KB RAM）上要算账。</p>
 <p>本节用的是函数式包装的 platform 抽象层，是教学简化版（<code>platform_gpio_init / platform_gpio_write</code> 几个独立函数）。真正工业级的 platform 抽象用 ops 表的形式，把所有 platform 操作打包进一个 struct，应用层通过指针访问。第 16 章会把 platform 层按这个套路重构一遍，和工业代码对齐。</p>
-<h2 id="108-你现在的代码在-linux-用户态长什么样"><a class="header" href="#108-你现在的代码在-linux-用户态长什么样">10.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上 GPIO 子类内部直接调 libgpiod，应用层和 base 层一字不改（完整工程见附录 C）。Linux 用户态没有 platform 抽象层，内核 driver model 已经把 platform 抽象做完了，应用层再套一层是反工程（§ 15.15）。</p>
-<p>进程的 <code>.rodata</code> 段里多出 <code>led_ops_gpio / led_ops_pwm</code> 两张 const 表（每张 12 字节）。每个 LED 实例的 <code>.bss</code> 中多 4-8 字节的 <code>ops</code> 指针（32 位 4 字节，64 位 8 字节）。这一笔账和 PC / STM32 一样，跨平台一致。</p>
-<h2 id="109-工业代码里的-base--ops-字段"><a class="header" href="#109-工业代码里的-base--ops-字段">10.9 工业代码里的 base + ops 字段</a></h2>
+<h2 id="108-工业代码里的-base--ops-字段"><a class="header" href="#108-工业代码里的-base--ops-字段">10.8 工业代码里的 base + ops 字段</a></h2>
 <p>工业控制板项目里的 <code>led_base</code> 长这样：</p>
 <pre><code class="language-c">struct led_base {
 	const struct led_ops *ops;     /* 操作函数表, 第一个字段 */
@@ -447,7 +444,7 @@ int led_gpio_init(struct led_gpio *me, ...)
 <li><strong>ops 在 base 第一个字段</strong>。Linux 内核 <code>struct file</code> 把 <code>f_op</code> 也放在前面，<code>file_operations</code> 表也是 const 表</li>
 </ol>
 <p>这就是 Linux 内核 <code>struct file</code> 的设计骨架。每个打开的文件（<code>struct file *file</code>）通过 <code>file-&gt;f_op</code> 找到一张 ops 表（<code>file_operations</code>），里面装着 <code>read / write / ioctl</code> 等函数指针。各种文件系统（ext4 / NFS / procfs）各自填一张 ops 表，VFS 层通过 <code>file-&gt;f_op-&gt;...</code> 找到对应实现。机制和你这一章手写的一字不差，只是规模不同。</p>
-<h2 id="1010-跑一遍"><a class="header" href="#1010-跑一遍">10.10 跑一遍</a></h2>
+<h2 id="109-跑一遍"><a class="header" href="#109-跑一遍">10.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/10-vptr/pc
 make
 ./demo
@@ -458,7 +455,7 @@ make
 <li>调用阶段：同一个调用链 <code>me-&gt;ops-&gt;on(me)</code>，红灯走到 <code>gpio_on</code>（拉引脚），蓝灯走到 <code>pwm_on</code>（按 duty 配 PWM）。各做各的，互不干扰</li>
 </ul>
 <p>完整源码和实际输出见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/10-vptr/"><code>oop-in-c/code/10-vptr/</code></a>。</p>
-<h2 id="1011-视频回放"><a class="header" href="#1011-视频回放">10.11 视频回放</a></h2>
+<h2 id="1010-视频回放"><a class="header" href="#1010-视频回放">10.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1K3dSBsEJu/">《C 语言·ops 放进对象｜对象自带说明书·vptr 雏形》</a></p>

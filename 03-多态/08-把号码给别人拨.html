@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -296,11 +296,7 @@ void pwm_on(int channel)
 </code></pre>
 <p>signature 完全一样，调用方写 <code>test_led(gpio_on, gpio_off, 13)</code> 这一行 PC / STM32 都能编译通过。<code>test_led</code> 内部 <code>on(id)</code> 这一句机器码也完全相同，区别只在 <code>on</code> 这个函数指针指向哪段代码。</p>
 <p>这一章 snippet 是函数式的最朴素形态：每种硬件直接写 6 个独立函数。第三个参数 <code>id</code> 在 STM32 上 GPIO 当引脚号、PWM 当通道号、I2C 当从机地址。后续章节会把这 6 个函数收进 ops 表，再演化到 platform 层可切换的工业化形态。</p>
-<h2 id="88-你现在的代码在-linux-用户态长什么样"><a class="header" href="#88-你现在的代码在-linux-用户态长什么样">8.8 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端 6 个函数的 signature 一字不变，只是函数体改成走 sysfs / i2c-dev。完整工程见附录 C。</p>
-<p><code>test_led(on, off, id)</code> 同样一字不改。<code>gpio_on</code> PC 版打 stdout，Linux 版写 <code>/sys/class/gpio/gpioN/value</code> 节点，STM32 版调 <code>HAL_GPIO_WritePin</code>。三套实现，同一份 signature，同一份 <code>test_led</code> 内部 <code>on(id)</code> 调用。</p>
-<p>同 8.7 节，本章 snippet 是函数式最朴素形态，6 个独立函数。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="89-工业代码里的函数指针当参数"><a class="header" href="#89-工业代码里的函数指针当参数">8.9 工业代码里的函数指针当参数</a></h2>
+<h2 id="88-工业代码里的函数指针当参数"><a class="header" href="#88-工业代码里的函数指针当参数">8.8 工业代码里的函数指针当参数</a></h2>
 <p><code>test_led(on, off, id)</code> 这种“测试工具函数 + 函数指针入参“的形态，在工业代码里非常常见。模式是同一个：<strong>通用的循环 / 时序 / 测试逻辑写一份，被测对象的具体动作通过函数指针入参传进来</strong>。</p>
 <p>举几个例子：</p>
 <ul>
@@ -309,7 +305,7 @@ void pwm_on(int channel)
 <li><strong>通用排序 / 查找</strong>：标准库 <code>qsort(arr, n, size, compare)</code> 这一行就是函数指针当参数。<code>compare</code> 这只字不识 <code>arr</code> 是结构体还是 <code>int</code>，按你给的比较函数排就行。</li>
 </ul>
 <p><code>test_led</code> 是这一类工具函数最朴素的形态。一旦你在一份代码里写过这种函数，你就开始注意到工业代码里到处都是它的影子。</p>
-<h2 id="810-跑一遍"><a class="header" href="#810-跑一遍">8.10 跑一遍</a></h2>
+<h2 id="89-跑一遍"><a class="header" href="#89-跑一遍">8.9 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/08-callback/pc
 make
 ./demo
@@ -348,7 +344,7 @@ make
 </code></pre>
 <p>三段输出。同一个 <code>test_led</code> 函数体跑了三次，<code>[test] open / hold / close</code> 这三行都出自 <code>test_led</code> 内部，没动一个字符。每段中间夹的 <code>[GPIO] / [PWM] / [I2C]</code> 行，是调用方传进去的那对函数指针真正落到了哪段机器码。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/08-callback/"><code>oop-in-c/code/08-callback/</code></a>。</p>
-<h2 id="811-视频回放"><a class="header" href="#811-视频回放">8.11 视频回放</a></h2>
+<h2 id="810-视频回放"><a class="header" href="#810-视频回放">8.10 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1ysdWBUEQA/">《C 语言·函数指针传参｜把号码给别人拨·延迟决定》</a></p>

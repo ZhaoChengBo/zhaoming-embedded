@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -458,9 +458,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/12-upcasting/platform-mcu/stm32/"><code>oop-in-c/code/12-upcasting/platform-mcu/stm32/</code></a>（含 <code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code> 三个子类文件 + STM32 版 <code>board_init.c</code>）。完整跑通的 STM32 工程见附录 B。</p>
 <p>PWM 子类在真实硬件上会用 <code>HAL_TIM_PWM_Start</code> + <code>__HAL_TIM_SET_COMPARE</code>。I2C 子类会用 <code>HAL_I2C_Master_Transmit</code>。</p>
 <p>本节展示的是 ch11 起整本书统一的函数式包装：<code>platform_gpio_init / platform_gpio_write / platform_gpio_deinit / platform_gpio_read</code> 四个函数声明在 <code>common/platform.h</code>，PC 上跑 printf 模拟，STM32 上跑真实 HAL。上层一字不改。</p>
-<h2 id="1210-linux-用户态完整工程"><a class="header" href="#1210-linux-用户态完整工程">12.10 Linux 用户态完整工程</a></h2>
-<p>Linux 上 GPIO / PWM / I2C 三种子类内部各自直接调内核暴露的 libgpiod / sysfs PWM / i2c-dev，内核已经把 platform 抽象做完了，应用层再套一层是反工程（§ 15.15）。应用层向上转型的招数和 PC / STM32 一字不变：拿 <code>&amp;xxx_led.base</code> 就是 <code>struct led_base *</code>，应用层只对父类指针编程。换的是子类内部实现，不是这一招。完整跑通的工程见附录 C。</p>
-<h2 id="1211-工业代码里的向上转型长什么样"><a class="header" href="#1211-工业代码里的向上转型长什么样">12.11 工业代码里的向上转型长什么样</a></h2>
+<h2 id="1210-工业代码里的向上转型长什么样"><a class="header" href="#1210-工业代码里的向上转型长什么样">12.10 工业代码里的向上转型长什么样</a></h2>
 <p>工业控制板项目里，板级初始化是这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h（节选） */
 struct led_base;
@@ -495,7 +493,7 @@ led_off(red_led);
 </code></pre>
 <p>应用层代码里 <code>grep led_gpio</code> / <code>grep led_pwm</code> 全部 0 行。换硬件方案、换板子型号，应用层一行不动。</p>
 <p>这就是向上转型在真实工业项目里的最终形态。</p>
-<h2 id="1212-跑一遍"><a class="header" href="#1212-跑一遍">12.12 跑一遍</a></h2>
+<h2 id="1211-跑一遍"><a class="header" href="#1211-跑一遍">12.11 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/12-upcasting/pc
 make
 ./demo
@@ -527,7 +525,7 @@ make
 </code></pre>
 <p>开机阶段三行 <code>[base] "X" common init done</code> 是父类 <code>led_base_init</code> 打的，三种子类 init 第一行都调它把 ops 表填到 base，再各自跑硬件层 init（<code>[GPIO] Pin10 init as OUTPUT</code> 这一段就是 GPIO 子类 init 末尾把灯先关掉的过程）。</p>
 <p>两个业务函数，两种不同硬件，应用层一行 GPIO/PWM/I2C 字样都没写。这就是向上转型工程化之后的样子。</p>
-<h2 id="1213-视频回放"><a class="header" href="#1213-视频回放">12.13 视频回放</a></h2>
+<h2 id="1212-视频回放"><a class="header" href="#1212-视频回放">12.12 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1N6o4BFEvG/">《C 语言·向上转型｜一个指针指所有 LED·父类指针·设备句柄》</a></p>
 </blockquote>

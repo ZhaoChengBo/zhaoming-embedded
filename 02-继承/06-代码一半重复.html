@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -183,7 +183,7 @@
                         <h1 id="第-6-章--你的代码一半是重复的--共性提取的痛点"><a class="header" href="#第-6-章--你的代码一半是重复的--共性提取的痛点">第 6 章 · 你的代码一半是重复的 · 共性提取的痛点</a></h1>
 <p>配套代码：<a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/"><code>oop-in-c/code/06-inherit-pain/</code></a></p>
 <h2 id="61-一个真实场景"><a class="header" href="#61-一个真实场景">6.1 一个真实场景</a></h2>
-<p>第 5 章你已经把 LED 写干净了：<code>struct led { pin, brightness, is_on }</code>，三套平台 PC / STM32 / Linux 用户态都能跑。</p>
+<p>第 5 章你已经把 LED 写干净了：<code>struct led { pin, brightness, is_on }</code>，PC 模拟版 + STM32 真机版都能跑。</p>
 <p>但板子上的 LED 不止一种点法。报警灯接 GPIO，呼吸灯接 PWM，扩展板上还有一颗 I2C 控制的 LED。三种 LED，每一颗都需要：</p>
 <ul>
 <li><code>name</code>：日志打印用（比如 <code>[LED red] turning on</code>）</li>
@@ -513,9 +513,7 @@ void platform_gpio_write(uint8_t pin, bool value)
 <p>注意：<code>led_base.h</code>、<code>led_base.c</code>、<code>led_gpio.h</code>、<code>led_gpio.c</code>、<code>led_pwm.h</code>、<code>led_pwm.c</code>、<code>main.c</code> 一字不改。</p>
 <p>继承的所有变化都在驱动层内部。平台胶水的写法不变，因为父类抽象的是“驱动数据怎么组织“，不是“硬件怎么访问“。</p>
 <p>本节用的还是函数式包装的 platform 抽象层，是教学简化版。真正工业级用虚函数表（ops 表）。第 16 章会把 platform 层从函数式升级成 ops 表式（gpio_chip 子系统）。</p>
-<h2 id="69-你现在的代码在-linux-用户态长什么样"><a class="header" href="#69-你现在的代码在-linux-用户态长什么样">6.9 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 上同款抽象，完整工程见附录 C。</p>
-<h2 id="610-工业代码里的父类长什么样"><a class="header" href="#610-工业代码里的父类长什么样">6.10 工业代码里的父类长什么样</a></h2>
+<h2 id="69-工业代码里的父类长什么样"><a class="header" href="#69-工业代码里的父类长什么样">6.9 工业代码里的父类长什么样</a></h2>
 <p>工业控制板项目里，base 抽象是这样的（不是完整代码，是片段）：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;        /* forward decl */
@@ -544,7 +542,7 @@ extern struct led_base *red_led;
 </ol>
 <p>第 3 点是这本书后面要讲的“向上转型“（第 12 章）。父类指针把所有具体类型藏起来，应用层只看到一个统一的 <code>struct led_base *</code>。</p>
 <p>但骨架就是你这一章学的：<strong>子类把父类放在第一个字段，硬件特定字段下沉到子类</strong>。剩下的复杂度都是这条骨架上的演化。</p>
-<h2 id="611-跑一遍"><a class="header" href="#611-跑一遍">6.11 跑一遍</a></h2>
+<h2 id="610-跑一遍"><a class="header" href="#610-跑一遍">6.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/06-inherit-pain/pc
 make
 ./demo
@@ -571,7 +569,7 @@ make
 </code></pre>
 <p><code>led_base_init</code> 这一行代码，给 GPIO LED 和 PWM LED 都跑了。<code>led_base_get_name</code> 这个函数写了一次，伺候两个子类。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/06-inherit-pain/"><code>oop-in-c/code/06-inherit-pain/</code></a>。</p>
-<h2 id="612-视频回放"><a class="header" href="#612-视频回放">6.12 视频回放</a></h2>
+<h2 id="611-视频回放"><a class="header" href="#611-视频回放">6.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1hvQnB6EBa/">《你的代码·有一半是复制粘贴的｜C 语言继承·struct 嵌套》</a></p>

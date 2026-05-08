@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -391,11 +391,7 @@ struct led_ops {
 </code></pre>
 <p>100 颗 LED 仅有 24 字节 ops 表代价。每颗 LED 自己的 struct 实例（在 <code>.bss</code> 或栈上）和这张 ops 表无关。</p>
 <p>本节用的还是函数式包装的 platform 抽象层（<code>platform_gpio_write(pin, value)</code> 这种独立函数），是教学简化版。真正工业级的 platform 抽象用 ops 表的形式。后面章节会把 platform 层从函数式重构成 ops 表式，和工业代码对齐。</p>
-<h2 id="97-你现在的代码在-linux-用户态长什么样"><a class="header" href="#97-你现在的代码在-linux-用户态长什么样">9.7 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 端的 ops 表写法和 PC / STM32 完全一样，<code>gcc / clang</code> 把 <code>const struct</code> 放到 <code>.rodata</code>，进程加载时只读映射，全进程共享。</p>
-<p>不同的是 Linux 上<strong>没有 platform 抽象层</strong>。GPIO 子类内部直接调 libgpiod（<code>gpiod_line_set_value</code>），背后是 Linux 内核完整的 gpio chardev / gpiolib（内核已经把 platform 抽象做完了，应用层再套一层是反工程）。完整工程见附录 C。</p>
-<p><code>led_base.h / led_base.c / main.c</code> 一字不改。“换硬件不改应用“在 Linux 上兑现成“换子类内部实现，应用层和 base 层完全一致”。判断标准见 § 15.15。</p>
-<h2 id="98-工业代码里的-ops-表"><a class="header" href="#98-工业代码里的-ops-表">9.8 工业代码里的 ops 表</a></h2>
+<h2 id="97-工业代码里的-ops-表"><a class="header" href="#97-工业代码里的-ops-表">9.7 工业代码里的 ops 表</a></h2>
 <p>工业控制板项目里，每个驱动都有一张 ops 表。LED 驱动这样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;
@@ -416,7 +412,7 @@ const struct led_ops led_ops_gpio = {
 <p>注意 ops 表里函数指针的参数是 <code>struct led_base *</code>，不是某个具体子类。所有子类的 ops 表必须类型一致。</p>
 <p>EEPROM、风扇、蜂鸣器、按键这些 driver 的 ops 表结构各不相同，但写法都是这一套：定义 ops struct，每种实现 fill 一张 const ops 表，外部传一张表进去就跑对应的实现。</p>
 <p>这就是 Linux 内核 <code>struct file_operations</code> 的 OOP 骨架。你这一章亲手推了一遍。</p>
-<h2 id="99-跑一遍"><a class="header" href="#99-跑一遍">9.9 跑一遍</a></h2>
+<h2 id="98-跑一遍"><a class="header" href="#98-跑一遍">9.8 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/09-ops-table/pc
 make
 ./demo
@@ -448,7 +444,7 @@ make
 </code></pre>
 <p><code>test_led</code> 函数体没改。换一张 ops 表，跑出完全不同的行为。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/09-ops-table/"><code>oop-in-c/code/09-ops-table/</code></a>。</p>
-<h2 id="910-视频回放"><a class="header" href="#910-视频回放">9.10 视频回放</a></h2>
+<h2 id="99-视频回放"><a class="header" href="#99-视频回放">9.9 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1iLdrBUEvf/">《C 语言·ops 操作表｜参数长到换行·虚函数表》</a></p>

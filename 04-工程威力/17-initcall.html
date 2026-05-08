@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -524,7 +524,7 @@ MODULE_INIT(led_stm32_init);
 </code></pre>
 <p><code>main</code> 里启动期 <code>do_initcalls()</code> 调一次。每加一个新驱动就多一份 <code>.c</code> + 一行 <code>MODULE_INIT</code>，<code>main</code> 0 改动，链接器自动把所有驱动收集到那个段里。</p>
 <p>完整说明见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/17-initcall/platform-mcu/stm32/README.md"><code>oop-in-c/code/17-initcall/platform-mcu/stm32/README.md</code></a>。</p>
-<h2 id="1711-你现在的代码在-linux-上长什么样"><a class="header" href="#1711-你现在的代码在-linux-上长什么样">17.11 你现在的代码在 Linux 上长什么样</a></h2>
+<h2 id="1711-linux-用户态对照attributeconstructor-同款机制"><a class="header" href="#1711-linux-用户态对照attributeconstructor-同款机制">17.11 Linux 用户态对照·<strong>attribute</strong>((constructor)) 同款机制</a></h2>
 <p>Linux 用户态代码（不写内核驱动）也能用同一招。glibc 的 <code>__attribute__((constructor))</code> 把函数指针塞进 <code>.init_array</code> 段，crt0 启动期遍历。等价于你的 <code>MODULE_INIT</code>：</p>
 <pre><code class="language-c">__attribute__((constructor))
 static void my_init(void)

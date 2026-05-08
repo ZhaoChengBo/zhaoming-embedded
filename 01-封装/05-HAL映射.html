@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -367,16 +367,7 @@ HAL_Delay(500);
 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 </code></pre>
 <p>PC 模拟版和 STM32 真实版的接口几乎一字不差。前 4 章学的所有概念，在真实硬件上原样落地。</p>
-<h2 id="510-你现在的代码在-linux-用户态长什么样"><a class="header" href="#510-你现在的代码在-linux-用户态长什么样">5.10 你现在的代码在 Linux 用户态长什么样</a></h2>
-<p>Linux 用户态没有 STM32 那种 BSRR 寄存器直写。从用户态到硬件的路径是这样：</p>
-<pre><code class="language-c">write("/sys/class/gpio/gpio13/value", "1")
-   -&gt; kernel 调 gpio_chip 的 .set 方法
-   -&gt; 具体 GPIO controller driver
-   -&gt; 最终还是 BSRR 或类似的硬件寄存器
-</code></pre>
-<p>sysfs 的“把硬件当文件“机制怎么和内核的 <code>file_operations</code> + <code>gpio_chip</code> 衔接起来：<code>gpio_chip</code> 是第 16 章的内容，<code>file_operations</code> 是第 18 章 § 18.1 的内容。这一章先看到“用户态调用还是同一个套路“。</p>
-<p>完整工程见附录 C（新内核推荐 libgpiod 替代 sysfs，附录里展开）。</p>
-<h2 id="511-工业代码里的对应"><a class="header" href="#511-工业代码里的对应">5.11 工业代码里的对应</a></h2>
+<h2 id="510-工业代码里的对应"><a class="header" href="#510-工业代码里的对应">5.10 工业代码里的对应</a></h2>
 <p>我做的工业控制板项目里所有的驱动都按 HAL 这套路子组织。每个底层 driver 都有自己的 <code>&lt;MOD&gt;_TypeDef</code>、自己的 init/deinit、自己的命名前缀。</p>
 <p>随便举一个例子。DS2433（1-Wire EEPROM）的头文件骨架：</p>
 <pre><code class="language-c">/* drivers/eeprom/ds2433.h - DS2433 1-Wire EEPROM */
@@ -403,7 +394,7 @@ int ds2433_write(ds2433_t *me, uint32_t addr, const void *buf, size_t n);
 </blockquote>
 <p>字段 / 命名 / 生命周期一应俱全，和 HAL 库的 GPIO 是同一个骨架。</p>
 <p>如果你有项目维护经验，应该能看出来：50 个驱动按这套路子写完，新人接手看一个文件就懂结构。这就是命名规范的复利效应。</p>
-<h2 id="512-跑一遍"><a class="header" href="#512-跑一遍">5.12 跑一遍</a></h2>
+<h2 id="511-跑一遍"><a class="header" href="#511-跑一遍">5.11 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/05-hal-mapping/pc
 make
 ./demo
@@ -435,7 +426,7 @@ make
 ==============================================
 </code></pre>
 <p>教学版用真实 HAL 命名跑了一个最小例子。所有概念对应关系一目了然。</p>
-<h2 id="513-视频回放"><a class="header" href="#513-视频回放">5.13 视频回放</a></h2>
+<h2 id="512-视频回放"><a class="header" href="#512-视频回放">5.12 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1feQbBVECg/">《HAL 库几千个函数·就一个套路｜C 语言封装·源码验证》</a></p>

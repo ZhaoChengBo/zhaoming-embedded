@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -400,9 +400,7 @@ struct led_gpio led_run;   led_gpio_init(&amp;led_run, "RUN", 6);
 </code></pre>
 <p>这一节 platform 层用的是函数式包装的教学简化版（几个独立函数 <code>platform_gpio_init / platform_gpio_write / ...</code>），和 ch01 起一字不变。真正工业级的 platform 抽象用 ops 表的形式做成可切换。这件事第 16 章会专门展开。</p>
 <p>完整片段见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/platform-mcu/stm32/"><code>oop-in-c/code/11-polymorphism/platform-mcu/stm32/</code></a>（每个子类一个文件：<code>led_gpio.c</code> / <code>led_pwm.c</code> / <code>led_i2c.c</code>，分别走 HAL_GPIO_* / HAL_TIM_PWM_* / HAL_I2C_Master_Transmit）。完整跑通的 STM32 工程见附录 B。</p>
-<h2 id="119-linux-用户态完整工程"><a class="header" href="#119-linux-用户态完整工程">11.9 Linux 用户态完整工程</a></h2>
-<p>Linux 上 GPIO / PWM / I2C 三种子类各自直接调内核暴露的 libgpiod / sysfs PWM / i2c-dev，应用层 <code>led_base / main.c</code> 一字不改，“换硬件不改应用“在 Linux 上兑现成“换子类内部实现”。完整跑通的工程见附录 C。</p>
-<h2 id="1110-工业代码里的多态"><a class="header" href="#1110-工业代码里的多态">11.10 工业代码里的多态</a></h2>
+<h2 id="119-工业代码里的多态"><a class="header" href="#119-工业代码里的多态">11.9 工业代码里的多态</a></h2>
 <p>工业控制板项目里的 LED 驱动到这一章已经和书里你写的几乎一模一样：</p>
 <pre><code class="language-c">/* drivers/led/led.h */
 struct led_base;
@@ -422,7 +420,7 @@ struct led_base {
 </code></pre>
 <p>应用层调一次 <code>led_off(handle)</code>，背后是 <code>me-&gt;ops-&gt;off(me)</code> 这一行 dispatch，不管底下挂的是 GPIO 灯、PWM 灯还是 I2C 矩阵，调用方完全不知道走到哪个具体实现，落到对的就行。下一章把“应用层手里这些 <code>struct led_base *</code> 句柄从哪来“展开。</p>
 <p>这就是 Linux 内核 / Zephyr / GObject / 你这一章手写的代码同一种 dispatch 机制。OOP 不是 C++ 的特权，是工业代码里很普遍的做法。</p>
-<h2 id="1111-跑一遍"><a class="header" href="#1111-跑一遍">11.11 跑一遍</a></h2>
+<h2 id="1110-跑一遍"><a class="header" href="#1110-跑一遍">11.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/11-polymorphism/pc
 make
 ./demo
@@ -453,7 +451,7 @@ make
 </code></pre>
 <p>注意 ops 地址：三颗灯各自指向不同的 ops 表（<code>led_ops_gpio</code> / <code>led_ops_pwm</code> / <code>led_ops_i2c</code>），具体地址因 build 环境会变。同一个循环，三种硬件机制（拉引脚、配 duty、写 I2C 寄存器）各自 dispatch 到对的实现，应用层一字不知谁是谁。</p>
 <p>完整源码见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/11-polymorphism/"><code>oop-in-c/code/11-polymorphism/</code></a>。</p>
-<h2 id="1112-视频回放"><a class="header" href="#1112-视频回放">11.12 视频回放</a></h2>
+<h2 id="1111-视频回放"><a class="header" href="#1111-视频回放">11.11 视频回放</a></h2>
 <p>想听口播版的可以看 B 站这一期视频：</p>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1FzonBiE9M/">《C 语言·多态｜同名函数不同行为·ops dispatch》</a></p>

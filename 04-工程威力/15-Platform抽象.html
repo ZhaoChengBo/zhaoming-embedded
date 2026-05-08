@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -592,7 +592,7 @@ static const struct platform_pin_ops _stm32_pin_ops = {
 </code></pre>
 <p><code>drivers/led/led_gpio.c</code> 子类调 <code>platform_pin_write(self-&gt;pin, ...)</code>, framework 内部 dispatch 就落到 <code>_stm32_pin_write</code>, 最终 <code>HAL_GPIO_WritePin -&gt; GPIOx-&gt;BSRR = (1u &lt;&lt; pin)</code>, 一次 32 位 store, 原子。</p>
 <p>PIN 编码: 高 4 位 port (字母 A-Z 偏移), 低 4 位 num. PA.0 = 0x00, PD.12 = 0x3C, PI.14 = 0x8E。一份 <code>uint8_t</code> 同时编码 port 字母和 pin 号, 接口签名只有一个 <code>pin</code> 参数 – 换 MCU 时接口不动, 解码表跟着换。</p>
-<h2 id="1511-你现在的代码在-linux-用户态长什么样"><a class="header" href="#1511-你现在的代码在-linux-用户态长什么样">15.11 你现在的代码在 Linux 用户态长什么样</a></h2>
+<h2 id="1511-linux-用户态对照内核做完别再抽"><a class="header" href="#1511-linux-用户态对照内核做完别再抽">15.11 Linux 用户态对照·内核做完别再抽</a></h2>
 <p>Linux 用户态实现这一套, <strong>禁自抽 platform 层</strong>, 内核已经做完。libgpiod / sysfs PWM / i2c-dev 这一组接口本身就是内核 driver model 暴露给用户态的 OOP 接口, 应用层再套一层 <code>platform_gpio_write -&gt; gpiod_line_set_value</code> 就是过度封装, 没拦下任何变化, 反而多了一层没意义的 indirection。</p>
 <p><code>linux-driver/userspace/</code> 给的就是 “内核做完别再抽” 的代码兑现版本: <code>led_gpio.c</code> 直接 <code>gpiod_line_set_value(self-&gt;line, ...)</code>, <code>led_pwm.c</code> 直接写 <code>/sys/class/pwm/pwmchipN/pwmM/duty_cycle</code>, <code>led_i2c.c</code> 直接 <code>open("/dev/i2c-1") + ioctl(I2C_SLAVE) + write(fd, [reg, val], 2)</code>. 没有 <code>platform_gpio_init</code> 这种自抽中间层。父类 ops 表保留 (OOP 抽象任何平台都该有), 但 platform 抽象层没有, 内核已经做完。</p>
 <p>LED 这种通用外设 Linux 内核已经有 <code>drivers/leds/leds-gpio.c</code> 这份内核驱动 – 标准 driver model 写好的版本, 上千种板子用过。所以本目录 <code>linux-driver/</code> 不再贴自家内核驱动版本, 应用层只走用户态 libgpiod / sysfs / i2c-dev 三条路径。要看真实工业级原型, 直接读内核源 <code>drivers/leds/leds-gpio.c</code>, 完整论述见 § 15.15 + ch16 § 16.13 + 附录 C。“应用层 vs 内核层“这个判断标准 ch16 § 16.14 还会展开。</p>

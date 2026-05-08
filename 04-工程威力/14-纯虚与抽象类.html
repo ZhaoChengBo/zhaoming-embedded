@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-545adf65.js";
+            window.path_to_searchindex_js = "../searchindex-acf94d84.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -438,9 +438,7 @@ public:
 	} while (0)
 </code></pre>
 <p>错误日志写到非易失存储，下次开机能拉出来看哪一行炸了。完整 STM32 snippet 见 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/14-pure-virtual/platform-mcu/stm32/"><code>oop-in-c/code/14-pure-virtual/platform-mcu/stm32/</code></a>（用 <code>PIN_NUM('A', 13)</code> 编码 + <code>_gpio_table</code> 查表）。完整跑通的 STM32 工程见附录 B。</p>
-<h2 id="1410-linux-用户态完整工程"><a class="header" href="#1410-linux-用户态完整工程">14.10 Linux 用户态完整工程</a></h2>
-<p>Linux 用户态 assert 直接走 glibc 的实现，会把诊断信息打到 stderr 然后 abort。core dump 如果 ulimit 开了，gdb 拉出来能看到完整调用栈。子类内部直接调内核接口（GPIO 走 libgpiod，PWM 走 sysfs PWM）。“必填走 assert / 选填走父类默认行为“的纪律落在父类统一接口里，跟平台无关。判断标准见 § 15.15。完整跑通的工程见附录 C。</p>
-<h2 id="1411-工业代码里的策略选择"><a class="header" href="#1411-工业代码里的策略选择">14.11 工业代码里的策略选择</a></h2>
+<h2 id="1410-工业代码里的策略选择"><a class="header" href="#1410-工业代码里的策略选择">14.10 工业代码里的策略选择</a></h2>
 <p>工业控制板的 led 模块用混合策略（on / off 必填，set_brightness 选填），和本章 14.3 节一致。motor 模块就不一样，motor_base 的 ops 表有 24 个 op，全部必填：</p>
 <pre><code class="language-c">struct motor_ops {
 	int (*init)(struct motor_base *me, const struct motor_cfg *cfg);
@@ -456,7 +454,7 @@ public:
 </code></pre>
 <p>电机这种安全相关、行为复杂的对象，每一个 op 子类都必须明确表态，能做就实现，不能做就报错返回。没有“合理默认“。motor_ops 是接口风格的典型。</p>
 <p>判据回到 14.7.3：<strong>有没有合理的默认</strong>。没有，全必填，做成接口。有，混合。</p>
-<h2 id="1412-跑一遍"><a class="header" href="#1412-跑一遍">14.12 跑一遍</a></h2>
+<h2 id="1411-跑一遍"><a class="header" href="#1411-跑一遍">14.11 跑一遍</a></h2>
 <pre><code>cd oop-in-c/code/14-pure-virtual/pc
 make
 ./demo
@@ -490,7 +488,7 @@ make
 </code></pre>
 <p>GPIO 灯调 set_brightness 走默认行为（“no dimming support, skip”），不崩。PWM 灯三件套全填，每次都走子类。sensor 三件套全必填，调过去都能进子类实现。</p>
 <p>如果你想体验“忘了填 on“的崩溃：把 <code>led_gpio_init</code> 里的 <code>led_base_init(&amp;me-&gt;base, name, &amp;led_ops_gpio);</code> 这一行注释掉，<code>me-&gt;base.ops</code> 就是没装上的状态，再编译跑，<code>led_on</code> 里的 assert 立刻报错。</p>
-<h2 id="1413-视频回放"><a class="header" href="#1413-视频回放">14.13 视频回放</a></h2>
+<h2 id="1412-视频回放"><a class="header" href="#1412-视频回放">14.12 视频回放</a></h2>
 <blockquote>
 <p><a href="https://www.bilibili.com/video/BV1ZeoxB5EGS/">《C 语言·虚函数不实现会怎样｜纯虚·虚函数·接口》</a></p>
 </blockquote>
