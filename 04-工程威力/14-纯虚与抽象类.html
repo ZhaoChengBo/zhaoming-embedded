@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ea4704e9.js";
+            window.path_to_searchindex_js = "../searchindex-77bf0698.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -269,15 +269,16 @@ const struct led_ops led_ops_gpio = {
 <p><img src="../assets/ch14/slide3_默认实现.png" alt="选填"></p>
 <h2 id="144-全必填策略--接口interface"><a class="header" href="#144-全必填策略--接口interface">14.4 全必填策略 · 接口（interface）</a></h2>
 <p>把策略推到极致：如果一张 ops 表里每一个 op 都是必填呢？</p>
-<p><code>sensor_base.h</code> 声明一份完全独立的父类，结构和 led_base 一模一样：一颗 <code>ops</code> 指针打头，加一个名字字段。区别只在统一接口怎么处理 NULL。</p>
-<pre><code class="language-c">/* sensor.h */
+<p>LED 这个例子里 <code>set_brightness</code> 天然是选填（GPIO 灯没法调光），没法演示“全部必填“长什么样。换一个对象——传感器 sensor——它的 <code>read</code> / <code>calibrate</code> / <code>self_test</code> 三件套都是必填：一个 sensor 不能读，或者不能校准，或者不能自检，它就不算 sensor。</p>
+<p><code>sensor_base.h</code> 声明一份完全独立的父类，结构和 led_base 一模一样：一颗 <code>ops</code> 指针打头，加一个名字字段。两条线（led 和 sensor）的文件组织也一字对照——父类公开头（字段集 + ops 表 + 共有 init + 父类统一接口）集中在 <code>sensor_base.h / .c</code>，子类（temp_sensor）一对独立的 <code>sensor_temp.h / .c</code>。区别只在统一接口怎么处理 NULL。</p>
+<pre><code class="language-c">/* sensor_base.h */
 struct sensor_ops {
 	int (*read)(struct sensor_base *me, int32_t *out);
 	int (*calibrate)(struct sensor_base *me);
 	int (*self_test)(struct sensor_base *me);
 };
 </code></pre>
-<pre><code class="language-c">/* sensor.c */
+<pre><code class="language-c">/* sensor_base.c */
 int sensor_read(struct sensor_base *me, int32_t *out)
 {
 	if (!me || !out)
@@ -410,23 +411,27 @@ public:
 </code></pre>
 <p>GPIO 灯虽然不支持真调光，亮度大于 50% 就开、小于就关，也是一种合理默认。</p>
 <p>默认行为是父类设计的责任。子类要的“非默认“才填 ops 字段。</p>
-<h3 id="1476-配套代码文件组织每个子类一个文件"><a class="header" href="#1476-配套代码文件组织每个子类一个文件">14.7.6 配套代码文件组织：每个子类一个文件</a></h3>
-<p>本章 <code>pc/</code> 目录沿用第 12、13 章的“每个子类一个文件“组织：</p>
+<h3 id="1476-配套代码文件组织封装延续-ch12--ch13"><a class="header" href="#1476-配套代码文件组织封装延续-ch12--ch13">14.7.6 配套代码文件组织：封装延续 ch12 / ch13</a></h3>
+<p>本章 <code>pc/</code> 目录沿用第 12、13 章的“每个子类一个文件 + leds.h + xxx_board_init.c“封装：</p>
 <pre><code>oop-in-c/code/14-pure-virtual/pc/
-├── led_base.h / led_base.c    led 父类字段集 + 共有 init + 父类统一接口（必填 + 选填）
-├── led.h                      led 公开接口集中点（ops 表字段集 + led_on/off/set_brightness 声明）
+├── led_base.h / led_base.c    led 父类层公开头：字段集 + ops 表 + 共有 init + 父类统一接口（必填 + 选填）
 ├── led_gpio.h / led_gpio.c    GPIO 子类（只填 on / off，演示选填策略）
 ├── led_pwm.h  / led_pwm.c     PWM 子类（三件套全填）
-├── sensor_base.h / .c         sensor 父类字段集 + 共有 init（独立 base 线）
-├── sensor.h    / sensor.c     sensor 父类统一接口（全必填 · 接口风格） + temp_sensor 子类
+├── leds.h                     LED 模块对外暴露的全局句柄
+├── led_board_init.c           LED 板级配置（GPIO + PWM 实例化 + 句柄绑定）
+├── sensor_base.h / .c         sensor 父类层公开头：字段集 + ops 表 + 共有 init + 父类统一接口（全必填 · 接口风格）
+├── sensor_temp.h / .c         temp_sensor 子类（三件套全填）
+├── sensors.h                  sensor 模块对外暴露的全局句柄
+├── sensor_board_init.c        sensor 板级配置
 ├── container_of.h             第 13 章学的三步宏
-└── main.c                     跑 demo
+└── main.c                     跑 demo（应用层零硬件字样）
 </code></pre>
-<p><code>led</code> 这条线和 <code>sensor</code> 这条线是两份完全独立的父类。<code>led_base</code> 演示必填 + 选填混合策略，<code>sensor_base</code> 演示全必填的接口策略。把它们放在同一个工程里，主要是让“同一份字段集类型 + 不同 NULL 处理纪律“在一次 <code>./demo</code> 里看全。</p>
-<p><code>sensor</code> 这条线本章只有一种子类（temp_sensor），写在 <code>sensor.c</code> 里，没有进一步拆分子类文件 – 单子类不需要“按子类一文件“组织。后续章节如果引入第二种 sensor 子类（比如 pressure_sensor），再拆出独立的 <code>pressure_sensor.h</code> / <code>.c</code>。</p>
+<p>三种 ops 策略（必填 / 选填 / 接口）是子类内部 + 父类统一接口的事，<strong>跟应用层封装层无关</strong>。所以 <code>main.c</code> 在 ch12 / ch13 的封装基础上一字不退：只 <code>#include "leds.h"</code> + <code>#include "sensors.h"</code>，看父类指针句柄走父类统一接口跑三段演示。</p>
+<p><code>led</code> 这条线和 <code>sensor</code> 这条线是两份完全独立的父类。<code>led_base</code> 演示必填 + 选填混合策略，<code>sensor_base</code> 演示全必填的接口策略。把它们放在同一个工程里，主要是让“同一份字段集类型 + 不同 NULL 处理纪律“在一次 <code>./demo</code> 里看全。每个外设各一份 <code>xxx_board_init.c</code>（LED 模块的 <code>led_board_init.c</code> + sensor 模块的 <code>sensor_board_init.c</code>），谁的硬件参数谁负责，对应真实工程“每个外设各管自己“的工程纪律。</p>
+<p>两条线的文件组织一致：父类层公开头（字段集 + ops 表 + 共有 init + 父类统一接口）集中在 <code>xxx_base.h / .c</code> 一对文件，子类各自一对独立的 <code>.h / .c</code>。<code>sensor</code> 这条线本章只有一种子类 <code>temp_sensor</code>，对应 <code>sensor_temp.h / sensor_temp.c</code>；后续章节如果引入第二种 sensor 子类（比如 <code>pressure_sensor</code>），再加一对 <code>sensor_pressure.h / .c</code> 即可，原有文件一字不动。</p>
 <h2 id="148-工程合同"><a class="header" href="#148-工程合同">14.8 工程合同</a></h2>
 <p>接口是一份合同 · 签了就必须全部履行。</p>
-<p><img src="../assets/ch14/slide6_CvsCpp.png" alt="金句"></p>
+<!-- TODO: 切独立 slide7_金句.png（金句"接口是一份合同·签了就必须全部履行"，不复用 § 14.6 那张 C vs C++ 对比图） -->
 <h2 id="149-你现在的代码在-stm32-上长什么样"><a class="header" href="#149-你现在的代码在-stm32-上长什么样">14.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>assert 在 STM32 上要小心：默认实现会调 <code>__assert_func</code>，里面常常是 <code>printf("..."); abort()</code>。printf 在 MCU 上要 retarget UART，abort 默认会跑 <code>_exit</code> 死循环。生产代码倾向于把 assert 替换成项目自己的错误日志 + 复位机制：</p>
 <pre><code class="language-c">#define ASSERT(cond)							\
@@ -464,15 +469,15 @@ make
   ch14 - pure virtual / virtual / interface
 =========================================
   [base] "ERR" common init done, ops=...
-[GPIO] Pin10 init as OUTPUT
-[GPIO] Pin10 -&gt; LOW (OFF)
+[GPIO] PA.10 init as OUTPUT
+[GPIO] PA.10 -&gt; LOW (OFF)
   [base] "STAT" common init done, ops=...
   [base] "TEMP" sensor common init done, ops=...
 
 --- 1. GPIO LED, no dimming support ---
-[GPIO] Pin10 -&gt; HIGH (ON)
+[GPIO] PA.10 -&gt; HIGH (ON)
   [ERR] GPIO Pin10 ON
-[GPIO] Pin10 -&gt; LOW (OFF)
+[GPIO] PA.10 -&gt; LOW (OFF)
   [ERR] GPIO Pin10 OFF
   [ERR] no dimming support, skip (brightness=50)
 

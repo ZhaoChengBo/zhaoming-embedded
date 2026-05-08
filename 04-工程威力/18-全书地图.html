@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ea4704e9.js";
+            window.path_to_searchindex_js = "../searchindex-77bf0698.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -468,7 +468,7 @@ do_initcalls      =  crt0
 <li><strong>container_of 反推</strong>（成员地址 - offsetof = 外层 struct 起点）</li>
 <li><strong>多态 dispatch</strong>（<code>me-&gt;ops-&gt;op(me)</code>，一行 dispatch 到具体子类实现）</li>
 <li><strong>必填 + 选填 + 接口策略</strong>（assert NULL / 父类提供默认 / 全 op 必填的接口）</li>
-<li><strong>板级初始化分离硬件配置</strong>（component_cfg + board_init.c，硬件描述独立成目录，往设备树演化）</li>
+<li><strong>板级初始化分离硬件配置</strong>（component_cfg + xxx_board_init.c，每个外设各一份板级文件，硬件描述独立成目录，往设备树演化）</li>
 <li><strong>Platform 抽象隔离芯片变化</strong>（一份 driver + N 份 platform 适配 = N+M 不再 N×M）</li>
 <li><strong>链接自动初始化</strong>（<code>__attribute__((section()))</code> + 链接器收集 + 启动期遍历，加新驱动 main 一字不动）</li>
 </ol>
@@ -539,7 +539,7 @@ static struct s3_led_pwm  g_pwm;
 static struct s3_led_base *g_led_red;
 static struct s3_led_base *g_led_status;
 
-static void board_init(void)
+static void led_board_init(void)
 {
     /* 子类对象构造：填 ops 字段 + 自己的硬件参数 */
     g_gpio.base.ops  = &amp;gpio_ops;
@@ -558,7 +558,7 @@ static void board_init(void)
 s3_led_on(g_led_red);      /* 走 s3_gpio_on */
 s3_led_on(g_led_status);   /* 走 s3_pwm_on */
 </code></pre>
-<p>应用层只见 <code>struct s3_led_base *</code> 句柄，调同一个 <code>s3_led_on(handle)</code>。换硬件改 board_init 里那几行字段赋值，应用 0 修改。</p>
+<p>应用层只见 <code>struct s3_led_base *</code> 句柄，调同一个 <code>s3_led_on(handle)</code>。换硬件改 led_board_init 里那几行字段赋值，应用 0 修改。</p>
 <h3 id="stage-5链接自动注册ch17"><a class="header" href="#stage-5链接自动注册ch17">Stage 5：链接自动注册（ch17）</a></h3>
 <pre><code class="language-c">/* drv_led.c */
 static int led_init(void)
@@ -608,7 +608,7 @@ int main(void)
     s3_gpio_on  [RED]: write reg(13) = 1
     s3_pwm_on   [STAT]: PWM ch=1 duty=100%
 
-[stage 4] ch12-ch15 - upcasting + handle + board_init
+[stage 4] ch12-ch15 - upcasting + handle + led_board_init
     s3_gpio_on  [RED]: write reg(13) = 1
     s3_pwm_on   [STAT]: PWM ch=1 duty=100%
 
@@ -820,8 +820,8 @@ int main(void)
     s3_led_on(&amp;g.base);
     s3_led_on(&amp;p.base);
 
-    printf("\n[stage 4] ch12-ch15 - upcasting + handle + board_init\n");
-    s4_board_init();
+    printf("\n[stage 4] ch12-ch15 - upcasting + handle + led_board_init\n");
+    s4_led_board_init();
     s3_led_on(g_led_red);
     s3_led_on(g_led_status);
 
@@ -882,7 +882,7 @@ make
     s3_gpio_on  [RED]: write reg(13) = 1
     s3_pwm_on   [STAT]: PWM ch=1 duty=100%
 
-[stage 4] ch12-ch15 - upcasting + handle + board_init
+[stage 4] ch12-ch15 - upcasting + handle + led_board_init
     s3_gpio_on  [RED]: write reg(13) = 1
     s3_pwm_on   [STAT]: PWM ch=1 duty=100%
 

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ea4704e9.js";
+            window.path_to_searchindex_js = "../searchindex-77bf0698.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -291,6 +291,9 @@ static int gpio_on(struct led_base *me)
 <p>注意第三个参数 <code>base</code>，是成员名，不是变量名。这一行字面意思：“给我从 me 出发，找到那个把 me 当作 <code>base</code> 字段的 <code>struct led_gpio</code> 对象”。</p>
 <p>PWM、I2C 子类同套路，每个实现函数第一行都是 container_of。</p>
 <blockquote>
+<p>翻配套代码 <code>led_base.h</code> 时，会发现 <code>struct led_ops</code> 比第 12 章多了一个 <code>set_brightness</code> 槽位。这跟本章 container_of 主线无关——是为第 14 章「虚函数三种策略」提前埋的料（PWM 子类填了，GPIO / I2C 没填）。“字段为 NULL 怎么办“留到 ch14 § 14.3 展开，本章先把字段挂上不分散注意力，详见 § 13.8.5。</p>
+</blockquote>
+<blockquote>
 <p>为了证明 container_of 与位置无关，本章配套代码故意把 GPIO 子类的 base 挪到第二个字段、前面加一个 <code>magic</code> 占位。这是教学变形。真实工业代码里 base 仍然推荐放在第一个位置：向上转型零开销（不需要算偏移），取 ops 表也是单条 LDR 指令。换 magic 在前，container_of 一字不改，这才是它的核心威力。位置无关性的具体演示见 § 13.8.2。</p>
 </blockquote>
 <p><img src="../assets/ch13/slide6_gpio_on使用.png" alt="gpio_on 用 container_of"></p>
@@ -333,6 +336,9 @@ if (gpio) {
 </code></pre>
 <p>为什么 base 不在偏移 2 而在偏移 4？因为 <code>struct led_base</code> 第一个成员是 <code>const struct led_ops *ops</code>，指针在 32 位机器上对齐 4 字节，所以编译器在 <code>magic</code> 后面塞 2 字节 padding，让 base 落到 4 的倍数。</p>
 <p><code>offsetof(struct led_gpio, base)</code> 在编译期算出 4，编进 container_of 宏。运行时就是一句 <code>sub r0, r0, #4</code>。</p>
+<blockquote>
+<p>本章默认环境是 32-bit（PC 用 MinGW 默认 32-bit gcc，STM32 是 32-bit ARM Cortex），所以指针 4 字节对齐、<code>offsetof</code> 算出 4、padding 是 2 字节。如果在 64-bit Linux/macOS 上跑 demo，指针变 8 字节对齐，<code>offsetof</code> 会算出 8、padding 变 6 字节。container_of 一字不改照样工作——这正是它“位置无关“的实战意义。运行时输出的 <code>offsetof(...) = N</code> 才是事实，本章正文里写“偏移 4“是 32-bit 默认环境的具体值。</p>
+</blockquote>
 <h3 id="1382-base-想放哪就放哪"><a class="header" href="#1382-base-想放哪就放哪">13.8.2 base 想放哪就放哪</a></h3>
 <p>为了把“位置无关“看见，配套代码故意把 GPIO 子类的 base 挪到第二个位置：</p>
 <pre><code class="language-c">struct led_gpio {
@@ -348,13 +354,13 @@ offsetof(struct led_pwm,  base) = 0
 offsetof(struct led_i2c,  base) = 0
 
   [base] "ERR" common init done, ops=...
-[GPIO] Pin10 init as OUTPUT
-[GPIO] Pin10 -&gt; LOW (OFF)
+[GPIO] PA.10 init as OUTPUT
+[GPIO] PA.10 -&gt; LOW (OFF)
 
 --- toggle ERR ---
-[GPIO] Pin10 -&gt; HIGH (ON)
+[GPIO] PA.10 -&gt; HIGH (ON)
   [ERR] GPIO Pin10 ON (magic=0xCAFE)
-[GPIO] Pin10 -&gt; LOW (OFF)
+[GPIO] PA.10 -&gt; LOW (OFF)
   [ERR] GPIO Pin10 OFF
 </code></pre>
 <p>GPIO 的 base 在偏移 4，但 <code>gpio_on</code> 还是正确还原了 <code>magic = 0xCAFE</code>、<code>pin = 10</code>、<code>on_level = true</code>。container_of 和位置无关。</p>
@@ -420,7 +426,7 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>PC 上不依赖 GNU C 扩展的最简版就是 § 13.5 那个三步宏，本书配套代码 <code>pc/container_of.h</code> 里就是这一份。逻辑等价，编译期约束少一点，PC 上跑没影响。生产代码里可以直接用内核版，那个 static_assert 能在 commit 前帮你抓住低级错。</p>
 <h3 id="1385-配套代码-ops-表多了一个字段set_brightness"><a class="header" href="#1385-配套代码-ops-表多了一个字段set_brightness">13.8.5 配套代码 ops 表多了一个字段：set_brightness</a></h3>
 <p>差异原则详见前言「配套代码 vs 视频版」。下面是本章具体差异。</p>
-<p>打开本章配套代码 <code>oop-in-c/code/13-container-of/pc/led.h</code>，会发现 <code>struct led_ops</code> 比第 12 章多了一个字段：</p>
+<p>打开本章配套代码 <code>oop-in-c/code/13-container-of/pc/led_base.h</code>，会发现 <code>struct led_ops</code> 比第 12 章多了一个字段：</p>
 <pre><code class="language-c">struct led_ops {
 	int (*on)(struct led_base *me);
 	int (*off)(struct led_base *me);
@@ -430,18 +436,20 @@ self-&gt;pin = 99;     /* 编译过，但破坏了 me 的 const 承诺 */
 <p>PWM 子类填了 <code>pwm_set_brightness</code>，按 duty 调亮度。GPIO 和 I2C 子类没填，<code>set_brightness</code> 字段保持 NULL。</p>
 <p>为什么这一章就把 <code>set_brightness</code> 加进 ops 表？因为后续章节代码包沿用同一份字段集，提前加进去，跨章演化更平滑。这一章的主线还是 container_of，<code>set_brightness</code> 字段只是顺便挂上。</p>
 <p>至于“<code>set_brightness</code> 字段为 NULL 怎么办“、“PWM 填、GPIO 不填这种’子类各自决定’怎么处理”，正是第 14 章「虚函数不实现 · 三种策略」的主题。这一章先把字段挂上，下一章展开机制。</p>
-<p>main.c 里有 <code>led_set_brightness(handles[1], 60)</code> 的调用，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.11。</p>
-<h3 id="1386-配套代码文件组织每个子类一个文件"><a class="header" href="#1386-配套代码文件组织每个子类一个文件">13.8.6 配套代码文件组织：每个子类一个文件</a></h3>
-<p>本章 <code>pc/</code> 目录沿用第 12 章的“每个子类一个文件“组织：</p>
+<p><code>main.c</code> 里通过 <code>g_led_status</code> 句柄调 <code>led_set_brightness(g_led_status, 60)</code>，跑 demo 能看到 PWM 灯的 duty 从 50% 调到 60%、再调到 0%。具体输出见 § 13.11。</p>
+<h3 id="1386-配套代码文件组织封装延续-ch12"><a class="header" href="#1386-配套代码文件组织封装延续-ch12">13.8.6 配套代码文件组织：封装延续 ch12</a></h3>
+<p>本章 <code>pc/</code> 目录沿用第 12 章的“每个子类一个文件 + leds.h + led_board_init.c“封装：</p>
 <pre><code>oop-in-c/code/13-container-of/pc/
-├── led_base.h / led_base.c    父类字段集 + 共有 init + 父类统一接口
-├── led.h                      公开接口集中点（ops 表字段集 + led_on/off/set_brightness 声明）
+├── led_base.h / led_base.c    父类层公开头：字段集 + ops 表 + 共有 init + 父类统一接口
 ├── led_gpio.h / led_gpio.c    GPIO 子类（base 故意挪到偏移 4，container_of 演示位置无关）
 ├── led_pwm.h  / led_pwm.c     PWM 子类（base 在偏移 0，三件套全填）
 ├── led_i2c.h  / led_i2c.c     I2C 子类（base 在偏移 0，set_brightness 不填）
 ├── container_of.h             § 13.5 那个三步宏的最简实现
-└── main.c                     跑 demo
+├── leds.h                     LED 模块对外暴露的全局句柄（ch12 封装一字不退）
+├── led_board_init.c           LED 板级配置（启动期打印三种子类 offsetof + 三个 init + 句柄绑定）
+└── main.c                     跑 demo（应用层零硬件字样、零 container_of 字样）
 </code></pre>
+<p><code>container_of</code> 是子类内部的事（子类 <code>.c</code> 用宏把 base 指针反推回子类指针），<strong>应用层一字不知道</strong>。所以 <code>main.c</code> 在 ch12 的封装基础上一字不退：只 <code>#include "leds.h"</code>，看三个 <code>struct led_base *</code> 父类指针句柄。<code>offsetof</code> 演示放进 <code>led_board_init.c</code> 启动期日志（板级文件本来就 <code>#include</code> 子类头，能 sizeof 占栈），让 GPIO base 偏移 4 的教学观察点肉眼可见，同时不污染应用层。</p>
 <p>三种子类全部用 <code>container_of</code> 反推自己 – GPIO 子类必须用（base 偏移 4，强转会算错地址 4 字节），PWM / I2C 子类 base 偏移 0，<code>container_of</code> 在偏移 0 的减法会被编译器优化掉，等价于直接强转。三个子类一视同仁全部用 <code>container_of</code> 是为了让 GPIO 那条 base 偏移 4 的教学变形不显得特殊，应用层和驱动框架看到的代码风格一致。</p>
 <h2 id="139-你现在的代码在-stm32-上长什么样"><a class="header" href="#139-你现在的代码在-stm32-上长什么样">13.9 你现在的代码在 STM32 上长什么样</a></h2>
 <p>container_of 在 STM32 上是同一个宏，编译产物就是 ARM Cortex-M 的 <code>SUB Rd, Rn, #imm</code>。STM32 工程里你直接 <code>#include &lt;linux/types.h&gt;</code> 不行（那是内核头），但 STM32CubeIDE 的 <code>arm-none-eabi-gcc</code> 自带 <code>&lt;stddef.h&gt;</code>，offsetof 一直可用。把 § 13.5 那个三步宏放进 utility 头文件就能用。</p>
@@ -493,15 +501,15 @@ offsetof(struct led_pwm,  base) = 0
 offsetof(struct led_i2c,  base) = 0
 
   [base] "ERR" common init done, ops=...
-[GPIO] Pin10 init as OUTPUT
-[GPIO] Pin10 -&gt; LOW (OFF)
+[GPIO] PA.10 init as OUTPUT
+[GPIO] PA.10 -&gt; LOW (OFF)
   [base] "STAT" common init done, ops=...
   [base] "NET" common init done, ops=...
 
 --- toggle ERR ---
-[GPIO] Pin10 -&gt; HIGH (ON)
+[GPIO] PA.10 -&gt; HIGH (ON)
   [ERR] GPIO Pin10 ON (magic=0xCAFE)
-[GPIO] Pin10 -&gt; LOW (OFF)
+[GPIO] PA.10 -&gt; LOW (OFF)
   [ERR] GPIO Pin10 OFF
 
 --- toggle STAT ---
