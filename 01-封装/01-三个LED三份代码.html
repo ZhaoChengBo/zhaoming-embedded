@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-22c47fce.js";
+            window.path_to_searchindex_js = "../searchindex-545adf65.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -509,11 +509,11 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p>应用层调用就是：</p>
 <pre><code class="language-c">/* 假设 LED 接在 PA.13 / PA.14 / PA.15 */
-led_init(&amp;red_led,   0x0D);   /* PA.13 */
-led_init(&amp;green_led, 0x0E);   /* PA.14 */
-led_init(&amp;blue_led,  0x0F);   /* PA.15 */
+led_init(&amp;red_led,   PIN_NUM('A', 13));
+led_init(&amp;green_led, PIN_NUM('A', 14));
+led_init(&amp;blue_led,  PIN_NUM('A', 15));
 </code></pre>
-<p>板子上 LED 改接到 PD.12，那就传 <code>0x3C</code>。<code>led.c</code> 一行不动，<code>main.c</code> 只动初始化参数。</p>
+<p><code>PIN_NUM('A', 13)</code> 就是前面引入过的那个宏，编译期展开成 <code>0x0D</code>，板子上 LED 改接到 PD.12 就传 <code>PIN_NUM('D', 12)</code>。<code>led.c</code> 一行不动，<code>main.c</code> 只动初始化参数。</p>
 <p>注意一件事：<code>led.h</code>、<code>led.c</code> 一字不改。</p>
 <p>变化的只有 <code>platform_gpio_*</code> 这一层胶水。这就是平台抽象层最直接的威力。</p>
 <p><code>HAL_GPIO_WritePin</code> 调到底就是 1.7.6 里讲的写 BSRR 寄存器。如果你打开 ST 的 HAL 源码看 <code>stm32h7xx_hal_gpio.c</code>，会看到这一行：</p>

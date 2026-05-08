@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-22c47fce.js";
+            window.path_to_searchindex_js = "../searchindex-545adf65.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-9dbf4cc9.js"></script>
@@ -312,11 +312,12 @@ led_deinit(&amp;red);
 </thead>
 <tbody>
 <tr><td>第 1 章</td><td><code>struct + me</code></td><td><code>class + this</code></td></tr>
-<tr><td>第 2 章</td><td><code>static + /* private */ 纪律</code></td><td><code>private + public</code></td></tr>
+<tr><td>第 2 章</td><td><code>.h 声明</code> + <code>static + /* private */ 纪律</code></td><td><code>public + private</code></td></tr>
 <tr><td>第 3 章</td><td><code>前缀 + init/deinit</code></td><td><code>类名 + 构造/析构</code></td></tr>
 </tbody>
 </table>
 </div>
+<p>第 2 章那一行展开看：<code>.h</code> 里声明的函数（<code>led_init / led_on / led_off / ...</code>）等同 C++ 的 <code>public:</code>；<code>.c</code> 里加 <code>static</code> 的工具函数 + struct 字段挂 <code>/* private */</code> 的命名纪律，等同 C++ 的 <code>private:</code>。一份 C 模块用 <code>.h / .c</code> 分离 + <code>static</code> 锁 + 字段命名纪律三件事，做的就是 C++ public / private 关键字一字不差的事。</p>
 <p>C 没有 <code>class</code>？你天天都在写。</p>
 <h2 id="37-视频里没讲透的几个细节"><a class="header" href="#37-视频里没讲透的几个细节">3.7 视频里没讲透的几个细节</a></h2>
 <h3 id="371-initialized-标志位的反事实推演"><a class="header" href="#371-initialized-标志位的反事实推演">3.7.1 initialized 标志位的反事实推演</a></h3>

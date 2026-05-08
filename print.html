@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-22c47fce.js";
+            window.path_to_searchindex_js = "searchindex-545adf65.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-9dbf4cc9.js"></script>
@@ -783,11 +783,11 @@ void platform_gpio_write(uint8_t pin, bool value)
 </code></pre>
 <p>应用层调用就是：</p>
 <pre><code class="language-c">/* 假设 LED 接在 PA.13 / PA.14 / PA.15 */
-led_init(&amp;red_led,   0x0D);   /* PA.13 */
-led_init(&amp;green_led, 0x0E);   /* PA.14 */
-led_init(&amp;blue_led,  0x0F);   /* PA.15 */
+led_init(&amp;red_led,   PIN_NUM('A', 13));
+led_init(&amp;green_led, PIN_NUM('A', 14));
+led_init(&amp;blue_led,  PIN_NUM('A', 15));
 </code></pre>
-<p>板子上 LED 改接到 PD.12，那就传 <code>0x3C</code>。<code>led.c</code> 一行不动，<code>main.c</code> 只动初始化参数。</p>
+<p><code>PIN_NUM('A', 13)</code> 就是前面引入过的那个宏，编译期展开成 <code>0x0D</code>，板子上 LED 改接到 PD.12 就传 <code>PIN_NUM('D', 12)</code>。<code>led.c</code> 一行不动，<code>main.c</code> 只动初始化参数。</p>
 <p>注意一件事：<code>led.h</code>、<code>led.c</code> 一字不改。</p>
 <p>变化的只有 <code>platform_gpio_*</code> 这一层胶水。这就是平台抽象层最直接的威力。</p>
 <p><code>HAL_GPIO_WritePin</code> 调到底就是 1.7.6 里讲的写 BSRR 寄存器。如果你打开 ST 的 HAL 源码看 <code>stm32h7xx_hal_gpio.c</code>，会看到这一行：</p>
@@ -1194,11 +1194,13 @@ struct _IO_FILE {
 <tr><td>sqlite3</td><td><code>sqlite3 *</code> / <code>sqlite3_stmt *</code></td><td>数据库连接和预编译语句</td></tr>
 <tr><td>libcurl</td><td><code>CURL *</code></td><td>HTTP 请求句柄</td></tr>
 <tr><td>Win32</td><td><code>HANDLE</code></td><td>系统资源句柄</td></tr>
-<tr><td>RT-Thread</td><td><code>rt_device_t</code></td><td>设备驱动句柄（应用层视角）</td></tr>
 </tbody>
 </table>
 </div>
 <p>特征都一样：库做成可独立部署的二进制，应用代码以 link 形式连进来，库内部字段改了应用层不感知。这是不透明指针的真实工业用武之地。</p>
+<blockquote>
+<p>一个反例。RT-Thread 的 <code>rt_device_t</code> 看起来像不透明句柄，但打开 <code>include/rtdef.h</code> 你会看到 <code>struct rt_device { ... }</code> 字段在公开头文件里<strong>完全展开</strong>，应用层 <code>dev-&gt;user_data = ...</code> 编译能过。这是开放结构指针 + 命名纪律（推荐走 <code>rt_device_open / rt_device_read</code> API），属于本节前面讲的“软 private“那一档，不是不透明指针。FreeRTOS / Zephyr / Linux 内核里大部分 <code>xxx_t</code> 句柄都是这一档，看到 <code>_t</code> 不要自动套“不透明“。</p>
+</blockquote>
 <p>字段藏 <code>.c</code> 还有一个连带代价：调用方不能 <code>sizeof</code>，所有对象生命周期得由库自己管，所以这种 API 通常成对出现 <code>xxx_create + xxx_destroy</code>（<code>fopen + fclose</code> / <code>pthread_create + pthread_join</code> / <code>sqlite3_open + sqlite3_close</code>）。<code>xxx_create</code> 内部 <code>malloc</code>，调用方拿到指针，结束时 <code>xxx_destroy</code> 负责 <code>free</code>。这不是因为不透明指针非要堆分配，是因为 ABI 边界让调用方算不出 size 只能让库代分配。自家应用代码字段公开的写法，对象就直接 <code>struct led red;</code> 在栈上分配，不需要 create/destroy 这一对。</p>
 <p><strong>本书后面 18 章 OOP 主线全部不用不透明指针</strong>。原因：(a) 这本书写的是嵌入式自家应用代码，不是跨二进制库；(b) ch06 起所有继承都需要子类看到父类字段做 embed，字段藏起来 <code>struct led_gpio { struct led_base base; ... }</code> 这一行直接编译报错。</p>
 <p>如果哪天你做的是给别人用的库（嵌入式 <code>.a</code> SDK / Linux <code>.so</code>），那时候用第三种。框架不一样，工具不一样。</p>
@@ -1232,6 +1234,22 @@ red_led.pin = 999;                    /* 不 OK 绕过 API 直接写字段 */
 </code></pre>
 <p>Linux 内核的 kerneldoc 注释规范（内核源码里统一的注释格式）里用 <code>@private:</code> 标签写这件事。哪种风格不重要，重要的是字段第一行注释里就告诉读者「别直接写」。</p>
 <p>工业代码 review checklist 通常包含一条：<strong>任何 <code>xxx.field = ...</code> 形式的 PR，先确认字段不是 <code>/* private */</code>。是的话打回，走 setter API</strong>。这条规矩进 review 后，软 private 漏网概率压得很低。</p>
+<p>实际工程里更常见的写法是<strong>整个 struct 默认 private，不逐字段加 <code>/* private */</code> 注释</strong>。也就是这样：</p>
+<pre><code class="language-c">/* led.h */
+struct led {
+    uint8_t pin;
+    uint8_t brightness;
+    bool    is_on;
+};
+
+int led_init(struct led *me, uint8_t pin);
+int led_on(struct led *me);
+int led_off(struct led *me);
+/* ... */
+</code></pre>
+<p>字段什么注释都没挂，但 <code>.h</code> 里同时摆着一组 <code>led_xxx</code> API 函数声明。读者拿到这份头文件，第一眼看到 API 表，默认认为 struct 字段是配套实现细节。<code>me-&gt;pin = 999</code> 这种写法在命名纪律 + code review 下依然是违纪，机制和上面字段标 <code>/* private */</code> 一样。</p>
+<p>这本书后面 16 章里大量 struct 是这种“裸 struct“形态，没有逐字段挂 <code>/* private */</code>，也没有 <code>@private</code> 标签。原因就是工业惯例：<strong><code>.h</code> 暴露 API 这一动作本身</strong>已经把“字段是 private“ 这件事讲清楚了，注释只是更明示。新人看 Linux 内核 / Zephyr / FreeRTOS / nginx / Redis 源码会发现绝大多数 struct 字段都不挂 <code>/* private */</code>，靠的就是这套隐含约定。</p>
+<p>第一次接触软 private 的读者用带 <code>/* private */</code> 注释的写法上手，习惯之后字段不带注释也是同款约定，两种风格在工程纪律上等价。本章后面演示和 ch03 起的章节会逐步切到不带注释的工业惯例风格。</p>
 <h2 id="27-你现在的-led-在-stm32-上长什么样"><a class="header" href="#27-你现在的-led-在-stm32-上长什么样">2.7 你现在的 LED 在 STM32 上长什么样</a></h2>
 <p>PC 模拟版是 <code>printf</code> 假装操作 GPIO。STM32 真实硬件上长这样（节选自 <a href="https://github.com/ZhaoChengBo/zhaoming-embedded/tree/master/oop-in-c/code/02-static-hiding/platform-mcu/stm32/led_stm32.c"><code>oop-in-c/code/02-static-hiding/platform-mcu/stm32/led_stm32.c</code></a>，<code>pin</code> 仍是 <code>PIN_NUM('A', 13)</code> 编码，详见第 1 章 § 1.x PIN_NUM 编码）：</p>
 <pre><code class="language-c">#include "platform.h"
@@ -1268,8 +1286,8 @@ void platform_gpio_write(uint8_t pin, bool value)
 #include "platform.h"
 
 struct led_base {
-	const char *name;       /* private: 给日志打印用，例如 "red" */
-	bool        is_on;      /* private: 当前开关状态 */
+	const char *name;       /* 给日志打印用，例如 "red" */
+	bool        is_on;      /* 当前开关状态 */
 	/* 真实工程还有几个字段, 这里省略 */
 };
 
@@ -1279,6 +1297,7 @@ void led_off(struct led_base *me);
 const char *led_base_get_name(const struct led_base *me);
 bool led_base_is_on(const struct led_base *me);
 </code></pre>
+<p>注意字段没逐个挂 <code>/* private */</code>。这是工业代码的常见风格：<code>.h</code> 同时摆 struct 和 <code>led_base_*</code> API，字段默认被视为 private，外部直接读 <code>me-&gt;is_on</code> 就是越过 API。和 § 2.6.6 末尾讲的“整 struct 默认 private“一致。</p>
 <pre><code class="language-c">/* led_base.c - 实现 + 内部工具 */
 
 #include "led_base.h"
@@ -1310,11 +1329,11 @@ led_on(green_led);
 led_off(red_led);
 const char *who = led_base_get_name(green_led);
 </code></pre>
-<p>和你这一章学的写法骨架一致：字段公开在 <code>.h</code> 但标了 <code>/* private */</code>，内部工具加 <code>static</code> 关进 <code>.c</code>，外部走 <code>led_*</code> 命名一致的 API。应用层既不直接读字段，也不知道也不需要知道 <code>update_hardware</code> 这种内部细节。</p>
+<p>和你这一章学的写法骨架一致：字段公开在 <code>.h</code>（默认 private，靠命名纪律保护），内部工具加 <code>static</code> 关进 <code>.c</code>，外部走 <code>led_*</code> 命名一致的 API。应用层既不直接读字段，也不知道也不需要知道 <code>update_hardware</code> 这种内部细节。</p>
 <blockquote>
-<p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏 = 字段标 private + 工具加 static + 命名纪律“这一招学透就够，不用懂 ops 表。</p>
+<p>真实工业代码的 <code>led_base</code> 还多一个 <code>ops</code> 字段（用来在 GPIO LED / PWM LED / I2C LED 之间运行时切换实现）。这一招叫<strong>虚函数表</strong>或者<strong>ops 表</strong>，是第 9 章到第 11 章的主题。这一章先把“信息隐藏 = 字段默认 private + 工具加 static + 命名纪律“这一招学透就够，不用懂 ops 表。</p>
 </blockquote>
-<p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果字段没标 private 也没 setter API，是 ch01 阶段的代码，正在等一次 ch02 重构。如果字段公开但带 <code>/* private */</code> 注释 + 一组 <code>xxx_*</code> 命名一致的 API，是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
+<p>到这里你应该能形成一个直觉：拿到一份陌生的工业代码，先看 <code>.h</code> 里暴露了什么。如果字段没标 private 也没 setter API，是 ch01 阶段的代码，正在等一次 ch02 重构。如果 <code>.h</code> 里同时摆着 struct 和一组 <code>xxx_*</code> 命名一致的 API（不管字段挂没挂 <code>/* private */</code> 注释），就是 ch02 标准的代码（具体到工业项目里，再往下挖通常就是 ops 表 + 子类继承，那是 ch06 到 ch11 的内容）。</p>
 <h2 id="210-跑一遍"><a class="header" href="#210-跑一遍">2.10 跑一遍</a></h2>
 <pre><code class="language-bash">cd oop-in-c/code/02-static-hiding/pc
 make
@@ -1501,11 +1520,12 @@ led_deinit(&amp;red);
 </thead>
 <tbody>
 <tr><td>第 1 章</td><td><code>struct + me</code></td><td><code>class + this</code></td></tr>
-<tr><td>第 2 章</td><td><code>static + /* private */ 纪律</code></td><td><code>private + public</code></td></tr>
+<tr><td>第 2 章</td><td><code>.h 声明</code> + <code>static + /* private */ 纪律</code></td><td><code>public + private</code></td></tr>
 <tr><td>第 3 章</td><td><code>前缀 + init/deinit</code></td><td><code>类名 + 构造/析构</code></td></tr>
 </tbody>
 </table>
 </div>
+<p>第 2 章那一行展开看：<code>.h</code> 里声明的函数（<code>led_init / led_on / led_off / ...</code>）等同 C++ 的 <code>public:</code>；<code>.c</code> 里加 <code>static</code> 的工具函数 + struct 字段挂 <code>/* private */</code> 的命名纪律，等同 C++ 的 <code>private:</code>。一份 C 模块用 <code>.h / .c</code> 分离 + <code>static</code> 锁 + 字段命名纪律三件事，做的就是 C++ public / private 关键字一字不差的事。</p>
 <p>C 没有 <code>class</code>？你天天都在写。</p>
 <h2 id="37-视频里没讲透的几个细节"><a class="header" href="#37-视频里没讲透的几个细节">3.7 视频里没讲透的几个细节</a></h2>
 <h3 id="371-initialized-标志位的反事实推演"><a class="header" href="#371-initialized-标志位的反事实推演">3.7.1 initialized 标志位的反事实推演</a></h3>
