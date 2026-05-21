@@ -17,6 +17,8 @@ edit-url-template = "https://gitee.com/zhao-chengbo/zhaoming_embedded/edit/maste
 site-url = "/"
 mathjax-support = false
 no-section-label = false
+additional-css = ["book/lightbox.css"]
+additional-js  = ["book/lightbox.js"]
 
 [output.html.fold]
 enable = true
