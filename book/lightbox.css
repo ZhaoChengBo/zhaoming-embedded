@@ -1,0 +1,69 @@
+#lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0.2s, opacity 0.2s;
+}
+
+#lightbox-overlay.lightbox-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+#lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+#lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 36px;
+  color: #ccc;
+  font-size: 48px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+#lightbox-close:hover {
+  color: #fff;
+}
+
+#lightbox-prev,
+#lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ccc;
+  font-size: 42px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  padding: 12px 16px;
+  transition: color 0.15s;
+}
+
+#lightbox-prev:hover,
+#lightbox-next:hover {
+  color: #fff;
+}
+
+#lightbox-prev {
+  left: 16px;
+}
+
+#lightbox-next {
+  right: 16px;
+}
